@@ -454,7 +454,7 @@
   /* ─── Suggestions ─── */
   [data-theme="dark"] .dash_suggestions      { border-top-color: var(--border-soft); }
   [data-theme="dark"] .dash_suggestionsTitle { color: var(--text-muted); }
-  [data-theme="dark"] .dash_suggestionBtn    { border-top-color: var(--border-soft); }
+  [data-theme="dark"] .dash_suggestionBtn    { border-bottom-color: var(--border-soft); }
   [data-theme="dark"] .dash_suggestionBtn:hover { background: var(--hover-overlay); }
   [data-theme="dark"] .dash_suggestionBtn span  { color: var(--text-secondary); }
   [data-theme="dark"] .dash_suggestionBtn:hover span { color: var(--text-primary); }
