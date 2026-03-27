@@ -1212,8 +1212,9 @@ export default function Dashboard() {
       lastResponseRef.current = responseContent;
 
       // ── Extract inline suggestions block (all delimiter variants) ──
-      const suggestionsRegex = /\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n([\s\S]*?)(?:(?:--|__|\*\*)?\s*END_SUGGESTIONS\s*(?:--|__|\*\*)?)/gi;
-      const sugMatch = suggestionsRegex.exec(responseContent);
+      const closedSugRegex = /\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n([\s\S]*?)(?:(?:--|__|\*\*)?\s*END_SUGGESTIONS\s*(?:--|__|\*\*)?)/gi;
+      const openSugRegex = /\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n([\s\S]+)$/gi;
+      const sugMatch = closedSugRegex.exec(responseContent) || openSugRegex.exec(responseContent);
       if (sugMatch) {
         const lines = sugMatch[1]
           .split('\n')
@@ -1226,6 +1227,7 @@ export default function Dashboard() {
       // Strip the suggestions block from displayed text
       const cleanedContent = responseContent
         .replace(/\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n[\s\S]*?(?:(?:--|__|\*\*)?\s*END_SUGGESTIONS\s*(?:--|__|\*\*)?)/gi, '')
+        .replace(/\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n[\s\S]+$/gi, '')
         .trim();
 
       const aiMsg: Message = {
