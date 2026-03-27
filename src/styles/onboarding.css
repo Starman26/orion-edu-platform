@@ -1,0 +1,652 @@
+/* ============================================================================
+   ORION Onboarding — White Canvas (matches Login + Dashboard)
+   ============================================================================ */
+
+/* ── Fonts: local first, CDN fallback so it always loads ── */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@font-face {
+  font-family: 'Neu Machina';
+  src: url('/fonts/NeuMachina-Light.woff2') format('woff2'),
+       url('/fonts/NeuMachina-Light.woff')  format('woff'),
+       url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neu Machina';
+  src: url('/fonts/NeuMachina-Regular.woff2') format('woff2'),
+       url('/fonts/NeuMachina-Regular.woff')  format('woff'),
+       url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================================================
+   VARIABLES — Dashboard token parity
+   ============================================================================ */
+
+.onboarding-scope {
+  /* Background */
+  --onb-bg: #fafafa;
+
+  /* Cards */
+  --onb-card-bg: #ffffff;
+  --onb-card-bg-hover: rgba(16, 17, 19, 0.02);
+  --onb-card-bg-selected: rgba(16, 17, 19, 0.04);
+
+  /* Borders — same as dashboard */
+  --onb-border: rgba(16, 17, 19, 0.08);
+  --onb-border-hover: rgba(16, 17, 19, 0.14);
+  --onb-border-selected: rgba(16, 17, 19, 0.22);
+
+  /* Text — same as dashboard */
+  --onb-text: #101113;
+  --onb-text-secondary: rgba(16, 17, 19, 0.55);
+  --onb-text-muted: rgba(16, 17, 19, 0.35);
+
+  /* Primary action */
+  --onb-primary-bg: #101113;
+  --onb-primary-text: #ffffff;
+
+  /* Error */
+  --onb-error: #dc3545;
+
+  /* Fonts — same as dashboard */
+  --font-display: 'Neu Machina', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================================
+   ROOT CONTAINER — No dark frame, flat white canvas
+   ============================================================================ */
+
+.onboarding-scope.min-h-screen {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--onb-bg);
+  padding: 0;
+  font-family: var(--font-sans);
+  color: var(--onb-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+
+.onboarding-scope *,
+.onboarding-scope *::before,
+.onboarding-scope *::after {
+  box-sizing: border-box;
+}
+
+/* ── Remove the dark inner frame — go flat ── */
+.onboarding-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100vh;
+  border-radius: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* ── Dot grid background (same as login) ── */
+.onb-dotgrid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================================================
+   PROGRESS — Subtle dots, light palette
+   ============================================================================ */
+
+.onbProgress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.onbProgressItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 8px;
+}
+
+.onbProgressDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: rgba(16, 17, 19, 0.12);
+  transition: background-color 200ms ease, opacity 200ms ease;
+}
+
+.onbProgressDot.isCompleted {
+  background-color: rgba(16, 17, 19, 0.45);
+}
+
+.onbProgressActive {
+  height: 6px;
+  border-radius: 9999px;
+  background-color: var(--onb-text);
+}
+
+/* ============================================================================
+   UTILITY OVERRIDES — Light palette
+   ============================================================================ */
+
+.bg-onboarding-bg { background-color: transparent; }
+.bg-onboarding-card { background-color: var(--onb-card-bg); }
+.bg-onboarding-card-hover { background-color: var(--onb-card-bg-hover); }
+.bg-onboarding-card-selected { background-color: var(--onb-card-bg-selected); }
+
+.border-onboarding-border { border-color: var(--onb-border); }
+.border-onboarding-border-selected { border-color: var(--onb-border-selected); }
+
+.text-onboarding-text-primary { color: var(--onb-text); }
+.text-onboarding-text-secondary { color: var(--onb-text-secondary); }
+.text-onboarding-text-muted { color: var(--onb-text-muted); }
+
+.text-onboarding-accent { color: var(--onb-text); }
+.bg-onboarding-accent { background-color: var(--onb-text); }
+
+.bg-onboarding-progress-bg { background-color: rgba(16, 17, 19, 0.12); }
+.bg-onboarding-progress-active { background-color: var(--onb-text); }
+
+.text-onboarding-bg { color: var(--onb-primary-text); }
+
+.text-destructive { color: var(--onb-error); }
+
+/* ============================================================================
+   LAYOUT HELPERS
+   ============================================================================ */
+
+.onboarding-scope .flex { display: flex; }
+.onboarding-scope .items-center { align-items: center; }
+.onboarding-scope .items-start { align-items: flex-start; }
+.onboarding-scope .justify-center { justify-content: center; }
+.onboarding-scope .justify-between { justify-content: space-between; }
+.onboarding-scope .flex-col { flex-direction: column; }
+.onboarding-scope .flex-1 { flex: 1 1 0%; }
+.onboarding-scope .flex-wrap { flex-wrap: wrap; }
+.onboarding-scope .w-full { width: 100%; }
+.onboarding-scope .h-full { height: 100%; }
+.onboarding-scope .min-w-0 { min-width: 0; }
+.onboarding-scope .max-w-sm { max-width: 22rem; }
+.onboarding-scope .max-w-md { max-width: 26rem; }
+.onboarding-scope .max-w-lg { max-width: 30rem; }
+.onboarding-scope .max-w-xl { max-width: 34rem; }
+.onboarding-scope .max-w-2xl { max-width: 38rem; }
+.onboarding-scope .mx-auto { margin-left: auto; margin-right: auto; }
+.onboarding-scope .text-center { text-align: center; }
+.onboarding-scope .text-left { text-align: left; }
+.onboarding-scope .block { display: block; }
+.onboarding-scope .relative { position: relative; }
+.onboarding-scope .absolute { position: absolute; }
+.onboarding-scope .flex-shrink-0 { flex-shrink: 0; }
+
+/* Spacing */
+.onboarding-scope .gap-2 { gap: 0.4rem; }
+.onboarding-scope .gap-3 { gap: 0.65rem; }
+.onboarding-scope .gap-4 { gap: 0.85rem; }
+.onboarding-scope .gap-6 { gap: 1.25rem; }
+.onboarding-scope .gap-8 { gap: 1.75rem; }
+
+.onboarding-scope .pt-8 { padding-top: 1.75rem; }
+.onboarding-scope .pb-4 { padding-bottom: 0.85rem; }
+.onboarding-scope .pb-8 { padding-bottom: 1.75rem; }
+.onboarding-scope .pt-4 { padding-top: 0.85rem; }
+.onboarding-scope .px-6 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.onboarding-scope .px-8 { padding-left: 1.75rem; padding-right: 1.75rem; }
+.onboarding-scope .py-3 { padding-top: 0.65rem; padding-bottom: 0.65rem; }
+.onboarding-scope .py-2 { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+.onboarding-scope .py-1\.5 { padding-top: 0.3rem; padding-bottom: 0.3rem; }
+.onboarding-scope .px-4 { padding-left: 0.85rem; padding-right: 0.85rem; }
+.onboarding-scope .px-3 { padding-left: 0.65rem; padding-right: 0.65rem; }
+.onboarding-scope .p-4 { padding: 0.85rem; }
+.onboarding-scope .p-5 { padding: 1.1rem; }
+.onboarding-scope .mb-1 { margin-bottom: 0.2rem; }
+.onboarding-scope .mb-2 { margin-bottom: 0.4rem; }
+.onboarding-scope .mb-3 { margin-bottom: 0.65rem; }
+.onboarding-scope .mb-4 { margin-bottom: 0.85rem; }
+.onboarding-scope .mb-6 { margin-bottom: 1.25rem; }
+.onboarding-scope .mb-8 { margin-bottom: 1.75rem; }
+.onboarding-scope .mt-0\.5 { margin-top: 0.1rem; }
+.onboarding-scope .mt-2 { margin-top: 0.4rem; }
+.onboarding-scope .mt-3 { margin-top: 0.65rem; }
+.onboarding-scope .mt-6 { margin-top: 1.25rem; }
+.onboarding-scope .space-y-4 > * + * { margin-top: 0.85rem; }
+.onboarding-scope .space-y-6 > * + * { margin-top: 1.25rem; }
+.onboarding-scope .top-3 { top: 0.65rem; }
+.onboarding-scope .top-4 { top: 0.85rem; }
+.onboarding-scope .right-3 { right: 0.65rem; }
+.onboarding-scope .right-4 { right: 0.85rem; }
+
+/* ============================================================================
+   TYPOGRAPHY — Neu Machina display, Inter body
+   ============================================================================ */
+
+.onboarding-scope .text-xs { font-size: 0.7rem; line-height: 1rem; }
+.onboarding-scope .text-sm { font-size: 0.8rem; line-height: 1.15rem; }
+.onboarding-scope .text-base { font-size: 0.9rem; line-height: 1.4rem; }
+.onboarding-scope .text-3xl {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  line-height: 2rem;
+  font-weight: 300;
+}
+.onboarding-scope .text-4xl {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 2.25rem;
+  font-weight: 300;
+}
+.onboarding-scope .font-medium { font-weight: 500; }
+.onboarding-scope .font-semibold { font-weight: 300; font-family: var(--font-display); }
+.onboarding-scope .uppercase { text-transform: uppercase; }
+.onboarding-scope .tracking-\[0\.3em\] { letter-spacing: 0.3em; }
+.onboarding-scope .tracking-wider { letter-spacing: 0.05em; }
+.onboarding-scope .leading-relaxed { line-height: 1.625; }
+.onboarding-scope .text-pretty { text-wrap: pretty; }
+
+.onboarding-scope h1,
+.onboarding-scope h2,
+.onboarding-scope h3 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================================
+   BORDERS / RADIUS
+   ============================================================================ */
+
+.onboarding-scope .border { border-width: 1px; border-style: solid; }
+.onboarding-scope .rounded-full { border-radius: 9999px; }
+.onboarding-scope .rounded-lg { border-radius: 0.5rem; }
+.onboarding-scope .rounded-xl { border-radius: 0.75rem; }
+
+/* Sizes */
+.onboarding-scope .w-3 { width: 0.65rem; }
+.onboarding-scope .h-3 { height: 0.65rem; }
+.onboarding-scope .w-4 { width: 0.9rem; }
+.onboarding-scope .h-4 { height: 0.9rem; }
+.onboarding-scope .w-5 { width: 1.1rem; }
+.onboarding-scope .h-5 { height: 1.1rem; }
+.onboarding-scope .w-10 { width: 2.25rem; }
+.onboarding-scope .h-10 { height: 2.25rem; }
+
+/* Grid */
+.onboarding-scope .grid { display: grid; }
+.onboarding-scope .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+
+@media (min-width: 640px) {
+  .onboarding-scope .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 768px) {
+  .onboarding-scope .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .onboarding-scope .md\:text-4xl {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    line-height: 2.25rem;
+    font-weight: 300;
+  }
+}
+
+/* ============================================================================
+   TRANSITIONS
+   ============================================================================ */
+
+.onboarding-scope button { font: inherit; }
+.onboarding-scope .transition-colors {
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+.onboarding-scope .transition-all { transition: all 200ms ease; }
+.onboarding-scope .duration-300 { transition-duration: 200ms; }
+
+.onboarding-scope .disabled\:opacity-50:disabled { opacity: 0.5; }
+.onboarding-scope .disabled\:cursor-not-allowed:disabled { cursor: not-allowed; }
+
+.onboarding-scope .hover\:opacity-90:hover { opacity: 0.9; }
+.onboarding-scope .hover\:bg-onboarding-card-hover:hover { background-color: var(--onb-card-bg-hover); }
+.onboarding-scope .hover\:text-onboarding-text-primary:hover { color: var(--onb-text); }
+.onboarding-scope .hover\:border-onboarding-text-muted:hover { border-color: var(--onb-text-muted); }
+
+.onboarding-scope .focus\:border-onboarding-border-selected:focus { border-color: var(--onb-border-selected); }
+.onboarding-scope .focus\:ring-1:focus { box-shadow: 0 0 0 1px var(--onb-border-selected); }
+.onboarding-scope .focus\:ring-onboarding-border-selected:focus { box-shadow: 0 0 0 1px var(--onb-border-selected); }
+.onboarding-scope .outline-none { outline: none; }
+
+/* ============================================================================
+   INPUTS — Same style as login + dashboard
+   ============================================================================ */
+
+.onboarding-scope input {
+  background-color: #ffffff;
+  border-color: var(--onb-border);
+  box-shadow: none;
+  color: var(--onb-text);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  padding: 11px 14px;
+  border-radius: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.onboarding-scope input::placeholder {
+  color: var(--onb-text-muted);
+}
+
+.onboarding-scope input:hover {
+  border-color: var(--onb-border-hover);
+}
+
+.onboarding-scope input:focus {
+  border-color: var(--onb-border-selected);
+  box-shadow: none;
+  outline: none;
+}
+
+/* ============================================================================
+   HEADER / FOOTER — Light, minimal
+   ============================================================================ */
+
+.onbHeader {
+  position: relative;
+  padding-top: 20px;
+  padding-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.onbBrand {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--onb-text);
+  user-select: none;
+}
+
+.onbNav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.onbNav button {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--onb-text-muted);
+  transition: color 0.15s ease;
+}
+
+.onbNav button:hover {
+  color: var(--onb-text);
+}
+
+.onbNavSpacer {
+  width: 44px;
+  display: inline-block;
+}
+
+.onbFooter {
+  position: relative;
+  padding-top: 12px;
+  padding-bottom: 20px;
+  z-index: 2;
+}
+
+.onbByline {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--onb-text-muted);
+  user-select: none;
+  pointer-events: none;
+}
+
+@media (max-width: 520px) {
+  .onbBrand { left: 16px; top: 16px; }
+  .onbByline { right: 16px; bottom: 14px; }
+}
+
+/* ============================================================================
+   BUTTONS — Same as login + dashboard
+   ============================================================================ */
+
+.onbBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.onbBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.onbBtnPrimary {
+  background: var(--onb-primary-bg);
+  color: var(--onb-primary-text);
+}
+
+.onbBtnPrimary:hover:not(:disabled) {
+  background: #2a2b2e;
+  transform: translateY(-1px);
+}
+
+.onbBtnPrimary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.onbBtnSecondary {
+  background: var(--onb-card-bg);
+  color: var(--onb-text);
+  border: 1px solid var(--onb-border);
+}
+
+.onbBtnSecondary:hover:not(:disabled) {
+  border-color: var(--onb-border-hover);
+  background: var(--onb-card-bg-hover);
+  transform: translateY(-1px);
+}
+
+.onbBtnSpinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+}
+
+/* Primary inline button text fix */
+.onboarding-scope button.bg-onboarding-text-primary {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  color: var(--onb-primary-text) !important;
+  background: var(--onb-primary-bg);
+}
+
+.onboarding-scope button.bg-onboarding-text-primary:hover {
+  background: #2a2b2e;
+}
+
+.onboarding-scope svg.text-onboarding-bg {
+  color: var(--onb-primary-text) !important;
+}
+
+/* ============================================================================
+   CARDS — White on #fafafa, thin borders
+   ============================================================================ */
+
+.onboarding-scope .text-base.font-semibold {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+
+.onboarding-scope .rounded-full.bg-onboarding-card {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 5px 12px;
+  background: var(--onb-card-bg);
+  border: 1px solid var(--onb-border);
+  color: var(--onb-text-secondary);
+}
+
+.onboarding-scope .rounded-full.bg-onboarding-card:hover {
+  border-color: var(--onb-border-hover);
+  color: var(--onb-text);
+}
+
+.onboarding-scope .w-full.mt-6 {
+  margin-top: 1.25rem !important;
+}
+
+.onboarding-scope .p-5.rounded-xl {
+  padding: 1rem;
+  border-radius: 10px;
+}
+
+.onboarding-scope .p-4.rounded-xl {
+  padding: 0.85rem;
+  border-radius: 10px;
+}
+
+/* Card icon containers */
+.onboarding-scope .bg-onboarding-accent\/20 {
+  background: rgba(16, 17, 19, 0.06);
+}
+
+/* Card selected checkmark */
+.onboarding-scope .bg-onboarding-text-primary.rounded-full {
+  background: var(--onb-primary-bg);
+}
+
+/* ============================================================================
+   STEP TITLE — Two-tone like login/dashboard welcome
+   ============================================================================ */
+
+.onboarding-scope h1 {
+  color: var(--onb-text);
+}
+
+/* "INITIAL SETUP" and similar labels */
+.onboarding-scope .tracking-\[0\.3em\].text-onboarding-text-muted {
+  color: var(--onb-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+}
+
+/* ============================================================================
+   WORKSPACE STEP — Inner inputs match global style
+   ============================================================================ */
+
+.onboarding-scope .bg-onboarding-bg.border.border-onboarding-border {
+  background: var(--onb-card-bg);
+  border-color: var(--onb-border);
+  color: var(--onb-text);
+}
+
+.onboarding-scope .bg-onboarding-bg.border.border-onboarding-border::placeholder {
+  color: var(--onb-text-muted);
+}
+
+.onboarding-scope .bg-onboarding-bg.border.border-onboarding-border:focus {
+  border-color: var(--onb-border-selected);
+}
+
+/* ============================================================================
+   ERROR STATE
+   ============================================================================ */
+
+.onboarding-scope .text-destructive {
+  color: var(--onb-error);
+  font-size: 13px;
+  padding: 8px 12px;
+  background: rgba(220, 53, 69, 0.06);
+  border: 1px solid rgba(220, 53, 69, 0.12);
+  border-radius: 8px;
+  display: inline-block;
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+.animate-fade-in { animation: onbFadeIn 0.4s ease-out forwards; }
+.animate-slide-up { animation: onbSlideUp 0.5s ease-out forwards; }
+.animate-slide-down { animation: onbSlideDown 0.5s ease-out forwards; }
+.animate-scale-in { animation: onbScaleIn 0.3s ease-out forwards; }
+.animate-progress-fill { animation: onbProgressFill 0.6s ease-out forwards; }
+
+@keyframes onbFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes onbSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes onbSlideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes onbScaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes onbProgressFill {
+  from { width: 0; }
+}
+
+/* ============================================================================
+   REDUCED MOTION
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-slide-down,
+  .animate-scale-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

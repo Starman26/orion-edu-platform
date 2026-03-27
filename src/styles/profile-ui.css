@@ -1,0 +1,725 @@
+/* src/styles/profile-ui.css
+   ============================================================================
+   PROFILE PAGE — Flat layout, no cards
+   ============================================================================ */
+
+   .prof_root {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    background: #fafafa;
+    color: #101113;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* ─── Header ─── */
+  .prof_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 46px;
+    border-bottom: 1px solid rgba(16, 17, 19, 0.06);
+    flex-shrink: 0;
+    background: #ffffff;
+    z-index: 10;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  
+  .prof_headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .prof_headerRight {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .prof_menuBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    color: #101113;
+    transition: all 0.15s ease;
+  }
+  
+  .prof_menuBtn:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+  
+  .prof_headerDivider {
+    width: 1px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.08);
+    margin: 0 4px;
+  }
+  
+  .prof_userInfo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #999;
+  }
+  
+  .prof_pageName { color: #999; font-weight: 400; }
+  .prof_pathSeparator, .prof_userSeparator { color: #ccc; font-size: 12px; }
+  .prof_userName { font-weight: 600; color: #101113; }
+  .prof_userRole { color: #999; font-weight: 400; }
+  .prof_userError { color: #dc2626; font-size: 12px; margin-left: 8px; }
+  
+  .prof_headerBtn {
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(16, 17, 19, 0.65);
+    background: transparent;
+    border: 1px solid rgba(16, 17, 19, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  
+  .prof_headerBtn:hover {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.18);
+    color: #101113;
+  }
+  
+  /* ─── Content ─── */
+  .prof_content {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 32px 40px;
+  }
+  
+  .prof_layout {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  
+  /* ─── Identity row ─── */
+  .prof_identityRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  
+  .prof_identityLeft {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .prof_identityMeta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .prof_identityRight {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  
+  /* Avatar */
+  .prof_avatarWrapper {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+  }
+  
+  .prof_avatarImg {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f0f0f2;
+  }
+  
+  .prof_avatarFallback {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #101113;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  
+  .prof_avatarBtn {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #555;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: all 0.15s ease;
+  }
+  
+  .prof_avatarBtn:hover { background: #f5f5f5; }
+  .prof_avatarBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  .prof_displayName {
+    font-size: 18px;
+    font-weight: 600;
+    color: #101113;
+    margin: 0;
+    line-height: 1.2;
+  }
+  
+  .prof_email {
+    font-size: 12.5px;
+    color: #888;
+    margin: 0;
+  }
+  
+  .prof_roleBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: #6B6B6B;
+    background: #F5F5F5;
+    border-radius: 20px;
+    margin-top: 2px;
+    width: fit-content;
+  }
+  
+  /* Divider */
+  .prof_divider {
+    height: 1px;
+    background: #F0F0F0;
+    margin: 24px 0;
+  }
+  
+  /* ─── Fields section (flat) ─── */
+  .prof_fieldsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .prof_sectionLabel {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #A0A0A0;
+    margin-top: 4px;
+  }
+  
+  .prof_sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  /* Field rows */
+  .prof_fieldsRow {
+    display: grid;
+    gap: 12px;
+  }
+  
+  .prof_fieldsRow--4col {
+    grid-template-columns: 1fr 1fr 1fr 0.6fr;
+  }
+  
+  .prof_fieldsRow--3col {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  
+  .prof_field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .prof_label {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: #A0A0A0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  
+  .prof_input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #101113;
+    background: #ffffff;
+    border: 1px solid #EBEBEB;
+    border-radius: 6px;
+    outline: none;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+  
+  .prof_input:focus {
+    border-color: #A0A0A0;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+  }
+  
+  .prof_input::placeholder { color: #ccc; }
+  
+  .prof_input--disabled {
+    background: #FAFAFA;
+    color: #999;
+    cursor: not-allowed;
+  }
+  
+  /* Learning style pills */
+  .prof_styleRow {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .prof_stylePill {
+    padding: 6px 16px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #6B6B6B;
+    background: transparent;
+    border: 1px solid #EBEBEB;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  
+  .prof_stylePill:hover {
+    border-color: #A0A0A0;
+    color: #1A1A1A;
+  }
+  
+  .prof_stylePill.is-selected {
+    background: #1A1A1A;
+    border-color: #1A1A1A;
+    color: #ffffff;
+  }
+  
+  /* ─── Badges section ─── */
+  .prof_badgesSection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .prof_badgesTrack {
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 4px 0;
+  }
+  
+  .prof_badgesTrack::-webkit-scrollbar { height: 4px; }
+  .prof_badgesTrack::-webkit-scrollbar-track { background: transparent; }
+  .prof_badgesTrack::-webkit-scrollbar-thumb { background: #DDD; border-radius: 2px; }
+  
+  .prof_badgePlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 120px;
+    border: 1.5px dashed #EBEBEB;
+    border-radius: 10px;
+    color: #A0A0A0;
+    text-align: center;
+  }
+  
+  .prof_badgePlaceholder span {
+    font-size: 13px;
+    font-weight: 500;
+    color: #6B6B6B;
+  }
+  
+  .prof_badgePlaceholder p {
+    font-size: 12px;
+    color: #A0A0A0;
+    margin: 0;
+    max-width: 280px;
+  }
+  
+  /* Badge count */
+  .prof_badgesCount {
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    color: #A0A0A0;
+  }
+  
+  /* Badge cards */
+  .prof_badgeCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 140px;
+    max-width: 140px;
+    padding: 16px 12px;
+    border-radius: 10px;
+    border: 1px solid #EBEBEB;
+    background: #FFFFFF;
+    text-align: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  
+  .prof_badgeCard:hover {
+    border-color: #DDD;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
+  }
+  
+  .prof_badgeCard--locked {
+    opacity: 0.5;
+  }
+  
+  .prof_badgeCard--locked:hover {
+    opacity: 0.65;
+  }
+  
+  /* Badge icon wrapper */
+  .prof_badgeIconWrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .prof_badgeIconWrap--earned {
+    background: #1A1A1A;
+    color: #FFFFFF;
+  }
+  
+  .prof_badgeIconWrap--locked {
+    background: #F5F5F5;
+    color: #A0A0A0;
+  }
+  
+  .prof_badgeName {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1A1A1A;
+    line-height: 1.3;
+  }
+  
+  .prof_badgeDesc {
+    font-size: 10.5px;
+    color: #A0A0A0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .prof_badgeDate {
+    font-size: 10px;
+    font-weight: 500;
+    color: #6B6B6B;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+  
+  .prof_badgeLocked {
+    font-size: 10px;
+    font-weight: 500;
+    color: #A0A0A0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+  
+  /* ─── Badge Detail Modal ─── */
+  .prof_badgeModalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    animation: prof_fadeIn 0.15s ease;
+  }
+  
+  .prof_badgeModal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 36px 40px 28px;
+    background: #FFFFFF;
+    border: 1px solid #EBEBEB;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    text-align: center;
+    max-width: 340px;
+    width: 90vw;
+    animation: prof_slideUp 0.2s ease;
+  }
+  
+  @keyframes prof_slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .prof_badgeModalClose {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #A0A0A0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+  
+  .prof_badgeModalClose:hover {
+    background: #F5F5F5;
+    color: #6B6B6B;
+  }
+  
+  .prof_badgeModalIcon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .prof_badgeModalIcon--earned {
+    background: #1A1A1A;
+    color: #FFFFFF;
+  }
+  
+  .prof_badgeModalIcon--locked {
+    background: #F5F5F5;
+    color: #A0A0A0;
+  }
+  
+  .prof_badgeModalTitle {
+    font-size: 17px;
+    font-weight: 600;
+    color: #1A1A1A;
+    margin: 0;
+  }
+  
+  .prof_badgeModalDesc {
+    font-size: 13px;
+    color: #6B6B6B;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 260px;
+  }
+  
+  .prof_badgeModalCategory {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #A0A0A0;
+    padding: 2px 10px;
+    background: #F5F5F5;
+    border-radius: 20px;
+  }
+  
+  .prof_badgeModalStatus {
+    margin-top: 4px;
+  }
+  
+  .prof_badgeModalStatus--earned span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1A1A1A;
+  }
+  
+  .prof_badgeModalStatus--locked span {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #A0A0A0;
+  }
+  
+  .prof_badgeModalStatus--locked p {
+    font-size: 11.5px;
+    color: #BEBEBE;
+    margin: 4px 0 0;
+  }
+  
+  .prof_badgeModalActions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: 8px;
+  }
+  
+  .prof_badgeShareBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background: #0A66C2;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    font-family: inherit;
+  }
+  
+  .prof_badgeShareBtn:hover {
+    background: #004182;
+  }
+  
+  .prof_badgeCopyBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #6B6B6B;
+    background: transparent;
+    border: 1px solid #EBEBEB;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  
+  .prof_badgeCopyBtn:hover {
+    background: #F5F5F5;
+    border-color: #DDD;
+    color: #1A1A1A;
+  }
+  
+  /* Save */
+  .prof_saveSuccess {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #22c55e;
+    animation: prof_fadeIn 0.2s ease;
+  }
+  
+  .prof_saveBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #ffffff;
+    background: #1A1A1A;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  
+  .prof_saveBtn:hover { background: #333; }
+  .prof_saveBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+  
+  /* Loading */
+  .prof_loadingWrapper {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #888;
+    font-size: 13px;
+  }
+  
+  .prof_spin { animation: prof_spin 0.8s linear infinite; }
+  .prof_hidden { display: none; }
+  
+  @keyframes prof_spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  @keyframes prof_fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* ─── Responsive ─── */
+  @media (max-width: 768px) {
+    .prof_content { padding: 20px 16px; }
+    .prof_identityRow { flex-direction: column; align-items: flex-start; }
+    .prof_identityRight { width: 100%; justify-content: flex-end; }
+    .prof_fieldsRow--4col { grid-template-columns: 1fr 1fr; }
+    .prof_fieldsRow--3col { grid-template-columns: 1fr; }
+  }
+  
+  @media (max-width: 480px) {
+    .prof_fieldsRow--4col { grid-template-columns: 1fr; }
+  }

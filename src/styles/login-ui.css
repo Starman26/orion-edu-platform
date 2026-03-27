@@ -1,0 +1,511 @@
+/* src/styles/login-ui.css — White Canvas Redesign
+ * Matches Dashboard: #fafafa bg, Neu Machina + Inter, thin borders, minimal
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Fonts (same as dashboard) ── */
+@font-face {
+  font-family: 'Neu Machina';
+  src: url('/fonts/NeuMachina-Light.woff2') format('woff2'),
+       url('/fonts/NeuMachina-Light.woff')  format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neu Machina';
+  src: url('/fonts/NeuMachina-Regular.woff2') format('woff2'),
+       url('/fonts/NeuMachina-Regular.woff')  format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================================================================
+   ROOT
+   ============================================================================ */
+
+.login-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  background: #fafafa;
+  color: #101113;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-root *,
+.login-root *::before,
+.login-root *::after {
+  box-sizing: border-box;
+}
+
+/* ── Dot grid background ── */
+.login-dotgrid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+}
+
+/* ============================================================================
+   TOP BAR — mirrors dashboard header
+   ============================================================================ */
+
+.login-topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 46px;
+  padding: 0 24px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.login-topbar-left,
+.login-topbar-center,
+.login-topbar-right {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.login-topbar-center { justify-content: center; }
+.login-topbar-right  { justify-content: flex-end; }
+
+.login-back-text {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.45);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.login-back-text:hover {
+  color: rgba(16, 17, 19, 0.8);
+}
+
+.login-wordmark {
+  font-family: 'Neu Machina', 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #101113;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.login-wordmark-o {
+  font-weight: 400;
+}
+
+.login-wordmark-edu {
+  font-weight: 300;
+  font-style: italic;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.login-topbar-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.4);
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================================
+   MAIN — centered form area
+   ============================================================================ */
+
+.login-main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-form-container {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: loginFadeIn 0.5s ease-out;
+}
+
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================================
+   GREETING — same typography as dashboard welcome
+   ============================================================================ */
+
+.login-greeting {
+  margin-bottom: 4px;
+}
+
+.login-title {
+  font-family: 'Neu Machina', 'Inter', system-ui, sans-serif;
+  font-size: 2.2rem;
+  font-weight: 300;
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.login-title-light {
+  color: rgba(16, 17, 19, 0.32);
+}
+
+.login-title-dark {
+  color: #101113;
+}
+
+/* ============================================================================
+   FORM
+   ============================================================================ */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.55);
+}
+
+.login-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-forgot {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.35);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.login-forgot:hover {
+  color: rgba(16, 17, 19, 0.7);
+}
+
+/* ── Input — matches dashboard .form-input / .dash_chatInputBox style ── */
+.login-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 14px;
+  font-family: inherit;
+  color: #101113;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s ease;
+}
+
+.login-input::placeholder {
+  color: rgba(16, 17, 19, 0.3);
+}
+
+.login-input:hover {
+  border-color: rgba(16, 17, 19, 0.14);
+}
+
+.login-input:focus {
+  border-color: rgba(16, 17, 19, 0.22);
+}
+
+/* ── Password toggle ── */
+.login-input-wrap {
+  position: relative;
+}
+
+.login-input-wrap .login-input {
+  padding-right: 44px;
+}
+
+.login-eye {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(16, 17, 19, 0.3);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.login-eye:hover {
+  color: rgba(16, 17, 19, 0.6);
+  background: rgba(16, 17, 19, 0.04);
+}
+
+/* ── Remember me ── */
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: #101113;
+  cursor: pointer;
+}
+
+.login-remember-label {
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.5);
+  user-select: none;
+  cursor: pointer;
+}
+
+/* ── Error ── */
+.login-error {
+  font-size: 13px;
+  color: #dc3545;
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(220, 53, 69, 0.06);
+  border: 1px solid rgba(220, 53, 69, 0.12);
+  border-radius: 8px;
+}
+
+/* ── Submit button — matches dashboard primary style ── */
+.login-submit {
+  height: 44px;
+  width: 100%;
+  border-radius: 8px;
+  border: none;
+  background: #101113;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Neu Machina', 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  margin-top: 4px;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: #2a2b2e;
+  transform: translateY(-1px);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================================================
+   DIVIDER
+   ============================================================================ */
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-divider-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(16, 17, 19, 0.08);
+}
+
+.login-divider-text {
+  font-size: 11px;
+  color: rgba(16, 17, 19, 0.3);
+}
+
+/* ============================================================================
+   SOCIAL BUTTONS — matches dashboard .dash_headerBtn / border style
+   ============================================================================ */
+
+.login-social {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 44px;
+  width: 100%;
+  padding: 0 16px;
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #101113;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.login-social-btn:hover:not(:disabled) {
+  border-color: rgba(16, 17, 19, 0.18);
+  background: rgba(16, 17, 19, 0.02);
+  transform: translateY(-1px);
+}
+
+.login-social-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-social-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   TOGGLE (sign in / sign up)
+   ============================================================================ */
+
+.login-toggle {
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.45);
+  text-align: center;
+}
+
+.login-toggle-link {
+  font-weight: 600;
+  color: #101113;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s ease;
+  text-decoration: none;
+}
+
+.login-toggle-link:hover {
+  opacity: 0.7;
+}
+
+/* ============================================================================
+   FOOTER
+   ============================================================================ */
+
+.login-footer {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 12px 24px 16px;
+  flex-shrink: 0;
+}
+
+.login-footer span {
+  font-size: 11px;
+  color: rgba(16, 17, 19, 0.3);
+  line-height: 1.4;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 480px) {
+  .login-main {
+    padding: 16px;
+  }
+
+  .login-title {
+    font-size: 1.75rem;
+  }
+
+  .login-form-container {
+    max-width: 100%;
+  }
+}
+
+@media (max-height: 640px) {
+  .login-greeting {
+    margin-bottom: 0;
+  }
+
+  .login-title {
+    font-size: 1.6rem;
+  }
+
+  .login-form-container {
+    gap: 14px;
+  }
+}
+
+/* ============================================================================
+   REDUCED MOTION
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-form-container {
+    animation: none;
+  }
+
+  .login-submit,
+  .login-social-btn {
+    transition: none;
+  }
+}

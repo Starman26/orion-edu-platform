@@ -1,0 +1,7 @@
+﻿node_modules
+dist
+dist-electron
+.env
+.env.local
+.claude
+out

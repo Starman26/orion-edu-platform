@@ -1,0 +1,1126 @@
+/* ============================================================================
+   ASK SENTINELA PAGE STYLES
+   ============================================================================ */
+
+.ask_root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ffffff;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+}
+
+.ask_main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+/* ============================================================================
+   HEADER NAVIGATION
+   ============================================================================ */
+
+.ask_headerNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ask_backBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(16, 17, 19, 0.7);
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_backBtn:hover {
+  background: rgba(16, 17, 19, 0.05);
+  color: #101113;
+}
+
+.ask_chatTitle {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: #101113;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   CHAT LIST VIEW
+   ============================================================================ */
+
+.ask_listView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 90px 0 32px 0;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+/* List section */
+.ask_listSection {
+  flex: 1;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.ask_listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.ask_listTitle {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: #101113;
+  margin: 0;
+}
+
+.ask_newChatBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 8px;
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: #101113;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_newChatBtn:hover {
+  background: #f5f5f5;
+  border-color: rgba(16, 17, 19, 0.2);
+}
+
+/* Search Box */
+.ask_searchBox {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.ask_searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(16, 17, 19, 0.4);
+  pointer-events: none;
+}
+
+.ask_searchInput {
+  width: 100%;
+  height: 48px;
+  padding: 0 40px 0 42px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 12px;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 14px;
+  color: #101113;
+  transition: all 0.15s ease;
+}
+
+.ask_searchInput::placeholder {
+  color: rgba(16, 17, 19, 0.4);
+}
+
+.ask_searchInput:focus {
+  outline: none;
+  border-color: rgba(16, 17, 19, 0.25);
+  box-shadow: 0 0 0 3px rgba(16, 17, 19, 0.05);
+}
+
+.ask_searchClear {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 17, 19, 0.08);
+  border: none;
+  border-radius: 50%;
+  color: rgba(16, 17, 19, 0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_searchClear:hover {
+  background: rgba(16, 17, 19, 0.15);
+  color: #101113;
+}
+
+/* List Meta */
+.ask_listMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.08);
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.5);
+}
+
+.ask_selectBtn {
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ask_selectBtn:hover {
+  text-decoration: underline;
+}
+
+/* Chat List */
+.ask_chatList {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ask_chatItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.06);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.ask_chatItem:hover {
+  background: rgba(16, 17, 19, 0.03);
+}
+
+.ask_chatItem:last-child {
+  border-bottom: none;
+}
+
+.ask_chatItemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.ask_chatItemTitle {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: #101113;
+  margin: 0 0 6px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ask_chatItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.45);
+  margin: 0;
+}
+
+.ask_chatItemDelete {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(16, 17, 19, 0.3);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.ask_chatItem:hover .ask_chatItemDelete {
+  opacity: 1;
+}
+
+.ask_chatItemDelete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Empty & Loading States */
+.ask_emptyList,
+.ask_listLoading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.ask_emptyIcon {
+  color: rgba(16, 17, 19, 0.2);
+  margin-bottom: 16px;
+}
+
+.ask_emptyText {
+  font-size: 14px;
+  color: rgba(16, 17, 19, 0.5);
+  margin: 0;
+}
+
+.ask_loadingDots {
+  display: flex;
+  gap: 6px;
+}
+
+.ask_loadingDots span {
+  width: 8px;
+  height: 8px;
+  background: rgba(16, 17, 19, 0.2);
+  border-radius: 50%;
+  animation: loadingPulse 1.4s ease-in-out infinite;
+}
+
+.ask_loadingDots span:nth-child(2) { animation-delay: 0.2s; }
+.ask_loadingDots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes loadingPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+/* ============================================================================
+   CHAT VIEW
+   ============================================================================ */
+
+.ask_chatView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.ask_chatView--empty {
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+/* Welcome Section (Empty State) */
+.ask_welcomeSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.ask_welcomeEyes {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.ask_welcomeEye {
+  width: 12px;
+  height: 28px;
+  background: #101113;
+  border-radius: 3px;
+  opacity: 0.85;
+}
+
+.ask_welcomeTitle {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 32px;
+  font-weight: 400;
+  color: #101113;
+  margin: 0 0 8px 0;
+}
+
+.ask_welcomeSubtitle {
+  font-size: 16px;
+  color: rgba(16, 17, 19, 0.5);
+  margin: 0;
+}
+
+/* Quick Actions */
+.ask_quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 24px;
+  max-width: 600px;
+}
+
+.ask_quickBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 20px;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.7);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_quickBtn:hover {
+  background: #f5f5f5;
+  border-color: rgba(16, 17, 19, 0.15);
+  color: #101113;
+}
+
+.ask_quickIcon {
+  font-size: 16px;
+}
+
+/* ============================================================================
+   MESSAGES AREA
+   ============================================================================ */
+
+.ask_messagesArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: #ffffff;
+}
+
+.ask_messageRow {
+  display: flex;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding-right: 24px;
+}
+
+.ask_messageRow--user {
+  justify-content: flex-end;
+}
+
+.ask_messageRow--assistant {
+  justify-content: flex-start;
+}
+
+/* User Bubble */
+.ask_userBubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  background: #101113;
+  color: #ffffff;
+  border-radius: 16px;
+  border-bottom-right-radius: 4px;
+}
+
+.ask_userBubbleContent {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ask_userBubble .ask_messageTime {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.5;
+  text-align: right;
+}
+
+/* Assistant Message - No bubble */
+.ask_assistantMessage {
+  max-width: 100%;
+  width: 100%;
+}
+
+.ask_assistantContent {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #101113;
+}
+
+/* Message Actions (feedback buttons) */
+.ask_messageActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
+.ask_messageActions .ask_messageTime {
+  font-size: 11px;
+  color: rgba(16, 17, 19, 0.4);
+  margin-right: 8px;
+}
+
+.ask_actionBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(16, 17, 19, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_actionBtn:hover {
+  background: rgba(16, 17, 19, 0.06);
+  color: #101113;
+}
+
+/* ============================================================================
+   MARKDOWN STYLES
+   ============================================================================ */
+
+.ask_mdParagraph {
+  margin: 0 0 16px 0;
+}
+
+.ask_mdParagraph:last-child {
+  margin-bottom: 0;
+}
+
+.ask_mdList {
+  margin: 0 0 16px 0;
+  padding-left: 24px;
+  list-style: disc;
+}
+
+.ask_mdList--ordered {
+  list-style: decimal;
+}
+
+.ask_mdListItem {
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+
+.ask_mdListItem:last-child {
+  margin-bottom: 0;
+}
+
+.ask_mdBlockquote {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 3px solid rgba(16, 17, 19, 0.2);
+  background: rgba(16, 17, 19, 0.03);
+  border-radius: 0 8px 8px 0;
+  color: rgba(16, 17, 19, 0.7);
+  font-style: italic;
+}
+
+.ask_mdTableWrap {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.ask_mdTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ask_mdTh {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  background: rgba(16, 17, 19, 0.05);
+  border: 1px solid rgba(16, 17, 19, 0.1);
+}
+
+.ask_mdTd {
+  padding: 10px 12px;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+}
+
+/* Inline code */
+.ask_inlineCode {
+  padding: 2px 6px;
+  background: rgba(16, 17, 19, 0.06);
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+  color: #101113;
+}
+
+/* ============================================================================
+   CODE BLOCK
+   ============================================================================ */
+
+.ask_codeBlock {
+  margin: 16px 0;
+  background: #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ask_codeBlock--plain {
+  background: #1e1e1e;
+}
+
+.ask_codeBlockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ask_codeBlockLang {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ask_codeBlockCopy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_codeBlockCopy:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.ask_codeBlockPre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.ask_codeBlockPre code {
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d4d4d4;
+  white-space: pre;
+}
+
+/* ============================================================================
+   TIMELINE - Single line with border (like Dashboard)
+   ============================================================================ */
+
+.ask_timelineWrapper {
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 24px 12px 0;
+}
+
+.ask_timelineSingle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #101113;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.ask_timelineDotSingle {
+  width: 8px;
+  height: 8px;
+  background-color: #101113;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ask_timelineDotSingle--active {
+  animation: timelinePulseSingle 1.5s ease-in-out infinite;
+}
+
+@keyframes timelinePulseSingle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+.ask_timelineSingleContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ask_timelineSingleNode {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #101113;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.ask_timelineSingleMsg {
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   WIZARD (HITL)
+   ============================================================================ */
+
+.ask_wizard {
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  margin-right: 24px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(16, 17, 19, 0.06);
+}
+
+.ask_wizardHeader {
+  margin-bottom: 12px;
+}
+
+.ask_wizardLabel {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(16, 17, 19, 0.4);
+  text-transform: uppercase;
+}
+
+.ask_wizardQuestion {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 18px;
+  font-weight: 500;
+  color: #101113;
+  margin: 0 0 20px 0;
+}
+
+.ask_wizardProgress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.5);
+}
+
+.ask_wizardProgressBar {
+  flex: 1;
+  height: 4px;
+  background: rgba(16, 17, 19, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ask_wizardProgressFill {
+  height: 100%;
+  background: #101113;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.ask_wizardOptions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.ask_wizardOption {
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 10px;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 13px;
+  color: #101113;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_wizardOption:hover {
+  background: rgba(16, 17, 19, 0.03);
+  border-color: rgba(16, 17, 19, 0.2);
+}
+
+.ask_wizardOption.is-selected {
+  background: #101113;
+  border-color: #101113;
+  color: #ffffff;
+}
+
+/* ============================================================================
+   FOLLOW-UP SUGGESTIONS
+   ============================================================================ */
+
+.ask_followUp {
+  max-width: 800px;
+  width: 100%;
+  margin: 8px auto 0;
+  padding: 16px 24px 0 0;
+  border-top: 1px solid rgba(16, 17, 19, 0.06);
+}
+
+.ask_followUpLabel {
+  display: block;
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.45);
+  margin-bottom: 12px;
+}
+
+.ask_followUpList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ask_followUpBtn {
+  padding: 12px 16px;
+  background: transparent;
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.7);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_followUpBtn:hover {
+  background: rgba(16, 17, 19, 0.03);
+  border-color: rgba(16, 17, 19, 0.15);
+  color: #101113;
+}
+
+/* ============================================================================
+   INPUT FORM
+   ============================================================================ */
+
+.ask_inputForm {
+  padding: 16px 24px 24px;
+  background: #ffffff;
+}
+
+.ask_inputForm--centered {
+  width: 100%;
+  max-width: 680px;
+  padding: 0;
+}
+
+.ask_inputBox {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+  transition: all 0.15s ease;
+}
+
+.ask_inputBox:focus-within {
+  border-color: rgba(16, 17, 19, 0.25);
+  box-shadow: 0 0 0 3px rgba(16, 17, 19, 0.05);
+}
+
+.ask_textarea {
+  flex: 1;
+  min-height: 24px;
+  max-height: 200px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 14px;
+  color: #101113;
+  resize: none;
+  line-height: 1.5;
+}
+
+.ask_textarea::placeholder {
+  color: rgba(16, 17, 19, 0.4);
+}
+
+.ask_textarea:focus {
+  outline: none;
+}
+
+.ask_inputActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ask_attachBtn,
+.ask_sendBtn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(16, 17, 19, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ask_attachBtn:hover {
+  background: rgba(16, 17, 19, 0.05);
+  color: rgba(16, 17, 19, 0.7);
+}
+
+.ask_sendBtn {
+  background: rgba(16, 17, 19, 0.08);
+}
+
+.ask_sendBtn:hover:not(:disabled) {
+  background: rgba(16, 17, 19, 0.15);
+}
+
+.ask_sendBtn.is-active {
+  background: #101113;
+  color: #ffffff;
+}
+
+.ask_sendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .ask_listView {
+    padding: 16px;
+  }
+
+  .ask_listWelcome {
+    padding: 32px 16px;
+  }
+
+  .ask_welcomeTitle {
+    font-size: 26px;
+  }
+
+  .ask_messagesArea {
+    padding: 16px;
+  }
+
+  .ask_inputForm {
+    padding: 12px 16px 20px;
+  }
+
+  .ask_quickActions {
+    gap: 8px;
+  }
+
+  .ask_quickBtn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .ask_wizardOptions {
+    grid-template-columns: 1fr;
+  }
+
+  .ask_userBubble {
+    max-width: 90%;
+  }
+}
+/* ============================================================================
+   CHAT ITEM METADATA & ACTIONS (replaces inline styles)
+   ============================================================================ */
+
+.ask_chatItemMetaRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.45);
+}
+
+.ask_chatItemMetaRow svg {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.ask_chatItemPreview {
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.5);
+  margin: 4px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ask_chatItemActionsRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ask_chatItemActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(16, 17, 19, 0.35);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ask_chatItemActionBtn:hover {
+  color: #101113;
+  background: rgba(16, 17, 19, 0.06);
+}
+
+.ask_chatItemActionBtn--delete:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.06);
+}
+
+.ask_chatItemConfirmRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ask_chatItemConfirmText {
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.6);
+  white-space: nowrap;
+}
+
+.ask_chatItemConfirmYes {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: #dc2626;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ask_chatItemConfirmNo {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #101113;
+  background: rgba(16, 17, 19, 0.06);
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ask_chatItemRenameInput {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #101113;
+  border: 1px solid rgba(16, 17, 19, 0.2);
+  border-radius: 6px;
+  outline: none;
+  background: #fff;
+  font-family: inherit;
+}
+
+.ask_chatItemRenameConfirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: #101113;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #fff;
+  flex-shrink: 0;
+}

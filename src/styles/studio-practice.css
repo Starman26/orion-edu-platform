@@ -1,0 +1,2490 @@
+/* ============================================================================
+   STUDIO — Practice View + Progress Tab + Status Badges
+   Palette: #1A1A1A primary, #6B6B6B secondary, #A0A0A0 tertiary
+   Fonts: DM Sans (UI), JetBrains Mono (badges, timer, counters)
+   ============================================================================ */
+
+/* ── Practice View ── */
+
+.studio__practiceView {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Sidebar nav (Back + Practice label) ── */
+
+.studio__practiceSidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.studio__practiceBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #A0A0A0;
+  padding: 2px 0;
+  transition: color 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceBack:hover {
+  color: #6B6B6B;
+}
+
+.studio__practiceSidebarLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin-top: 2px;
+}
+
+/* ── Robot status pill ── */
+
+.studio__robotPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.studio__robotPill--connected {
+  background: #F5F5F5;
+  border: 1px solid #EBEBEB;
+  color: #6B6B6B;
+  cursor: pointer;
+}
+
+.studio__robotPill--connected:hover {
+  background: #EBEBEB;
+  border-color: #D0D0D0;
+}
+
+.studio__robotPill--disconnected {
+  background: #F5F5F5;
+  border: 1px solid #EBEBEB;
+  color: #A0A0A0;
+}
+
+.studio__robotDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.studio__robotDot--connected {
+  background: #6B6B6B;
+  box-shadow: 0 0 0 2px rgba(107, 107, 107, 0.15);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.studio__robotDot--disconnected {
+  background: #A0A0A0;
+}
+
+/* ── Restricted state (outside lab hours) ── */
+
+.studio__robotPill--restricted {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #b45309;
+  cursor: pointer;
+}
+
+.studio__robotPill--restricted:hover {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.studio__robotDot--restricted {
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.studio__robotPill--mono {
+  background: #F5F5F5;
+  border: 1px solid #EBEBEB;
+  color: #1A1A1A;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.studio__robotPill--mono:hover {
+  background: #EBEBEB;
+  border-color: #D0D0D0;
+}
+
+.studio__robotPill--mono.is-active {
+  background: #1A1A1A;
+  border-color: #1A1A1A;
+  color: #FFFFFF;
+}
+
+.studio__robotPill--mono.is-active:hover {
+  background: #333;
+  border-color: #333;
+}
+
+/* ── Info button inside "No robots" pill ── */
+
+.studio__robotInfoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #A0A0A0;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  transition: all 0.15s ease;
+}
+
+.studio__robotInfoBtn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #6B6B6B;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(107, 107, 107, 0.15); }
+  50% { box-shadow: 0 0 0 5px rgba(107, 107, 107, 0.06); }
+}
+
+/* ── Robot dropdown ── */
+
+.studio__robotDropdownWrap {
+  position: relative;
+}
+
+.studio__robotChevron {
+  transition: transform 0.15s ease;
+  margin-left: 2px;
+}
+
+.studio__robotChevron.is-open {
+  transform: rotate(180deg);
+}
+
+.studio__robotSelectedCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #1A1A1A;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+}
+
+.studio__robotDropdownBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.studio__robotDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+  z-index: 100;
+  animation: robotDropdownIn 0.12s ease;
+}
+
+@keyframes robotDropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.studio__robotDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  color: #1A1A1A;
+  user-select: none;
+  transition: background 0.1s ease;
+}
+
+.studio__robotDropdownItem:hover {
+  background: #F5F5F5;
+}
+
+.studio__robotDropdownName {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio__robotCheckbox {
+  width: 14px;
+  height: 14px;
+  accent-color: #1A1A1A;
+  flex-shrink: 0;
+}
+
+/* ── Pause / Resume button ── */
+
+.studio__practicePauseBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #6B6B6B;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practicePauseBtn:hover {
+  background: #F5F5F5;
+  color: #1A1A1A;
+}
+
+.studio__practicePauseBtn.is-paused {
+  color: #1A1A1A;
+  border-color: #D0D0D0;
+  background: #F5F5F5;
+}
+
+.studio__practicePauseBtn.is-paused:hover {
+  background: #EBEBEB;
+  border-color: #A0A0A0;
+}
+
+/* ── Timer ── */
+
+.studio__practiceTimer {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #A0A0A0;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.studio__practiceTimer.is-paused {
+  opacity: 0.4;
+}
+
+/* ── Body (2-column) ── */
+
+.studio__practiceBody {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   STEPS SIDEBAR (left panel)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.studio__practiceSidebar {
+  width: 280px;
+  min-width: 280px;
+  border-right: 1px solid #EBEBEB;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Sidebar scrollbar */
+.studio__practiceSidebar::-webkit-scrollbar { width: 4px; }
+.studio__practiceSidebar::-webkit-scrollbar-track { background: transparent; }
+.studio__practiceSidebar::-webkit-scrollbar-thumb { background: #DDD; border-radius: 2px; }
+
+/* ── Sidebar Header ── */
+
+.studio__practiceSidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.studio__practiceSidebarTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.studio__practiceDiffBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #F5F5F5;
+  color: #6B6B6B !important;
+  border: none !important;
+}
+
+/* ── Progress section ── */
+
+.studio__practiceProgress {
+  padding: 16px 16px 0;
+}
+
+.studio__practiceProgressLabel {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #A0A0A0;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.studio__practiceProgressBar {
+  height: 3px;
+  background: #EBEBEB;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.studio__practiceProgressFill {
+  height: 100%;
+  background: #1A1A1A;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.studio__practiceProgressText {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #A0A0A0;
+}
+
+/* ── Steps Timeline ── */
+
+.studio__practiceSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  padding: 12px 8px;
+}
+
+.studio__practiceStep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceStep:hover:not(:disabled) {
+  background: #F5F5F5;
+}
+
+.studio__practiceStep:disabled {
+  cursor: default;
+}
+
+/* Step indicators */
+.studio__practiceStepDot {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s ease;
+}
+
+/* Completed: green with white check */
+.studio__practiceStep.is-completed .studio__practiceStepDot {
+  background: #22C55E;
+  color: #fff;
+  border: none;
+}
+
+/* Active: ring with center dot */
+.studio__practiceStep.is-active .studio__practiceStepDot {
+  background: transparent;
+  border: 1.5px solid #1A1A1A;
+  color: transparent;
+  position: relative;
+}
+
+.studio__practiceStep.is-active .studio__practiceStepDot::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1A1A1A;
+}
+
+/* Pending: empty ring */
+.studio__practiceStep.is-pending .studio__practiceStepDot {
+  background: transparent;
+  border: 1.5px solid #EBEBEB;
+  color: transparent;
+}
+
+/* Step names */
+.studio__practiceStepName {
+  font-size: 13.5px;
+  color: #6B6B6B;
+}
+
+.studio__practiceStep.is-completed .studio__practiceStepName {
+  color: #1A1A1A;
+}
+
+.studio__practiceStep.is-active .studio__practiceStepName {
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.studio__practiceStep.is-pending .studio__practiceStepName {
+  color: #A0A0A0;
+}
+
+/* ── Exit Practice button ── */
+
+.studio__practiceSidebarFooter {
+  padding: 16px;
+  border-top: 1px solid #F0F0F0;
+  margin-top: auto;
+}
+
+.studio__practiceExitBtn {
+  width: 100%;
+  padding: 9px 0;
+  background: none;
+  border: 1px solid #EBEBEB;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B6B6B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceExitBtn:hover {
+  background: #F5F5F5;
+  border-color: #DDD;
+  color: #1A1A1A;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CHAT AREA (right panel)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.studio__practiceChat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #FAFAFA;
+  position: relative;
+}
+
+.studio__practiceMsgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Hide chat scrollbar */
+.studio__practiceMsgs::-webkit-scrollbar { display: none; }
+.studio__practiceMsgs { scrollbar-width: none; }
+
+.studio__practiceChatEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: #A0A0A0;
+  font-size: 14px;
+}
+
+/* ── Chat Input area ── */
+
+.studio__practiceChatInput {
+  padding: 12px 24px 12px;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.studio__practiceChatInput.is-paused {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Reuse welcome-style ChatInput (same as Home greeting state) */
+.studio__practiceChatInput .dash_chatInputBox {
+  min-height: 100px;
+  align-items: flex-end;
+}
+
+.studio__practiceChatInput .dash_chatTextarea {
+  min-height: 70px;
+  font-size: 13px;
+}
+
+/* ── Disclaimer ── */
+
+.studio__practiceDisclaimer {
+  font-size: 11px;
+  color: #A0A0A0;
+  text-align: center;
+  margin-top: 8px;
+  padding-bottom: 4px;
+}
+
+/* ── Paused state: blur messages ── */
+
+.studio__practiceMsgs.is-paused {
+  filter: blur(3px);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Paused overlay ── */
+
+.studio__practicePausedOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.studio__practicePausedCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 36px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  pointer-events: auto;
+  color: #6B6B6B;
+}
+
+.studio__practicePausedTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.studio__practicePausedDesc {
+  font-size: 13px;
+  color: #A0A0A0;
+}
+
+.studio__practicePausedResumeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: #1A1A1A;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practicePausedResumeBtn:hover {
+  background: #333;
+}
+
+/* ── Completed overlay ── */
+
+.studio__practiceCompletedCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px 40px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  pointer-events: auto;
+  text-align: center;
+}
+
+.studio__practiceCompletedIcon {
+  color: #1A1A1A;
+}
+
+.studio__practiceCompletedTitle {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.studio__practiceCompletedDesc {
+  font-size: 13px;
+  color: #A0A0A0;
+  max-width: 240px;
+}
+
+.studio__practiceCompletedActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.studio__practiceCompletedPrimaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: #1A1A1A;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceCompletedPrimaryBtn:hover {
+  background: #333;
+}
+
+.studio__practiceCompletedSecondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B6B6B;
+  background: transparent;
+  border: 1px solid #EBEBEB;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceCompletedSecondaryBtn:hover {
+  background: #F5F5F5;
+  border-color: #DDD;
+  color: #1A1A1A;
+}
+
+/* ── In-call state: dark blur on messages ── */
+
+.studio__practiceMsgs.is-in-call {
+  filter: blur(3px) brightness(0.7);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Call overlay (Take Call active) ── */
+
+.studio__practiceCallOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(2px);
+}
+
+.studio__practiceCallCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 36px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  color: #1A1A1A;
+}
+
+.studio__practiceCallTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.studio__practiceCallDesc {
+  font-size: 13px;
+  color: #A0A0A0;
+  text-align: center;
+  max-width: 260px;
+}
+
+.studio__practiceCallStopBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: #1A1A1A;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceCallStopBtn:hover {
+  background: #333;
+}
+
+/* ── Call status indicators ── */
+
+.studio__practiceCallStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+
+.studio__practiceCallIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #A0A0A0;
+}
+
+.studio__practiceCallIndicator--listening {
+  color: #1A1A1A;
+}
+
+.studio__practiceCallIndicator--thinking {
+  color: #6B6B6B;
+}
+
+.studio__practiceCallIndicator--speaking {
+  color: #1A1A1A;
+}
+
+.studio__practiceCallPulse {
+  animation: callPulse 0.6s ease-in-out infinite;
+}
+
+@keyframes callPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.studio__practiceCallTranscript {
+  font-size: 12px;
+  font-style: italic;
+  color: #A0A0A0;
+  max-width: 280px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── No robots popup ── */
+
+.studio__practiceNoRobotsCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 36px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  color: #6B6B6B;
+}
+
+.studio__practiceNoRobotsActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.studio__practiceNoRobotsDismiss {
+  padding: 7px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B6B6B;
+  background: transparent;
+  border: 1px solid #EBEBEB;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceNoRobotsDismiss:hover {
+  background: #F5F5F5;
+  border-color: #DDD;
+  color: #1A1A1A;
+}
+
+/* ── Loading / tool status ── */
+
+.studio__practiceLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: #A0A0A0;
+  font-size: 13px;
+}
+
+.studio__practiceLoadingSpinner {
+  animation: spin 0.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.studio__practiceLoadingMsg {
+  transition: opacity 0.2s ease;
+}
+.studio__practiceLoadingMsg.is-visible { opacity: 1; }
+.studio__practiceLoadingMsg.is-hidden  { opacity: 0; }
+
+/* ── Robot Gauge Table ── */
+
+.studio__robotGauge {
+  display: flex;
+  gap: 1px;
+  margin: 8px 0 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft, #F0F0F0);
+  max-width: 600px;
+}
+
+.studio__robotGaugeGroup {
+  flex: 1;
+  background: var(--bg-elevated, #F8F8F8);
+  padding: 10px 12px;
+}
+
+.studio__robotGaugeGroup + .studio__robotGaugeGroup {
+  border-left: 1px solid var(--border-soft, #F0F0F0);
+}
+
+.studio__robotGaugeTitle {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim, #A0A0A0);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft, #F0F0F0);
+}
+
+.studio__robotGaugeRow {
+  display: grid;
+  grid-template-columns: 42px 1fr 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.studio__robotGaugeLabel {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-muted, #8A8A8A);
+}
+
+.studio__robotGaugeTrack {
+  height: 2px;
+  background: rgba(160, 165, 210, 0.1);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.studio__robotGaugeFill {
+  height: 100%;
+  background: rgba(160, 165, 210, 0.5);
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.studio__robotGaugeValue {
+  font-size: 11px;
+  font-family: monospace;
+  font-weight: 500;
+  color: var(--text-secondary, #4A4A4A);
+  text-align: right;
+}
+
+.studio__robotGaugeValue.is-neg {
+  color: rgba(160, 165, 210, 0.7);
+}
+
+.studio__practiceToolStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin: 4px 0;
+  color: #6B6B6B;
+  font-size: 12.5px;
+  background: #F5F5F5;
+  border: 1px solid #EBEBEB;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+/* ── Tool execution pill ── */
+
+.studio__practiceToolPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #6B6B6B;
+  background: #F5F5F5;
+  border: 1px solid #EBEBEB;
+  border-radius: 999px;
+}
+
+.studio__practiceToolPillIcon {
+  color: #A0A0A0;
+  flex-shrink: 0;
+}
+
+.studio__practiceToolPillCheck {
+  color: #22C55E;
+  flex-shrink: 0;
+}
+
+/* ── Scoped message bubble widths inside practice chat ── */
+
+.studio__practiceChat .dash_messageWrapper--ai .dash_messageBubble {
+  max-width: 85%;
+}
+
+.studio__practiceChat .dash_messageWrapper--user .dash_messageBubble {
+  max-width: 65%;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   STATUS DOTS & BADGES (on practice cards in Studio overview)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.studio__statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.studio__statusDot--active {
+  background: #1A1A1A;
+}
+
+.studio__statusDot--done {
+  background: #6B6B6B;
+}
+
+.studio__statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.studio__statusBadge--notstarted {
+  background: #F5F5F5;
+  color: #A0A0A0;
+}
+
+.studio__statusBadge--inprogress {
+  background: #F5F5F5;
+  color: #1A1A1A;
+}
+
+.studio__statusBadge--completed {
+  background: #EBEBEB;
+  color: #1A1A1A;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   PROGRESS TAB
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.studio__progressTab {
+  min-height: 200px;
+}
+
+.studio__progressList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.studio__progressItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #FFFFFF;
+  border: 1px solid #F0F0F0;
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.studio__progressItemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.studio__progressItemTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.studio__progressItemStatus {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.studio__progressItemStatus--active {
+  background: #F5F5F5;
+  color: #1A1A1A;
+}
+
+.studio__progressItemStatus--done {
+  background: #EBEBEB;
+  color: #1A1A1A;
+}
+
+.studio__progressItemStatus--paused {
+  background: #F5F5F5;
+  color: #A0A0A0;
+}
+
+.studio__progressItemBar {
+  height: 6px;
+  background: #EBEBEB;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.studio__progressItemFill {
+  height: 100%;
+  background: #1A1A1A;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.studio__progressItemMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6B6B6B;
+}
+
+/* ── Type & Difficulty Badges ── */
+
+.studio__typeBadge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.studio__typeBadge--practice { background: #F5F5F5; color: #6B6B6B; }
+.studio__typeBadge--automation { background: #F5F5F5; color: #6B6B6B; }
+.studio__typeBadge--workflow { background: #F5F5F5; color: #6B6B6B; }
+
+.studio__diffBadge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.studio__diffBadge--beginner { background: #F5F5F5; color: #6B6B6B; }
+.studio__diffBadge--intermediate { background: #F5F5F5; color: #6B6B6B; }
+.studio__diffBadge--advanced { background: #F5F5F5; color: #1A1A1A; }
+
+/* ── Progress action buttons ── */
+
+.studio__progressContinueBtn,
+.studio__progressStartBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 150ms ease;
+  font-family: inherit;
+}
+
+.studio__progressContinueBtn {
+  background: #1A1A1A;
+  color: #fff;
+}
+
+.studio__progressContinueBtn:hover {
+  background: #333;
+}
+
+.studio__progressStartBtn {
+  background: #F5F5F5;
+  color: #6B6B6B;
+}
+
+.studio__progressStartBtn:hover {
+  background: #EBEBEB;
+  color: #1A1A1A;
+}
+
+/* ── Progress item with icon layout ── */
+
+.studio__progressItem--withIcon {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.studio__progressItemIcon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  background: #1A1A1A;
+  margin-top: 2px;
+}
+
+.studio__progressItemContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.studio__progressItemInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   EQUIPMENT TAB
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.studio__equipmentTab {
+  padding: 0;
+}
+
+.studio__equipmentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.studio__equipmentTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0;
+}
+
+.studio__equipmentAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #fff;
+  background: #1A1A1A;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__equipmentAddBtn:hover {
+  background: #333;
+}
+
+/* Loading */
+.studio__equipmentLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 0;
+  color: #A0A0A0;
+  font-size: 13.5px;
+}
+
+/* Empty state */
+.studio__equipmentEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.studio__equipmentEmptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0;
+}
+
+.studio__equipmentEmptyDesc {
+  font-size: 13px;
+  color: #A0A0A0;
+  max-width: 320px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Grid */
+.studio__equipmentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+/* Card */
+.studio__equipmentCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #FFFFFF;
+  border: 1px solid #F0F0F0;
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.studio__equipmentCard:hover {
+  border-color: #EBEBEB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.studio__equipmentCardIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F5;
+  border-radius: 8px;
+  color: #6B6B6B;
+}
+
+.studio__equipmentCardInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.studio__equipmentCardName {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1A1A1A;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio__equipmentCardMeta {
+  font-size: 12px;
+  color: #A0A0A0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Badges */
+.studio__equipmentCardBadges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.studio__equipmentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.studio__equipmentBadge--connected {
+  background: #F5F5F5;
+  color: #6B6B6B;
+}
+
+.studio__equipmentBadge--docs {
+  background: #F5F5F5;
+  color: #6B6B6B;
+}
+
+/* Info button */
+.studio__equipmentInfoBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #A0A0A0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.studio__equipmentInfoBtn:hover {
+  background: #F5F5F5;
+  color: #6B6B6B;
+}
+
+/* ── Troubleshoot popup ── */
+
+.studio__equipmentPopupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: equipFadeIn 0.15s ease;
+}
+
+@keyframes equipFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.studio__equipmentPopupCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 40px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  text-align: center;
+  max-width: 360px;
+  animation: equipSlideUp 0.2s ease;
+}
+
+@keyframes equipSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.studio__equipmentPopupIcon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F5;
+  border-radius: 12px;
+  color: #6B6B6B;
+}
+
+.studio__equipmentPopupTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0;
+}
+
+.studio__equipmentPopupDesc {
+  font-size: 13px;
+  color: #A0A0A0;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.studio__equipmentPopupActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.studio__equipmentPopupPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: #1A1A1A;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+  width: 100%;
+}
+
+.studio__equipmentPopupPrimary:hover {
+  background: #333;
+}
+
+.studio__equipmentPopupSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B6B6B;
+  background: transparent;
+  border: 1px solid #EBEBEB;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  width: 100%;
+}
+
+.studio__equipmentPopupSecondary:hover {
+  background: #F5F5F5;
+  border-color: #DDD;
+  color: #1A1A1A;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TROUBLESHOOT VIEW
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.studio__troubleshootView {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Sidebar ── */
+
+.studio__troubleshootSidebar {
+  width: 280px;
+  min-width: 280px;
+  border-right: 1px solid #EBEBEB;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.studio__troubleshootSidebar::-webkit-scrollbar { width: 4px; }
+.studio__troubleshootSidebar::-webkit-scrollbar-track { background: transparent; }
+.studio__troubleshootSidebar::-webkit-scrollbar-thumb { background: #DDD; border-radius: 2px; }
+
+/* Equipment info block */
+.studio__troubleshootEquipInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.studio__troubleshootEquipIcon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F5;
+  border-radius: 10px;
+  color: #6B6B6B;
+}
+
+.studio__troubleshootEquipMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.studio__troubleshootEquipName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1A1A1A;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio__troubleshootEquipType {
+  font-size: 12px;
+  color: #A0A0A0;
+}
+
+/* Manual badge */
+.studio__troubleshootManualBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  margin: 8px 12px;
+  font-size: 12px;
+  color: #6B6B6B;
+  background: #F5F5F5;
+  border-radius: 6px;
+}
+
+.studio__troubleshootManualBadge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Diagnostic steps ── */
+
+.studio__troubleshootSteps {
+  padding: 12px 16px;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.studio__troubleshootStepsTitle {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #A0A0A0;
+  margin-bottom: 10px;
+}
+
+.studio__troubleshootStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.studio__troubleshootStepDot {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 1px;
+}
+
+.studio__troubleshootStep--pending .studio__troubleshootStepDot {
+  border: 1.5px solid #EBEBEB;
+  color: #A0A0A0;
+}
+
+.studio__troubleshootStep--active .studio__troubleshootStepDot {
+  border: 1.5px solid #1A1A1A;
+  color: #1A1A1A;
+  position: relative;
+}
+
+.studio__troubleshootStep--done .studio__troubleshootStepDot {
+  background: #22C55E;
+  color: #fff;
+  border: none;
+}
+
+.studio__troubleshootStepNum {
+  line-height: 1;
+}
+
+.studio__troubleshootStepLabel {
+  font-size: 13px;
+  color: #6B6B6B;
+  line-height: 1.4;
+}
+
+.studio__troubleshootStep--active .studio__troubleshootStepLabel {
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.studio__troubleshootStep--done .studio__troubleshootStepLabel {
+  color: #1A1A1A;
+}
+
+/* ── Main / Chat area ── */
+
+.studio__troubleshootMain {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #FAFAFA;
+  overflow: auto;
+}
+
+.studio__troubleshootChat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #FAFAFA;
+}
+
+.studio__troubleshootMsgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  max-width: 820px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.studio__troubleshootMsgs::-webkit-scrollbar { display: none; }
+.studio__troubleshootMsgs { scrollbar-width: none; }
+
+/* Thinking */
+.studio__troubleshootThinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: #A0A0A0;
+  font-size: 13px;
+}
+
+/* ── Start card (problem description form) ── */
+
+.studio__troubleshootStartCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px;
+  max-width: 620px;
+  width: 100%;
+  text-align: center;
+}
+
+.studio__troubleshootStartIcon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F5;
+  border-radius: 14px;
+  color: #6B6B6B;
+}
+
+.studio__troubleshootStartTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0;
+}
+
+.studio__troubleshootStartDesc {
+  font-size: 13px;
+  color: #A0A0A0;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.studio__troubleshootTextarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #EBEBEB;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #1A1A1A;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.15s ease;
+  background: #FFFFFF;
+}
+
+.studio__troubleshootTextarea:focus {
+  outline: none;
+  border-color: #A0A0A0;
+}
+
+.studio__troubleshootTextarea::placeholder {
+  color: #A0A0A0;
+}
+
+.studio__troubleshootStartBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: #1A1A1A;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__troubleshootStartBtn:hover {
+  background: #333;
+}
+
+.studio__troubleshootStartBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Follow-up input ── */
+
+.studio__troubleshootInputArea {
+  padding: 12px 24px 12px;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.studio__troubleshootInputBox {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.studio__troubleshootInputBox:focus-within {
+  border-color: #A0A0A0;
+}
+
+.studio__troubleshootInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #1A1A1A;
+  resize: none;
+  min-height: 20px;
+  max-height: 120px;
+  outline: none;
+}
+
+.studio__troubleshootInput::placeholder {
+  color: #A0A0A0;
+}
+
+.studio__troubleshootSendBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: #1A1A1A;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.studio__troubleshootSendBtn:hover {
+  background: #333;
+}
+
+.studio__troubleshootSendBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Scoped message widths */
+.studio__troubleshootChat .dash_messageWrapper--ai .dash_messageBubble {
+  max-width: 85%;
+}
+
+.studio__troubleshootChat .dash_messageWrapper--user .dash_messageBubble {
+  max-width: 65%;
+}
+
+/* ═══════════════════════════════════════
+   Repair Technician Avatar
+   ═══════════════════════════════════════ */
+
+.ts__disconnectedIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #888;
+  margin-bottom: 1rem;
+}
+
+.ts__avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 24px;
+}
+
+.ts__avatarHelmet {
+  width: 64px;
+  height: 20px;
+  background: #f59e0b;
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  z-index: 2;
+}
+
+.ts__avatarHelmet::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: -6px;
+  right: -6px;
+  height: 6px;
+  background: #d97706;
+  border-radius: 0 0 4px 4px;
+}
+
+.ts__avatarFace {
+  width: 72px;
+  height: 56px;
+  background: #1a1a1a;
+  border-radius: 0 0 16px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.ts__avatarEyes {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ts__avatarEye {
+  width: 8px;
+  height: 20px;
+  background: #fff;
+  border-radius: 2px;
+  opacity: 0.85;
+  transition: transform 0.18s ease, border-radius 0.3s, width 0.3s, height 0.3s, opacity 0.4s;
+}
+
+.ts__avatarEye--blink {
+  transform: scaleY(0.1);
+}
+
+.ts__avatarEye--wide {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  transform: scale(1.2);
+}
+
+.ts__avatarEye--look {
+  transform: translate(var(--look-x, 0), var(--look-y, 0));
+}
+
+.ts__avatarEye--sleepy {
+  transform: scaleY(0.35);
+  transition: transform 0.4s ease, border-radius 0.3s, width 0.3s, height 0.3s, opacity 0.4s;
+}
+
+/* Thinking pulse — matches sidebar eyesPulse */
+.ts__avatarEyes.is-thinking .ts__avatarEye {
+  animation: tsEyesPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tsEyesPulse {
+  0%, 100% { opacity: 0.85; transform: scaleY(1); }
+  50% { opacity: 0.45; transform: scaleY(0.75); }
+}
+
+
+/* ═══════════════════════════════════════
+   Troubleshoot Sidebar Sections
+   ═══════════════════════════════════════ */
+
+.ts__sidebarSection {
+  margin-top: 0;
+  padding: 12px 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.ts__sidebarSectionTitle {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.ts__sidebarItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #6b7280;
+  border-radius: 6px;
+}
+
+.ts__sidebarItem span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Web Search toggle */
+.ts__sidebarToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-top: auto;
+  border-top: 1px solid #f0f0f0;
+}
+
+.ts__sidebarToggleLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.ts__toggleSwitch {
+  width: 36px;
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  padding: 0;
+}
+
+.ts__toggleSwitch.is-active {
+  background: #111;
+}
+
+.ts__toggleSwitch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.ts__toggleSwitch.is-active::after {
+  transform: translateX(16px);
+}
+
+/* ═══════════════════════════════════════
+   Spaces — folder navigation & drag-drop
+   Palette: #1A1A1A / #6B6B6B / #A0A0A0
+   ═══════════════════════════════════════ */
+
+/* Section labels */
+.studio__sectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #A0A0A0;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio__sectionCount {
+  font-size: 10px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', monospace;
+  background: #F5F5F5;
+  color: #6B6B6B;
+  padding: 1px 7px;
+  border-radius: 9999px;
+}
+
+/* Spaces section */
+.studio__spacesSection {
+  margin-top: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+/* Spaces grid */
+.studio__spacesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+/* Space card (folder) */
+.studio__spaceCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #F0F0F0;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.studio__spaceCard:hover {
+  border-color: #EBEBEB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: #FAFAFA;
+}
+
+.studio__spaceCard--dragOver {
+  border-color: #1A1A1A;
+  background: #F5F5F5;
+  box-shadow: 0 0 0 1px #1A1A1A;
+}
+
+.studio__spaceCardIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F5;
+  border-radius: 8px;
+  color: #6B6B6B;
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.studio__spaceCard:hover .studio__spaceCardIcon {
+  background: #EBEBEB;
+  color: #1A1A1A;
+}
+
+.studio__spaceCard--dragOver .studio__spaceCardIcon {
+  background: #1A1A1A;
+  color: #FFFFFF;
+}
+
+.studio__spaceCardInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.studio__spaceCardName {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1A1A1A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio__spaceCardMeta {
+  font-size: 12px;
+  color: #A0A0A0;
+}
+
+/* Space header (inside drill-down) */
+.studio__spaceHeaderInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1A1A1A;
+}
+
+.studio__spaceHeaderInfo .studio__equipmentTitle {
+  margin: 0;
+}
+
+.studio__spaceDescription {
+  font-size: 12px;
+  color: #A0A0A0;
+  margin: 2px 0 0;
+}
+
+.studio__spaceHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Breadcrumb (back button) */
+.studio__spaceBreadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #A0A0A0;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__spaceBreadcrumb:hover {
+  color: #1A1A1A;
+}
+
+/* Create Space button */
+.studio__spaceAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #EBEBEB;
+  background: #FFFFFF;
+  color: #6B6B6B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__spaceAddBtn:hover {
+  background: #F5F5F5;
+  border-color: #DDD;
+  color: #1A1A1A;
+}
+
+/* Drag handle on equipment cards */
+.studio__equipmentCardDragHandle {
+  flex-shrink: 0;
+  color: #EBEBEB;
+  cursor: grab;
+  padding: 2px;
+  margin-left: -4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.studio__equipmentCardDragHandle:hover {
+  color: #A0A0A0;
+}
+
+.studio__equipmentCard--dragging {
+  opacity: 0.35;
+  box-shadow: none;
+}
+
+/* Unassigned section (drop target) */
+.studio__unassignedSection {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1.5px dashed #EBEBEB;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.studio__unassignedSection--dragOver {
+  border-color: #1A1A1A;
+  background: #F5F5F5;
+}
+
+/* Context menu (three-dot) */
+.studio__contextMenu {
+  position: relative;
+}
+
+.studio__contextMenuTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: #A0A0A0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.studio__contextMenuTrigger:hover {
+  background: #F5F5F5;
+  color: #6B6B6B;
+}
+
+.studio__contextMenuDropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  min-width: 150px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  overflow: hidden;
+  animation: equipFadeIn 0.12s ease;
+}
+
+.studio__contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  border: none;
+  background: none;
+  color: #1A1A1A;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  font-family: inherit;
+}
+
+.studio__contextMenuItem:hover {
+  background: #F5F5F5;
+}
+
+.studio__contextMenuItem--danger {
+  color: #D14343;
+}
+
+.studio__contextMenuItem--danger:hover {
+  background: #FFF5F5;
+}
+
+/* Hint text */
+.studio__equipmentHint {
+  font-size: 12px;
+  color: #A0A0A0;
+  text-align: center;
+  margin-top: 16px;
+}
+/* Space card actions — push ⋯ to far right */
+.studio__spaceCardActions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* View toggle (grid/list) */
+.studio__viewToggle {
+  display: inline-flex;
+  border: 1px solid #EBEBEB;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.studio__viewToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border: none;
+  background: #FFFFFF;
+  color: #A0A0A0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.studio__viewToggleBtn + .studio__viewToggleBtn {
+  border-left: 1px solid #EBEBEB;
+}
+
+.studio__viewToggleBtn:hover {
+  color: #6B6B6B;
+  background: #F5F5F5;
+}
+
+.studio__viewToggleBtn.is-active {
+  background: #1A1A1A;
+  color: #FFFFFF;
+}
+
+/* List view layout */
+.studio__equipmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #F0F0F0;
+  border: 1px solid #F0F0F0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.studio__equipmentListItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #FFFFFF;
+  transition: background 0.1s ease;
+}
+
+.studio__equipmentListItem:hover {
+  background: #FAFAFA;
+}
+
+.studio__equipmentListItem--dragging {
+  opacity: 0.35;
+}
+
+/* Spacing: searchRow → content gap */
+.studio__equipmentTab > .studio__searchRow + .studio__equipmentGrid,
+.studio__equipmentTab > .studio__searchRow + .studio__equipmentList {
+  margin-top: 16px;
+}

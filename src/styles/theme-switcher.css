@@ -1,0 +1,286 @@
+/* ============================================================================
+   THEME SWITCHER — Light/Dark toggle + Custom themes dropdown
+   Add this to dashboard-ui.css or as a separate import
+   ============================================================================ */
+
+/* ─── Container ─── */
+.dash_themeControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+/* ─── Light/Dark Toggle Switch ─── */
+.dash_themeSwitch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 52px;
+  height: 28px;
+  padding: 2px;
+  background: #27272a;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.dash_themeSwitch.is-light {
+  background: #e8e8ec;
+}
+
+.dash_themeSwitchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+}
+
+.dash_themeSwitch:not(.is-light) .dash_themeSwitchThumb {
+  transform: translateX(24px);
+  background: #19191b;
+}
+
+/* Icons inside the switch */
+.dash_themeSwitchIcon {
+  position: relative;
+  z-index: 1;
+  transition: opacity 0.25s ease, color 0.25s ease;
+}
+
+.dash_themeSwitchIcon--sun {
+  margin-left: 3px;
+  color: #2f2d2a;
+  opacity: 1;
+}
+
+.dash_themeSwitchIcon--moon {
+  margin-left: auto;
+  margin-right: 3px;
+  color: #94a3b8;
+  opacity: 0.5;
+}
+
+.dash_themeSwitch:not(.is-light) .dash_themeSwitchIcon--sun {
+  opacity: 0.4;
+  color: #6c6c74;
+}
+
+.dash_themeSwitch:not(.is-light) .dash_themeSwitchIcon--moon {
+  opacity: 1;
+  color: #e2e8f0;
+}
+
+/* ─── Custom Theme Button ─── */
+.dash_themeCustomBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(16, 17, 19, 0.45);
+  transition: all 0.2s ease;
+}
+
+.dash_themeCustomBtn:hover {
+  background: rgba(16, 17, 19, 0.04);
+  border-color: rgba(16, 17, 19, 0.18);
+  color: rgba(16, 17, 19, 0.7);
+}
+
+.dash_themeCustomBtn.is-active {
+  background: rgba(16, 17, 19, 0.06);
+  border-color: rgba(16, 17, 19, 0.2);
+  color: #101113;
+}
+
+/* ─── Dropdown ─── */
+.dash_themeDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  z-index: 100;
+  animation: themeDropdownIn 0.15s ease-out;
+}
+
+@keyframes themeDropdownIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dash_themeDropdownLabel {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(16, 17, 19, 0.4);
+}
+
+.dash_themeDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 450;
+  color: #101113;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dash_themeDropdownItem:hover {
+  background: rgba(16, 17, 19, 0.05);
+}
+
+.dash_themeDropdownItem.is-active {
+  background: rgba(16, 17, 19, 0.07);
+}
+
+.dash_themeDropdownIcon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* ============================================================================
+   DARK THEME OVERRIDES
+   ============================================================================ */
+
+[data-theme="dark"] .dash_themeSwitch {
+  background: #2e2e32;
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+[data-theme="dark"] .dash_themeSwitch.is-light {
+  background: #3a3a3e;
+}
+
+[data-theme="dark"] .dash_themeCustomBtn {
+  border-color: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="dark"] .dash_themeCustomBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="dark"] .dash_themeCustomBtn.is-active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #f0f0f3;
+}
+
+[data-theme="dark"] .dash_themeDropdown {
+  background: #262629;
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .dash_themeDropdownLabel {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .dash_themeDropdownItem {
+  color: #f0f0f3;
+}
+
+[data-theme="dark"] .dash_themeDropdownItem:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .dash_themeDropdownItem.is-active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ============================================================================
+   PINK THEME OVERRIDES
+   ============================================================================ */
+
+[data-theme="pink"] .dash_themeSwitch {
+  background: #ffd6e0;
+  border-color: rgba(251, 111, 146, 0.16);
+}
+
+[data-theme="pink"] .dash_themeSwitch.is-light {
+  background: #ffc0d0;
+}
+
+[data-theme="pink"] .dash_themeSwitchThumb {
+  background: #ffffff;
+}
+
+[data-theme="pink"] .dash_themeCustomBtn {
+  border-color: rgba(251, 111, 146, 0.16);
+  color: #8c2848;
+}
+
+[data-theme="pink"] .dash_themeCustomBtn:hover {
+  background: rgba(251, 111, 146, 0.08);
+  border-color: rgba(251, 111, 146, 0.25);
+  color: #6b1030;
+}
+
+[data-theme="pink"] .dash_themeCustomBtn.is-active {
+  background: rgba(251, 111, 146, 0.12);
+  border-color: rgba(251, 111, 146, 0.3);
+  color: #6b1030;
+}
+
+[data-theme="pink"] .dash_themeDropdown {
+  background: #ffd6e0;
+  border-color: rgba(251, 111, 146, 0.16);
+  box-shadow: 0 8px 24px rgba(200, 60, 100, 0.15);
+}
+
+[data-theme="pink"] .dash_themeDropdownLabel {
+  color: #993050;
+}
+
+[data-theme="pink"] .dash_themeDropdownItem {
+  color: #6b1030;
+}
+
+[data-theme="pink"] .dash_themeDropdownItem:hover {
+  background: rgba(251, 111, 146, 0.1);
+}
+
+[data-theme="pink"] .dash_themeDropdownItem.is-active {
+  background: rgba(251, 111, 146, 0.14);
+}
+
+/* ─── Color swatches in dropdown ─── */
+.dash_themeSwatches {
+  display: flex;
+  gap: 3px;
+}
+
+.dash_themeSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}

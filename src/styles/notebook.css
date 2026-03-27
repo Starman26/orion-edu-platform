@@ -1,0 +1,517 @@
+/* src/styles/notebook.css
+   ============================================================================
+   NOTEBOOK PAGE — Scientific lab notebook with open-book layout
+   ============================================================================ */
+@import url("https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/* ─── Root / Page ─── */
+.nb_root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  background: #f2f2f4;
+  color: #101113;
+  font-family: 'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Header (matches dash_header) ─── */
+.nb_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 46px;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.06);
+  flex-shrink: 0;
+  background: #ffffff;
+  z-index: 10;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.nb_headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nb_headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nb_menuBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  color: #101113;
+  transition: all 0.15s ease;
+}
+
+.nb_menuBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nb_headerDivider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 0 4px;
+}
+
+.nb_pageName {
+  color: #999;
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.nb_headerBtn {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.65);
+  background: transparent;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.nb_headerBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #101113;
+}
+
+/* ─── Content area ─── */
+.nb_content {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 20px;
+  overflow: hidden;
+}
+
+/* ─── Toolbar above the book ─── */
+.nb_toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.nb_toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nb_title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #101113;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 4px 0;
+  font-family: inherit;
+  min-width: 180px;
+}
+
+.nb_title::placeholder {
+  color: #bbb;
+}
+
+.nb_toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nb_toolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.55);
+  background: transparent;
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.nb_toolBtn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.14);
+  color: #101113;
+}
+
+.nb_toolBtn.is-active {
+  background: rgba(16, 17, 19, 0.06);
+  color: #101113;
+}
+
+/* ─── Book container ─── */
+.nb_book {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  border-radius: 8px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.08),
+    0 2px 12px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+/* ─── Spine / binding ─── */
+.nb_spine {
+  width: 5px;
+  flex-shrink: 0;
+  background: linear-gradient(
+    90deg,
+    #c8c8c8 0%,
+    #d8d8d8 40%,
+    #d0d0d0 60%,
+    #c8c8c8 100%
+  );
+}
+
+/* ─── Page shared ─── */
+.nb_page {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── Left page — Editor ─── */
+.nb_pageLeft {
+  background: #ffffff;
+  border-radius: 8px 0 0 8px;
+  box-shadow: inset -4px 0 8px rgba(0, 0, 0, 0.03);
+}
+
+.nb_pageLeft.no-grid .nb_editorArea {
+  background-image: none;
+}
+
+.nb_pageHeader {
+  padding: 10px 16px 0 52px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #bbb;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.nb_pageHeaderRight {
+  padding: 10px 16px 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: #bbb;
+  letter-spacing: 0.04em;
+  text-align: right;
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.nb_editorArea {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(#E8EEF0 1px, transparent 1px),
+    linear-gradient(90deg, #E8EEF0 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0;
+}
+
+/* Red margin line */
+.nb_editorArea::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 40px;
+  width: 1px;
+  background: #E8A0A0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.nb_lineNumbers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  padding: 8px 4px 8px 0;
+  text-align: right;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  line-height: 24px;
+  color: #ccc;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.nb_textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px 24px 8px 52px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 24px;
+  color: #2C3E50;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+.nb_textarea::placeholder {
+  color: #ccc;
+}
+
+/* ─── Right page — Preview ─── */
+.nb_pageRight {
+  background: #FAFBFC;
+  border-radius: 0 8px 8px 0;
+  box-shadow: inset 4px 0 8px rgba(0, 0, 0, 0.03);
+}
+
+.nb_previewScroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 36px 32px;
+}
+
+/* ─── Preview rendered content ─── */
+.nb_preview {
+  font-family: 'Source Serif 4', 'Crimson Pro', Georgia, serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #1A1A1A;
+}
+
+/* Title block */
+.nb_preview .latex-title-block {
+  text-align: center;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.nb_preview .latex-title-block h1 {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: #101113;
+}
+
+.nb_preview .latex-title-block .latex-author {
+  font-size: 14px;
+  color: #555;
+  margin: 0 0 2px;
+}
+
+.nb_preview .latex-title-block .latex-date {
+  font-size: 13px;
+  color: #888;
+  margin: 0;
+}
+
+/* Sections */
+.nb_preview h2 {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #101113;
+  margin: 28px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #eee;
+}
+
+.nb_preview h3 {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 22px 0 8px;
+}
+
+.nb_preview h4 {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: 18px 0 6px;
+}
+
+/* Paragraphs */
+.nb_preview p {
+  margin: 0 0 12px;
+}
+
+/* Lists */
+.nb_preview ul,
+.nb_preview ol {
+  margin: 8px 0 12px;
+  padding-left: 24px;
+}
+
+.nb_preview li {
+  margin-bottom: 4px;
+}
+
+.nb_preview ul li {
+  list-style-type: disc;
+}
+
+/* Tables */
+.nb_preview table {
+  border-collapse: collapse;
+  margin: 16px 0;
+  width: auto;
+}
+
+.nb_preview th,
+.nb_preview td {
+  border: 1px solid #D0D0D0;
+  padding: 8px 12px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.nb_preview th {
+  background: #F5F5F5;
+  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+/* Code / verbatim */
+.nb_preview code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  background: #F4F5F7;
+  border: 1px solid #E0E0E0;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.nb_preview pre {
+  background: #F4F5F7;
+  border: 1px solid #E0E0E0;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.nb_preview pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Links */
+.nb_preview a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.nb_preview a:hover {
+  text-decoration: underline;
+}
+
+/* Display math */
+.nb_preview .latex-display-math {
+  display: block;
+  text-align: center;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+
+/* Align environments */
+.nb_preview .latex-align {
+  display: block;
+  text-align: center;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+
+/* Strong / em / underline */
+.nb_preview strong {
+  font-weight: 700;
+}
+
+.nb_preview em {
+  font-style: italic;
+}
+
+.nb_preview u {
+  text-decoration: underline;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .nb_book {
+    flex-direction: column;
+    border-radius: 8px;
+  }
+  .nb_spine {
+    width: 100%;
+    height: 4px;
+  }
+  .nb_pageLeft {
+    border-radius: 8px 8px 0 0;
+    box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.03);
+  }
+  .nb_pageRight {
+    border-radius: 0 0 8px 8px;
+    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.03);
+  }
+  .nb_content {
+    padding: 12px 12px 16px;
+  }
+}

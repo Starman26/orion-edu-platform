@@ -1,0 +1,885 @@
+/* src/styles/livinglab.css */
+
+/* ============================================================================
+   LIVING LAB - Layout & Sections
+   ============================================================================ */
+
+/* ─── Title Bar ─── */
+.ll_titleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.06);
+}
+
+.ll_titleLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ll_pageTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #101113;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ll_pageSubtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(16, 17, 19, 0.5);
+  margin: 0;
+}
+
+/* ─── Header page name (si no está en dashboard-ui.css) ─── */
+.dash_pageName {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.5);
+}
+
+.dash_pathSeparator {
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(16, 17, 19, 0.3);
+  margin: 0 8px;
+}
+
+/* ─── Content ─── */
+.ll_content {
+  max-width: 1100px;
+  width: 88%;
+  margin: 0 auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 90px 0 48px;
+  overflow-y: auto;
+}
+
+.ll_topRow {
+  display: grid;
+  grid-template-columns: 400px 180px 300px;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .ll_topRow {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  
+  .ll_outputConnection {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 700px) {
+  .ll_topRow {
+    grid-template-columns: 1fr;
+  }
+  
+  .ll_outputConnection {
+    grid-column: span 1;
+  }
+}
+
+/* ============================================================================
+   SECTIONS
+   ============================================================================ */
+
+.ll_section {
+  background: #ffffff;
+}
+
+.ll_sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #101113;
+  margin-bottom: 16px;
+}
+
+/* ============================================================================
+   TEAM DESCRIPTION
+   ============================================================================ */
+
+.ll_description {
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+}
+
+.ll_descriptionText {
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(16, 17, 19, 0.7);
+  font-style: italic;
+  margin-bottom: 20px;
+  flex: 1;
+}
+
+.ll_btnPrimary {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  background: #101113;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.ll_btnPrimary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.ll_btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+   TEAM MEMBERS
+   ============================================================================ */
+
+.ll_members {
+  border-left: 1px solid rgba(16, 17, 19, 0.08);
+  padding-left: 32px;
+  margin-left: 16px;
+}
+
+.ll_membersList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ll_memberRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ll_memberAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(16, 17, 19, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ll_memberAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ll_memberAvatar span {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.5);
+}
+
+.ll_memberName {
+  font-size: 14px;
+  color: #101113;
+}
+
+/* ============================================================================
+   PERSONAL OUTPUT CONNECTION
+   ============================================================================ */
+
+.ll_outputConnection {
+  border-left: 1px solid rgba(16, 17, 19, 0.08);
+  padding-left: 32px;
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ll_connectionBox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 16px;
+  background: rgba(16, 17, 19, 0.03);
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 10px;
+  gap: 12px;
+}
+
+.ll_cardDesc {
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.6);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.ll_downloadSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ll_downloadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #101113;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.ll_downloadBtn:hover {
+  background: #2a2b2e;
+}
+
+.ll_downloadBtn svg {
+  flex-shrink: 0;
+}
+
+.ll_downloadMeta {
+  font-size: 11px;
+  color: rgba(16, 17, 19, 0.4);
+}
+
+/* ============================================================================
+   KNOWLEDGE BASE
+   ============================================================================ */
+
+.ll_knowledge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ll_knowledgeActions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.ll_actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #101113;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ll_actionBtn:hover:not(:disabled) {
+  background: rgba(16, 17, 19, 0.04);
+  border-color: rgba(16, 17, 19, 0.2);
+}
+
+.ll_actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ll_actionBtn svg {
+  color: rgba(16, 17, 19, 0.6);
+}
+
+/* ============================================================================
+   KNOWLEDGE CONTENT
+   ============================================================================ */
+
+.ll_knowledgeContent {
+  flex: 1;
+  min-height: 200px;
+}
+
+/* Empty state (when no tables selected) */
+.ll_knowledgeContent:has(.ll_emptyState) {
+  background: rgba(16, 17, 19, 0.02);
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ll_emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px;
+}
+
+.ll_emptyIcon {
+  color: rgba(16, 17, 19, 0.25);
+  margin-bottom: 16px;
+}
+
+.ll_emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #101113;
+  margin-bottom: 4px;
+}
+
+.ll_emptyText {
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.5);
+  margin: 0;
+}
+
+.ll_documentsList {
+  width: 100%;
+  padding: 16px;
+}
+
+.ll_documentRow {
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.ll_documentRow:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================================================
+   TABLES GRID - Preview Cards Layout
+   ============================================================================ */
+
+.ll_tablesGrid {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.ll_tablesGrid--1 {
+  grid-template-columns: 1fr;
+}
+
+.ll_tablesGrid--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.ll_tablesGrid--3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 1200px) {
+  .ll_tablesGrid--3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .ll_tablesGrid--3 .ll_tableCard:nth-child(3) {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 800px) {
+  .ll_tablesGrid--2,
+  .ll_tablesGrid--3 {
+    grid-template-columns: 1fr;
+  }
+  
+  .ll_tablesGrid--3 .ll_tableCard:nth-child(3) {
+    grid-column: span 1;
+  }
+}
+
+/* ============================================================================
+   TABLE PREVIEW CARD
+   ============================================================================ */
+
+.ll_tableCard {
+  display: flex;
+  flex-direction: column;
+  background: #101113;
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 240px;
+  max-height: 320px;
+}
+
+.ll_tableCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.ll_tableCardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ll_tableCardTitle svg {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ll_tableCardRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.4);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ll_tableCardRemove:hover {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.ll_tableCardBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ll_tableCardLoading,
+.ll_tableCardEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.ll_tableCardScroll {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Hide scrollbar but keep functionality */
+.ll_tableCardScroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ll_tableCardScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ll_tableCardScroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.ll_tableCardScroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Preview Table inside card */
+.ll_previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.ll_previewTable th {
+  position: sticky;
+  top: 0;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  background: #101113;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+.ll_previewTable td {
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ll_previewTable tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ll_tableCardFooter {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.ll_tableCardMeta {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ============================================================================
+   LOADING STATE
+   ============================================================================ */
+
+.ll_loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  font-size: 14px;
+  color: rgba(16, 17, 19, 0.5);
+}
+
+/* ============================================================================
+   MEMBER INFO
+   ============================================================================ */
+
+.ll_memberInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ll_memberRole {
+  font-size: 11px;
+  color: rgba(16, 17, 19, 0.5);
+  text-transform: capitalize;
+}
+
+/* ============================================================================
+   BUTTONS
+   ============================================================================ */
+
+.ll_btnSecondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #101113;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ll_btnSecondary:hover:not(:disabled) {
+  background: rgba(16, 17, 19, 0.04);
+  border-color: rgba(16, 17, 19, 0.2);
+}
+
+.ll_btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+   MODAL
+   ============================================================================ */
+
+.ll_modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ll_modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.25s ease;
+}
+
+.ll_modal--wide {
+  max-width: 600px;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ll_modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.08);
+}
+
+.ll_modalTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #101113;
+  margin: 0;
+}
+
+.ll_modalClose {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(16, 17, 19, 0.5);
+  transition: all 0.15s ease;
+}
+
+.ll_modalClose:hover {
+  background: rgba(16, 17, 19, 0.06);
+  color: #101113;
+}
+
+.ll_modalContent {
+  padding: 20px;
+}
+
+.ll_modalTextarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #101113;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 8px;
+  resize: vertical;
+  min-height: 120px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.ll_modalTextarea:focus {
+  border-color: rgba(16, 17, 19, 0.3);
+}
+
+.ll_modalTextarea::placeholder {
+  color: rgba(16, 17, 19, 0.4);
+}
+
+.ll_modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(16, 17, 19, 0.08);
+}
+
+/* ============================================================================
+   MODAL FORM ELEMENTS (Add Tables Modal)
+   ============================================================================ */
+
+.ll_formGroup {
+  margin-bottom: 20px;
+}
+
+.ll_label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.6);
+  margin-bottom: 8px;
+}
+
+.ll_select {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #101113;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.15);
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.ll_select:hover {
+  border-color: rgba(16, 17, 19, 0.25);
+}
+
+.ll_select:focus {
+  border-color: rgba(16, 17, 19, 0.4);
+}
+
+.ll_previewSection {
+  margin-top: 20px;
+}
+
+.ll_tablePreviewBox {
+  max-height: 200px;
+  overflow: auto;
+  background: rgba(16, 17, 19, 0.03);
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 8px;
+}
+
+.ll_miniTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ll_miniTable th {
+  position: sticky;
+  top: 0;
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.6);
+  background: rgba(16, 17, 19, 0.05);
+  border-bottom: 1px solid rgba(16, 17, 19, 0.1);
+}
+
+.ll_miniTable td {
+  padding: 8px 12px;
+  color: #101113;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.06);
+}
+
+.ll_muted {
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.5);
+  margin: 0;
+}
+/* ============================================================================
+   SKELETON LOADING STYLES
+   Add this to the end of your livinglab.css file
+   ============================================================================ */
+
+/* Base skeleton element with shimmer animation */
+.ll_skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(16, 17, 19, 0.06) 0%,
+    rgba(16, 17, 19, 0.03) 50%,
+    rgba(16, 17, 19, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: ll_skeletonShimmer 1.8s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes ll_skeletonShimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+/* Utility classes for skeleton spacing */
+.ll_skeleton--mb6 {
+  margin-bottom: 6px;
+}
+
+.ll_skeleton--mb8 {
+  margin-bottom: 8px;
+}
+
+.ll_skeleton--mb12 {
+  margin-bottom: 12px;
+}
+
+.ll_skeleton--mb16 {
+  margin-bottom: 16px;
+}
+
+/* Member row skeleton */
+.ll_memberRow--skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.ll_memberRow--skeleton .ll_memberInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Empty state skeleton */
+.ll_emptyState--skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}

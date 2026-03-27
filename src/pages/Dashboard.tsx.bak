@@ -1,0 +1,3187 @@
+// src/pages/Dashboard.tsx
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Menu, ArrowUp, Plus, Paperclip, X, ChevronRight, Check, Square } from "lucide-react";
+import { supabase } from "../lib/supabaseClient";
+import { useThinking } from "../context/Thinkingcontext";
+import "../styles/dashboard-ui.css";
+import "../styles/theme-dark.css";  
+import "../styles/theme-pink.css";
+import "../styles/theme-switcher.css";
+import "../styles/theme-ocean.css";
+import "../styles/theme-forest.css";
+import "../styles/theme-sand.css";
+
+const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
+const LS_KEY = "cora.sidebarCollapsed";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface PastedContent {
+  id: string;
+  content: string;
+}
+
+interface Message {
+  id: string;
+  text: string;
+  sender: "user" | "ai";
+  createdAt: string;
+  pastedContents?: PastedContent[];
+}
+
+interface Session {
+  id: string;
+  title: string;
+  createdAt: string;
+  messages: Message[];
+}
+
+// HITL Types
+interface QuestionOption {
+  label: string;
+  value: string;
+}
+
+interface ClarificationQuestion {
+  id: string;
+  question: string;
+  options?: QuestionOption[];
+  type: "choice" | "text";
+}
+
+// Timeline Types
+interface TimelineEvent {
+  id: string;
+  node: string;
+  message: string;
+  timestamp: string;
+  isActive?: boolean;
+}
+
+// Follow-up Suggestions
+interface FollowUpSuggestion {
+  id: string;
+  text: string;
+}
+
+// ============================================================================
+// PARTICLE GRID - Flashlight effect with thinking pulse
+// ============================================================================
+
+interface Dot {
+  x: number;
+  y: number;
+  baseX: number;
+  baseY: number;
+}
+
+interface ParticleGridProps {
+  containerRef: React.RefObject<HTMLDivElement>;
+  isThinking?: boolean;
+}
+
+function ParticleGrid({ containerRef, isThinking = false }: ParticleGridProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mouseRef = useRef({ x: -200, y: -200 });
+  const targetRef = useRef({ x: -200, y: -200 });
+  const dotsRef = useRef<Dot[]>([]);
+  const animationRef = useRef<number | null>(null);
+  const isInsideRef = useRef(false);
+  const containerSizeRef = useRef({ width: 0, height: 0 });
+  const pulsePhaseRef = useRef(0);
+  const isThinkingRef = useRef(isThinking);
+  const timeRef = useRef(0);
+  const waveCentersRef = useRef<{x: number, y: number, phase: number, speed: number}[]>([]);
+
+  // Update thinking ref when prop changes
+  useEffect(() => {
+    isThinkingRef.current = isThinking;
+  }, [isThinking]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const GRID_SPACING = 20;
+    const INFLUENCE_RADIUS = 120;
+    const PUSH_STRENGTH = 35;
+    const BASE_VISIBILITY_RADIUS = 150;
+    
+    // Thinking pulse parameters - MORE DRAMATIC
+    const PULSE_MIN_RADIUS = 120;
+    const PULSE_MAX_RADIUS = 350;
+    const PULSE_SPEED = 0.06;
+    const PULSE_OPACITY_BOOST = 0.6;
+    const PULSE_SIZE_BOOST = 1.2;
+    
+    // Ambient wave parameters
+    const WAVE_COUNT = 3;
+    const WAVE_RADIUS = 200;
+
+    const setupCanvas = () => {
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.scale(dpr, dpr);
+
+      containerSizeRef.current = { width: rect.width, height: rect.height };
+
+      const dots: Dot[] = [];
+      for (let x = GRID_SPACING; x < rect.width; x += GRID_SPACING) {
+        for (let y = GRID_SPACING; y < rect.height; y += GRID_SPACING) {
+          dots.push({ x, y, baseX: x, baseY: y });
+        }
+      }
+      dotsRef.current = dots;
+      
+      // Initialize wave centers at random positions
+      waveCentersRef.current = [];
+      for (let i = 0; i < WAVE_COUNT; i++) {
+        waveCentersRef.current.push({
+          x: Math.random() * rect.width,
+          y: Math.random() * rect.height,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.006 + Math.random() * 0.006
+        });
+      }
+    };
+
+    setupCanvas();
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      isInsideRef.current = x >= 0 && x <= rect.width && y >= 0 && y <= rect.height;
+      
+      if (isInsideRef.current) {
+        targetRef.current = { x, y };
+        document.body.style.cursor = 'none';
+      } else {
+        targetRef.current = { x: -200, y: -200 };
+        document.body.style.cursor = 'auto';
+      }
+    };
+
+    const handleMouseLeave = () => {
+      isInsideRef.current = false;
+      targetRef.current = { x: -200, y: -200 };
+      document.body.style.cursor = 'auto';
+    };
+
+    const handleResize = () => {
+      setupCanvas();
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    container.addEventListener("mouseleave", handleMouseLeave);
+    window.addEventListener("resize", handleResize);
+
+    const animate = () => {
+      const { width, height } = containerSizeRef.current;
+      ctx.clearRect(0, 0, width, height);
+
+      const ease = 0.12;
+      const dots = dotsRef.current;
+      const thinking = isThinkingRef.current;
+      
+      // Update time for ambient animation
+      timeRef.current += 1;
+
+      // Update pulse phase when thinking
+      if (thinking) {
+        pulsePhaseRef.current += PULSE_SPEED;
+      }
+      
+      // Update wave centers (slowly move them around)
+      waveCentersRef.current.forEach(wave => {
+        wave.phase += wave.speed;
+        // Slowly drift the wave centers
+        wave.x += Math.sin(wave.phase * 0.3) * 0.15;
+        wave.y += Math.cos(wave.phase * 0.4) * 0.15;
+        // Keep within bounds
+        if (wave.x < 0) wave.x = width;
+        if (wave.x > width) wave.x = 0;
+        if (wave.y < 0) wave.y = height;
+        if (wave.y > height) wave.y = 0;
+      });
+
+      // Calculate pulsing visibility radius
+      const pulseValue = Math.sin(pulsePhaseRef.current);
+      const pulseNormalized = (pulseValue + 1) / 2; // 0 to 1
+      const VISIBILITY_RADIUS = thinking 
+        ? PULSE_MIN_RADIUS + (PULSE_MAX_RADIUS - PULSE_MIN_RADIUS) * pulseNormalized
+        : BASE_VISIBILITY_RADIUS;
+      
+      // Extra opacity when thinking and at pulse peak
+      const thinkingOpacityBoost = thinking ? PULSE_OPACITY_BOOST * pulseNormalized : 0;
+
+      // Determine the light source position
+      let lightX: number;
+      let lightY: number;
+      
+      // When thinking, always center the light
+      if (thinking) {
+        const centerX = width / 2;
+        const centerY = height / 2;
+        mouseRef.current.x += (centerX - mouseRef.current.x) * ease;
+        mouseRef.current.y += (centerY - mouseRef.current.y) * ease;
+        lightX = mouseRef.current.x;
+        lightY = mouseRef.current.y;
+      } else if (isInsideRef.current) {
+        mouseRef.current.x += (targetRef.current.x - mouseRef.current.x) * ease;
+        mouseRef.current.y += (targetRef.current.y - mouseRef.current.y) * ease;
+        lightX = mouseRef.current.x;
+        lightY = mouseRef.current.y;
+      } else {
+        // No hover - use ambient waves
+        lightX = -1000;
+        lightY = -1000;
+      }
+
+      for (let i = 0; i < dots.length; i++) {
+        const dot = dots[i];
+        let opacity = 0;
+        let dotSize = 1.2;
+
+        // Check if mouse/thinking light affects this dot
+        if (isInsideRef.current || thinking) {
+          const dx = dot.baseX - lightX;
+          const dy = dot.baseY - lightY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < VISIBILITY_RADIUS) {
+            const visibilityFactor = 1 - (dist / VISIBILITY_RADIUS);
+            opacity = Math.pow(visibilityFactor, 1.5) * 0.6;
+            
+            // Add opacity boost when thinking
+            if (thinking) {
+              opacity = Math.min(1, opacity + thinkingOpacityBoost * visibilityFactor * 1.5);
+              dotSize = 1.5 + PULSE_SIZE_BOOST * pulseNormalized * visibilityFactor;
+            }
+
+            // Push effect when hovering
+            if (!thinking && isInsideRef.current && dist < INFLUENCE_RADIUS) {
+              const normalizedDist = dist / INFLUENCE_RADIUS;
+              const force = Math.pow(1 - normalizedDist, 2) * PUSH_STRENGTH;
+              const angle = Math.atan2(dy, dx);
+              dot.x = dot.baseX + Math.cos(angle) * force;
+              dot.y = dot.baseY + Math.sin(angle) * force;
+            } else {
+              dot.x += (dot.baseX - dot.x) * 0.1;
+              dot.y += (dot.baseY - dot.y) * 0.1;
+            }
+          }
+        }
+        
+        // Ambient wave animation when no hover and not thinking
+        if (!isInsideRef.current && !thinking) {
+          let waveOpacity = 0;
+          
+          waveCentersRef.current.forEach(wave => {
+            const dx = dot.baseX - wave.x;
+            const dy = dot.baseY - wave.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            // Create expanding ring effect
+            const ringRadius = (Math.sin(wave.phase) + 1) * WAVE_RADIUS;
+            const ringWidth = 80;
+            const distFromRing = Math.abs(dist - ringRadius);
+            
+            if (distFromRing < ringWidth) {
+              const ringFactor = 1 - (distFromRing / ringWidth);
+              waveOpacity = Math.max(waveOpacity, ringFactor * 0.25);
+            }
+          });
+          
+          opacity = waveOpacity;
+          dot.x += (dot.baseX - dot.x) * 0.1;
+          dot.y += (dot.baseY - dot.y) * 0.1;
+        }
+
+        if (opacity > 0.02) {
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dotSize, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+          ctx.fill();
+        } else {
+          dot.x += (dot.baseX - dot.x) * 0.1;
+          dot.y += (dot.baseY - dot.y) * 0.1;
+        }
+      }
+
+      // Draw custom cursor only when mouse is inside and NOT thinking
+      if (!thinking && isInsideRef.current && lightX > 0 && lightY > 0) {
+        const color = "rgba(255, 255, 255, 0.85)";
+        const size = 16;
+        const innerGap = 4;
+        const cornerLength = 6;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = "square";
+
+        ctx.beginPath();
+        ctx.moveTo(lightX - size, lightY - size + cornerLength);
+        ctx.lineTo(lightX - size, lightY - size);
+        ctx.lineTo(lightX - size + cornerLength, lightY - size);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(lightX + size - cornerLength, lightY - size);
+        ctx.lineTo(lightX + size, lightY - size);
+        ctx.lineTo(lightX + size, lightY - size + cornerLength);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(lightX - size, lightY + size - cornerLength);
+        ctx.lineTo(lightX - size, lightY + size);
+        ctx.lineTo(lightX - size + cornerLength, lightY + size);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(lightX + size - cornerLength, lightY + size);
+        ctx.lineTo(lightX + size, lightY + size);
+        ctx.lineTo(lightX + size, lightY + size - cornerLength);
+        ctx.stroke();
+
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(lightX, lightY - size + 5);
+        ctx.lineTo(lightX, lightY - innerGap);
+        ctx.moveTo(lightX, lightY + innerGap);
+        ctx.lineTo(lightX, lightY + size - 5);
+        ctx.moveTo(lightX - size + 5, lightY);
+        ctx.lineTo(lightX - innerGap, lightY);
+        ctx.moveTo(lightX + innerGap, lightY);
+        ctx.lineTo(lightX + size - 5, lightY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(lightX, lightY, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      container.removeEventListener("mouseleave", handleMouseLeave);
+      window.removeEventListener("resize", handleResize);
+      document.body.style.cursor = 'auto';
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [containerRef]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
+// ============================================================================
+// TIMELINE COMPONENT - Single line that updates
+// ============================================================================
+
+interface TimelineProps {
+  events: TimelineEvent[];
+  isLoading?: boolean;
+}
+
+function Timeline({ events, isLoading = false }: TimelineProps) {
+  if (events.length === 0) return null;
+  
+  // Get the latest event
+  const latestEvent = events[events.length - 1];
+  
+  return (
+    <div className="dash_timelineSingle">
+      <div className={`dash_timelineDotSingle ${isLoading ? "dash_timelineDotSingle--active" : ""}`} />
+      <div className="dash_timelineSingleContent">
+        <span className="dash_timelineSingleNode">{latestEvent.node}</span>
+        <span className="dash_timelineSingleMsg">{latestEvent.message}</span>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// HITL WIZARD - Clarification questions with wizard flow
+// ============================================================================
+
+interface HITLWizardProps {
+  questions: ClarificationQuestion[];
+  currentIndex: number;
+  answers: Record<string, string>;
+  onAnswer: (questionId: string, answer: string) => void;
+  onSkip: (questionId: string) => void;
+  onComplete: () => void;
+}
+
+function HITLWizard({ 
+  questions, 
+  currentIndex, 
+  onAnswer, 
+  onSkip,
+  onComplete 
+}: HITLWizardProps) {
+  const [textAnswer, setTextAnswer] = useState("");
+  
+  if (questions.length === 0) return null;
+  
+  // Check if all questions answered
+  if (currentIndex >= questions.length) {
+    return (
+      <div className="dash_hitlComplete">
+        <div className="dash_hitlCompleteIcon">
+          <Check size={24} />
+        </div>
+        <p>All questions answered</p>
+        <button 
+          type="button" 
+          className="dash_hitlSubmitBtn"
+          onClick={onComplete}
+        >
+          Continue
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    );
+  }
+  
+  const currentQ = questions[currentIndex];
+  const progress = (currentIndex / questions.length) * 100;
+  
+  const handleOptionSelect = (value: string) => {
+    onAnswer(currentQ.id, value);
+  };
+  
+  const handleTextSubmit = () => {
+    if (textAnswer.trim()) {
+      onAnswer(currentQ.id, textAnswer.trim());
+      setTextAnswer("");
+    }
+  };
+  
+  const handleSkip = () => {
+    onSkip(currentQ.id);
+    setTextAnswer("");
+  };
+  
+  return (
+    <div className="dash_hitlWizard">
+      <div className="dash_hitlCard">
+        <div className="dash_hitlHeader">
+          <span className="dash_hitlLabel">
+            QUESTION {currentIndex + 1} OF {questions.length}
+          </span>
+        </div>
+        
+        <div className="dash_hitlQuestion">
+          {currentQ.question}
+        </div>
+        
+        <div className="dash_hitlProgress">
+          <span className="dash_hitlProgressLabel">Progress</span>
+          <div className="dash_hitlProgressBar">
+            <div 
+              className="dash_hitlProgressFill" 
+              style={{ width: `${progress}%` }} 
+            />
+          </div>
+          <span className="dash_hitlProgressCount">
+            {currentIndex + 1}/{questions.length}
+          </span>
+        </div>
+        
+        {/* Options or text input */}
+        {currentQ.options && currentQ.options.length > 0 ? (
+          <div className="dash_hitlOptions">
+            {currentQ.options.map((option, idx) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`dash_hitlOption ${idx === 0 ? "dash_hitlOption--primary" : ""}`}
+                onClick={() => handleOptionSelect(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="dash_hitlTextInput">
+            <textarea
+              value={textAnswer}
+              onChange={(e) => setTextAnswer(e.target.value)}
+              placeholder="Type your answer here..."
+              className="dash_hitlTextarea"
+              rows={3}
+            />
+            <div className="dash_hitlTextActions">
+              <button
+                type="button"
+                className="dash_hitlContinueBtn"
+                onClick={handleTextSubmit}
+                disabled={!textAnswer.trim()}
+              >
+                Continue
+              </button>
+              <button
+                type="button"
+                className="dash_hitlSkipBtn"
+                onClick={handleSkip}
+              >
+                Skip question
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      <p className="dash_hitlLegend">Sentinela will continue after your answer</p>
+    </div>
+  );
+}
+
+// ============================================================================
+// FOLLOW-UP SUGGESTIONS - Clickable suggestion buttons
+// ============================================================================
+
+interface SuggestionsProps {
+  suggestions: FollowUpSuggestion[];
+  onSelect: (suggestion: string) => void;
+}
+
+function FollowUpSuggestions({ suggestions, onSelect }: SuggestionsProps) {
+  if (suggestions.length === 0) return null;
+  
+  return (
+    <div className="dash_suggestions">
+      <div className="dash_suggestionsTitle">
+        Suggested follow-up questions
+      </div>
+      <div className="dash_suggestionsList">
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion.id}
+            type="button"
+            className="dash_suggestionBtn"
+            onClick={() => onSelect(suggestion.text)}
+          >
+            <span>{suggestion.text}</span>
+            <ChevronRight size={16} className="dash_suggestionArrow" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ICONS
+// ============================================================================
+
+function AgentIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="6" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <circle cx="12" cy="9" r="4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function ChevronUpDownIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 15l5 5 5-5" />
+      <path d="M7 9l5-5 5 5" />
+    </svg>
+  );
+}
+
+// ============================================================================
+// SESSION SELECTOR
+// ============================================================================
+
+interface SessionSelectorProps {
+  sessions: Session[];
+  currentSessionId: string;
+  onSelectSession: (id: string) => void;
+  onViewAll?: () => void;
+}
+
+function SessionSelector({ sessions, currentSessionId, onSelectSession, onViewAll }: SessionSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const currentSession = sessions.find(s => s.id === currentSessionId);
+  const MAX_VISIBLE = 3;
+  const visibleSessions = sessions.slice(0, MAX_VISIBLE);
+  const hasMore = sessions.length > MAX_VISIBLE;
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="dash_sessionSelector" ref={dropdownRef}>
+      <span className="dash_sessionLabel">Session /</span>
+      <button
+        type="button"
+        className="dash_sessionTrigger"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span>{currentSession?.title || "Welcome"}</span>
+        <ChevronUpDownIcon />
+      </button>
+      
+      {isOpen && (
+        <div className="dash_sessionMenu">
+          {visibleSessions.map((session) => (
+            <button
+              key={session.id}
+              type="button"
+              className={`dash_sessionItem ${session.id === currentSessionId ? "is-selected" : ""}`}
+              onClick={() => {
+                onSelectSession(session.id);
+                setIsOpen(false);
+              }}
+            >
+              <span className="dash_sessionItemTitle">{session.title}</span>
+              <span className="dash_sessionItemMeta">
+                {session.messages.length} message{session.messages.length !== 1 ? "s" : ""}
+              </span>
+            </button>
+          ))}
+          {hasMore && onViewAll && (
+            <button
+              type="button"
+              className="dash_sessionViewAll"
+              onClick={() => {
+                setIsOpen(false);
+                onViewAll();
+              }}
+            >
+              View all ({sessions.length})
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// DROPDOWN SELECT
+// ============================================================================
+
+interface DropdownOption {
+  value: string;
+  label: string;
+}
+
+interface DropdownSelectProps {
+  label: string;
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+}
+
+function DropdownSelect({ label, value, options, onChange }: DropdownSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedOption = options.find(o => o.value === value);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="dash_dropdownGroup">
+      <span className="dash_dropdownLabel">{label}</span>
+      <div className="dash_dropdownWrapper" ref={dropdownRef}>
+        <button
+          type="button"
+          className="dash_dropdownTrigger"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <span>{selectedOption?.label || value}</span>
+          <ChevronUpDownIcon />
+        </button>
+        
+        {isOpen && (
+          <div className="dash_dropdownMenu">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`dash_dropdownItem ${option.value === value ? "is-selected" : ""}`}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// CHAT INPUT
+// ============================================================================
+
+interface ChatInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (pastedContents?: string[]) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  isLoading?: boolean;
+  onStop?: () => void;
+  pendingFiles?: File[];
+  onAttachClick?: () => void;
+  onRemoveFile?: (index: number) => void;
+}
+
+function ChatInput({ 
+  value, 
+  onChange, 
+  onSubmit, 
+  placeholder = "Try something...",
+  disabled = false,
+  isLoading = false,
+  onStop,
+  pendingFiles = [],
+  onAttachClick,
+  onRemoveFile
+}: ChatInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [pastedContents, setPastedContents] = useState<string[]>([]);
+  const [showPastedModal, setShowPastedModal] = useState<number | null>(null);
+  const PASTE_THRESHOLD = 100;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey && (value.trim() || pastedContents.length > 0)) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData('text');
+    if (pastedText.length > PASTE_THRESHOLD) {
+      e.preventDefault();
+      setPastedContents(prev => [...prev, pastedText]);
+    }
+  };
+
+  const removePasted = (index: number) => {
+    setPastedContents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const newHeight = Math.min(el.scrollHeight, 120);
+    el.style.height = `${newHeight}px`;
+  }, [value]);
+
+  const handleSubmit = () => {
+    if (!value.trim() && pastedContents.length === 0) return;
+    onSubmit(pastedContents.length > 0 ? pastedContents : undefined);
+    setPastedContents([]);
+  };
+
+  return (
+    <div className="dash_chatInputWrapper">
+      {pendingFiles.length > 0 && (
+        <div className="dash_pendingFiles">
+          {pendingFiles.map((f, idx) => (
+            <div key={`${f.name}-${idx}`} className="dash_fileChip">
+              <span className="dash_fileChipName">{f.name}</span>
+              <button 
+                type="button" 
+                onClick={() => onRemoveFile?.(idx)}
+                className="dash_fileChipRemove"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pasted chips */}
+      {pastedContents.length > 0 && (
+        <div className="dash_pastedChipRow">
+          {pastedContents.map((_, idx) => (
+            <div key={idx} className="dash_pastedChipGroup">
+              <button 
+                type="button" 
+                className="dash_pastedChip"
+                onClick={() => setShowPastedModal(idx)}
+              >
+                <span className="dash_pastedChipLabel">PASTED</span>
+                <span className="dash_pastedChipCount">{idx + 1}</span>
+              </button>
+              <button 
+                type="button" 
+                className="dash_pastedChipRemove"
+                onClick={() => removePasted(idx)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pasted modal */}
+      {showPastedModal !== null && pastedContents[showPastedModal] && (
+        <div className="dash_pastedModalOverlay" onClick={() => setShowPastedModal(null)}>
+          <div className="dash_pastedModal" onClick={(e) => e.stopPropagation()}>
+            <div className="dash_pastedModalHeader">
+              <span>Pasted content {showPastedModal + 1}</span>
+              <button 
+                type="button" 
+                className="dash_pastedModalClose"
+                onClick={() => setShowPastedModal(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="dash_pastedModalContent">
+              {pastedContents[showPastedModal]}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="dash_chatInputBox">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          placeholder={placeholder}
+          disabled={disabled}
+          rows={1}
+          className="dash_chatTextarea"
+        />
+        
+        {isLoading ? (
+          <button 
+            type="button" 
+            className="dash_chatSendBtn dash_chatSendBtn--stop"
+            onClick={onStop}
+            aria-label="Stop generation"
+          >
+            <Square size={12} fill="currentColor" />
+          </button>
+        ) : (
+          <button 
+            type="button" 
+            className="dash_chatSendBtn"
+            onClick={handleSubmit}
+            disabled={disabled || (!value.trim() && pendingFiles.length === 0 && pastedContents.length === 0)}
+            aria-label="Send message"
+          >
+            <ArrowUp size={18} />
+          </button>
+        )}
+      </div>
+
+      <div className="dash_chatFooter">
+        <button
+          type="button"
+          onClick={onAttachClick}
+          disabled={disabled}
+          className="dash_chatFooterBtn"
+        >
+          <Paperclip size={14} />
+          <span>Attach files</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MESSAGE BUBBLE with Markdown support
+// ============================================================================
+
+interface MessageBubbleProps {
+  message: Message;
+  hideCodeBlocks?: boolean;
+}
+
+function MessageBubble({ message, hideCodeBlocks = false }: MessageBubbleProps) {
+  const isUser = message.sender === "user";
+  const [showPastedModal, setShowPastedModal] = useState<number | null>(null);
+  
+  // Process text to remove code blocks if needed
+  let displayText = message.text;
+  if (hideCodeBlocks) {
+    displayText = displayText.replace(/```[\s\S]*?```/g, '').trim();
+  }
+  
+  // Check if message has pasted contents
+  const hasPastedContents = message.pastedContents && message.pastedContents.length > 0;
+  
+  // Simple Markdown renderer
+  const renderMarkdown = (text: string) => {
+    if (!text) return null;
+    
+    // Split by lines and process
+    const lines = text.split('\n');
+    const elements: JSX.Element[] = [];
+    let currentParagraph: string[] = [];
+    let inCodeBlock = false;
+    let codeContent: string[] = [];
+    let codeLanguage = '';
+    
+    const flushParagraph = () => {
+      if (currentParagraph.length > 0) {
+        const text = currentParagraph.join('\n');
+        elements.push(
+          <p key={elements.length} className="dash_mdParagraph">
+            {processInlineMarkdown(text)}
+          </p>
+        );
+        currentParagraph = [];
+      }
+    };
+    
+    const processInlineMarkdown = (text: string) => {
+      // Process bold, italic, code
+      const parts: (string | JSX.Element)[] = [];
+      let remaining = text;
+      let keyIndex = 0;
+      
+      while (remaining.length > 0) {
+        // Bold **text**
+        const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+        // Italic *text*
+        const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+        // Inline code `code`
+        const codeMatch = remaining.match(/`([^`]+)`/);
+        
+        // Find the earliest match
+        const matches = [
+          boldMatch ? { type: 'bold', match: boldMatch, index: boldMatch.index! } : null,
+          italicMatch ? { type: 'italic', match: italicMatch, index: italicMatch.index! } : null,
+          codeMatch ? { type: 'code', match: codeMatch, index: codeMatch.index! } : null,
+        ].filter(Boolean).sort((a, b) => a!.index - b!.index);
+        
+        if (matches.length === 0) {
+          parts.push(remaining);
+          break;
+        }
+        
+        const firstMatch = matches[0]!;
+        
+        // Add text before match
+        if (firstMatch.index > 0) {
+          parts.push(remaining.slice(0, firstMatch.index));
+        }
+        
+        // Add formatted element
+        if (firstMatch.type === 'bold') {
+          parts.push(<strong key={keyIndex++}>{firstMatch.match[1]}</strong>);
+        } else if (firstMatch.type === 'italic') {
+          parts.push(<em key={keyIndex++}>{firstMatch.match[1]}</em>);
+        } else if (firstMatch.type === 'code') {
+          parts.push(<code key={keyIndex++} className="dash_mdInlineCode">{firstMatch.match[1]}</code>);
+        }
+        
+        remaining = remaining.slice(firstMatch.index + firstMatch.match[0].length);
+      }
+      
+      return parts;
+    };
+    
+    lines.forEach((line) => {
+      // Code block start/end
+      if (line.startsWith('```')) {
+        if (!inCodeBlock) {
+          flushParagraph();
+          inCodeBlock = true;
+          codeLanguage = line.slice(3).trim();
+          codeContent = [];
+        } else {
+          // Don't render code blocks in chat if hideCodeBlocks is true
+          if (!hideCodeBlocks) {
+            elements.push(
+              <div key={elements.length} className="dash_mdCodeBlock">
+                <div className="dash_mdCodeHeader">{codeLanguage || 'code'}</div>
+                <pre className="dash_mdCodeContent"><code>{codeContent.join('\n')}</code></pre>
+              </div>
+            );
+          }
+          inCodeBlock = false;
+          codeContent = [];
+          codeLanguage = '';
+        }
+        return;
+      }
+      
+      if (inCodeBlock) {
+        codeContent.push(line);
+        return;
+      }
+      
+      // Headers
+      if (line.startsWith('### ')) {
+        flushParagraph();
+        elements.push(<h4 key={elements.length} className="dash_mdH3">{line.slice(4)}</h4>);
+        return;
+      }
+      if (line.startsWith('## ')) {
+        flushParagraph();
+        elements.push(<h3 key={elements.length} className="dash_mdH2">{line.slice(3)}</h3>);
+        return;
+      }
+      if (line.startsWith('# ')) {
+        flushParagraph();
+        elements.push(<h2 key={elements.length} className="dash_mdH1">{line.slice(2)}</h2>);
+        return;
+      }
+      
+      // Empty line = paragraph break
+      if (line.trim() === '') {
+        flushParagraph();
+        return;
+      }
+      
+      // Regular text
+      currentParagraph.push(line);
+    });
+    
+    flushParagraph();
+    
+    return elements;
+  };
+  
+  // Copy message to clipboard
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.text);
+  };
+  
+  // Feedback handlers (placeholder - connect to your backend)
+  const handleLike = () => {
+    console.log('Liked message:', message.id);
+  };
+  
+  const handleDislike = () => {
+    console.log('Disliked message:', message.id);
+  };
+  
+  // Format timestamp
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+  
+  return (
+    <div className={`dash_messageWrapper ${isUser ? "dash_messageWrapper--user" : "dash_messageWrapper--ai"}`}>
+      <div className={`dash_messageBubble ${isUser ? "dash_messageBubble--user" : "dash_messageBubble--ai"}`}>
+        {/* Pasted content chips for user messages */}
+        {isUser && hasPastedContents && (
+          <div className="dash_messagePastedChips">
+            {message.pastedContents!.map((pasted, idx) => (
+              <button
+                key={pasted.id}
+                type="button"
+                className="dash_messagePastedChip"
+                onClick={() => setShowPastedModal(idx)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>PASTED {idx + 1}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        
+        <div className="dash_messageText">
+          {isUser ? displayText : renderMarkdown(displayText)}
+        </div>
+        
+        {/* AI message footer stays inside bubble */}
+        {!isUser && (
+          <div className="dash_messageFooter">
+            <span className="dash_messageTime">{formatTime(message.createdAt)}</span>
+            <div className="dash_messageActions">
+              <button 
+                type="button" 
+                className="dash_messageActionBtn"
+                onClick={handleCopy}
+                title="Copy to clipboard"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+              <button 
+                type="button" 
+                className="dash_messageActionBtn"
+                onClick={handleLike}
+                title="Good response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                </svg>
+              </button>
+              <button 
+                type="button" 
+                className="dash_messageActionBtn"
+                onClick={handleDislike}
+                title="Bad response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* User timestamp outside the bubble */}
+      {isUser && (
+        <div className="dash_messageTimeExternal">
+          {formatTime(message.createdAt)}
+        </div>
+      )}
+      
+      {/* Pasted content modal */}
+      {showPastedModal !== null && message.pastedContents && (
+        <div className="dash_pastedModalOverlay" onClick={() => setShowPastedModal(null)}>
+          <div className="dash_pastedModal" onClick={(e) => e.stopPropagation()}>
+            <div className="dash_pastedModalHeader">
+              <span>PASTED {showPastedModal + 1}</span>
+              <button 
+                type="button" 
+                className="dash_pastedModalClose"
+                onClick={() => setShowPastedModal(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="dash_pastedModalContent">
+              {message.pastedContents[showPastedModal]?.content || ""}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+// Simple syntax highlighting for code
+function highlightCode(code: string, language: string): string {
+  // Escape HTML first
+  let html = code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  // Keywords for different languages
+  const jsKeywords = /\b(const|let|var|function|return|if|else|for|while|class|export|import|from|default|async|await|new|this|try|catch|throw|typeof|instanceof)\b/g;
+  const typeKeywords = /\b(string|number|boolean|void|any|null|undefined|true|false)\b/g;
+  
+  // Comments
+  html = html.replace(/(\/\/.*$)/gm, '<span class="code-comment">$1</span>');
+  html = html.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="code-comment">$1</span>');
+  
+  // Strings (double and single quotes, template literals)
+  html = html.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="code-string">$1</span>');
+  html = html.replace(/('(?:[^'\\]|\\.)*')/g, '<span class="code-string">$1</span>');
+  html = html.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span class="code-string">$1</span>');
+  
+  // Numbers
+  html = html.replace(/\b(\d+\.?\d*)\b/g, '<span class="code-number">$1</span>');
+  
+  // Keywords
+  html = html.replace(jsKeywords, '<span class="code-keyword">$1</span>');
+  
+  // Types (for TypeScript)
+  if (language === 'typescript' || language === 'ts') {
+    html = html.replace(typeKeywords, '<span class="code-type">$1</span>');
+    html = html.replace(/:\s*([A-Z]\w*)/g, ': <span class="code-type">$1</span>');
+  }
+  
+  // Function names
+  html = html.replace(/\b([a-zA-Z_]\w*)\s*\(/g, '<span class="code-function">$1</span>(');
+  
+  return html;
+}
+
+async function loadUserProfile(user: any): Promise<{ name: string; role: string | null; teamId: string | null }> {
+  if (!user) return { name: "", role: null, teamId: null };
+
+  let baseName = user.email?.split("@")[0] ?? "";
+  let role: string | null = null;
+  let teamId: string | null = null;
+
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("full_name, active_team_id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (profileData?.full_name) {
+    const parts = profileData.full_name.trim().split(/\s+/);
+    baseName = parts[0] || baseName;
+  }
+
+  if (profileData?.active_team_id) {
+    teamId = profileData.active_team_id;
+
+    const { data: membershipData } = await supabase
+      .from("team_memberships")
+      .select("role")
+      .eq("auth_user_id", user.id)
+      .eq("team_id", profileData.active_team_id)
+      .maybeSingle();
+
+    if (membershipData?.role) {
+      role = membershipData.role;
+    }
+  }
+
+  return { name: baseName, role, teamId };
+}
+
+// ============================================================================
+// DASHBOARD HEADER
+// ============================================================================
+
+interface DashboardHeaderProps {
+  userName: string;
+  userRole?: string | null;
+  userError?: string | null;
+  currentPage?: string;
+  credits: number;
+  maxCredits: number;
+  onChangeAgent?: () => void;
+  titleBarVisible?: boolean;
+  onToggleTitleBar?: () => void;
+}
+
+function DashboardHeader({ 
+  userName, 
+  userRole, 
+  userError,
+  currentPage = "Home",
+  credits,
+  maxCredits,
+  onChangeAgent,
+  titleBarVisible = true,
+  onToggleTitleBar 
+}: DashboardHeaderProps) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(LS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  
+  // Credits modal state
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailContext, setEmailContext] = useState("");
+
+  useEffect(() => {
+    if (sidebarCollapsed) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
+    else document.documentElement.classList.remove(ROOT_COLLAPSED_CLASS);
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+
+      try {
+        localStorage.setItem(LS_KEY, next ? "1" : "0");
+      } catch {}
+
+      if (next) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
+      else document.documentElement.classList.remove(ROOT_COLLAPSED_CLASS);
+
+      window.dispatchEvent(
+        new CustomEvent("cora:sidebar-toggle", { detail: { collapsed: next } })
+      );
+
+      return next;
+    });
+  }, []);
+  
+  const handleSendRequest = () => {
+    // Here you would send the email request
+    console.log("Token request:", { subject: emailSubject, context: emailContext });
+    // Reset form and close modal
+    setEmailSubject("");
+    setEmailContext("");
+    setShowCreditsModal(false);
+    // Show success feedback (could add a toast here)
+    alert("Request sent! We'll get back to you shortly.");
+  };
+  // ─── Theme System ───
+  type ThemeMode = "light" | "dark" | "pink" | "ocean" | "forest" | "sand";
+
+  const CUSTOM_THEMES: { id: ThemeMode; label: string; colors: string[] }[] = [
+    { id: "pink", label: "Variant 1", colors: ["#fb6f92", "#ffc8d6", "#ffecf1"] },
+    { id: "ocean", label: "Variant 2", colors: ["#14365a", "#1a4570", "#8aaec8"] },
+    { id: "forest", label: "Variant 3", colors: ["#1a3a38", "#4a8a7a", "#c8dcc4"] },
+    { id: "sand", label: "Variant 4", colors: ["#c4a882", "#dcc8b0", "#f0e8de"] },
+  ];
+
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem("cora.theme");
+    return (saved as ThemeMode) || "light";
+  });
+
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("cora.theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setShowThemeMenu(false);
+      }
+    };
+    if (showThemeMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showThemeMenu]);
+
+  const isCustomTheme = theme !== "light" && theme !== "dark";
+  const isDark = theme === "dark";
+
+  const toggleLightDark = () => {
+    setTheme(isDark ? "light" : "dark");
+    setShowThemeMenu(false);
+  };
+
+  const displayName = (userName || "").trim() || "User";
+  const displayRole = userRole || null;
+  const creditsPercentage = (credits / maxCredits) * 100;
+
+  return (
+    <>
+      <header className="dash_header">
+        <div className="dash_headerLeft">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="dash_menuBtn"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <Menu size={18} />
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggleTitleBar}
+            className="dash_menuBtn"
+            aria-label={titleBarVisible ? "Hide toolbar" : "Show toolbar"}
+            title={titleBarVisible ? "Ocultar barra" : "Mostrar barra"}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="5" r="1" />
+              <circle cx="12" cy="12" r="1" />
+              <circle cx="12" cy="19" r="1" />
+            </svg>
+          </button>
+
+          <div className="dash_headerDivider" />
+
+          <div className="dash_userInfo">
+            <span className="dash_pageName">{currentPage}</span>
+            <span className="dash_pathSeparator">/</span>
+            <span className="dash_userName">{displayName}</span>
+            {displayRole && (
+              <>
+                <span className="dash_userSeparator">/</span>
+                <span className="dash_userRole">{displayRole}</span>
+              </>
+            )}
+          </div>
+          {userError && <span className="dash_userError">({userError})</span>}
+          
+          {/* Credits Bar */}
+          <div className="dash_creditsContainer">
+            <div className="dash_creditsBar">
+              <div 
+                className="dash_creditsFill" 
+                style={{ width: `${creditsPercentage}%` }}
+              />
+            </div>
+            <span className="dash_creditsText">
+              {credits.toLocaleString()} Credits Left
+            </span>
+            <button 
+              type="button" 
+              className="dash_creditsAddBtn"
+              onClick={() => setShowCreditsModal(true)}
+              aria-label="Request more credits"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="dash_headerRight">
+          <button 
+            type="button" 
+            className="dash_changeAgentBtn"
+            onClick={onChangeAgent}
+          >
+            <AgentIcon />
+            <span>Change agent</span>
+          </button>
+          
+          <div className="dash_headerDivider" />
+          
+          <button type="button" className="dash_headerBtn">
+            Feedback
+          </button>
+            
+          {/* Theme controls */}
+          <div className="dash_themeControls" ref={themeMenuRef}>
+            {/* Light/Dark toggle switch */}
+            <button
+              type="button"
+              className={`dash_themeSwitch ${isDark || isCustomTheme ? "" : "is-light"}`}
+              onClick={toggleLightDark}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDark ? "Modo claro" : "Modo oscuro"}
+            >
+              <svg className="dash_themeSwitchIcon dash_themeSwitchIcon--sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+              <svg className="dash_themeSwitchIcon dash_themeSwitchIcon--moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+              <span className="dash_themeSwitchThumb" />
+            </button>
+
+            {/* Custom theme button */}
+            <button
+              type="button"
+              className={`dash_themeCustomBtn ${isCustomTheme ? "is-active" : ""}`}
+              onClick={() => setShowThemeMenu(!showThemeMenu)}
+              aria-label="Custom themes"
+              title="Temas personalizados"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="13.5" cy="6.5" r="2.5" />
+                <circle cx="17.5" cy="10.5" r="2.5" />
+                <circle cx="8.5" cy="7.5" r="2.5" />
+                <circle cx="6.5" cy="12.5" r="2.5" />
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+              </svg>
+            </button>
+
+            {/* Dropdown */}
+            {showThemeMenu && (
+              <div className="dash_themeDropdown">
+                <div className="dash_themeDropdownLabel">Custom Themes</div>
+                {CUSTOM_THEMES.map((t) => (
+                  <button
+                    key={t.id}
+                    className={`dash_themeDropdownItem ${theme === t.id ? "is-active" : ""}`}
+                    onClick={() => { setTheme(t.id); setShowThemeMenu(false); }}
+                  >
+                    <span className="dash_themeSwatches">
+                      {t.colors.map((c, i) => (
+                        <span key={i} className="dash_themeSwatch" style={{ background: c }} />
+                      ))}
+                    </span>
+                    <span>{t.label}</span>
+                    {theme === t.id && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: "auto" }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+
+          <button type="button" className="dash_headerBtn">
+            Docs
+          </button>
+        </div>
+      </header>
+      
+      {/* Credits Request Modal */}
+      {showCreditsModal && (
+        <div className="dash_modalOverlay" onClick={() => setShowCreditsModal(false)}>
+          <div className="dash_creditsModal" onClick={(e) => e.stopPropagation()}>
+            <div className="dash_creditsModalHeader">
+              <h2>Request More Tokens</h2>
+              <button 
+                type="button" 
+                className="dash_creditsModalClose"
+                onClick={() => setShowCreditsModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <p className="dash_creditsModalDesc">
+              Need more tokens? Send us an email with the context of your request and we'll get back to you shortly.
+            </p>
+            
+            <div className="dash_creditsModalForm">
+              <div className="dash_creditsModalField">
+                <label htmlFor="email-subject">Subject</label>
+                <input 
+                  id="email-subject"
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="e.g., Request for additional research tokens"
+                />
+              </div>
+              
+              <div className="dash_creditsModalField">
+                <label htmlFor="email-context">Context of your request</label>
+                <textarea 
+                  id="email-context"
+                  value={emailContext}
+                  onChange={(e) => setEmailContext(e.target.value)}
+                  placeholder="Please describe why you need additional tokens and how you plan to use them..."
+                  rows={4}
+                />
+              </div>
+              
+              <div className="dash_creditsModalActions">
+                <button 
+                  type="button" 
+                  className="dash_creditsModalCancel"
+                  onClick={() => setShowCreditsModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="dash_creditsModalSubmit"
+                  onClick={handleSendRequest}
+                  disabled={!emailSubject.trim() || !emailContext.trim()}
+                >
+                  Send Request
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ============================================================================
+// DASHBOARD PAGE
+// ============================================================================
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userLoadError, setUserLoadError] = useState<string | null>(null);
+  const [chatMessage, setChatMessage] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  
+  // Token balance
+  const [totalTokens, setTotalTokens] = useState(10000);
+  const [remainingTokens, setRemainingTokens] = useState(10000);
+  
+  // Dashboard stats (from chat.get_dashboard_stats)
+  const [dashStats, setDashStats] = useState({
+    notifications: 0,
+    currentWorks: 0,
+    activeTasks: 0,
+  });
+  
+  // Settings dropdowns
+  const [focusedOn, setFocusedOn] = useState("research");
+  const [chatMode, setChatMode] = useState("chat");
+  const [selectedLlm, setSelectedLlm] = useState("gpt4");
+  const [knowledge, setKnowledge] = useState("all");
+  
+  // Settings collapsed state
+  const [settingsCollapsed, setSettingsCollapsed] = useState(false);
+  const [titleBarVisible, setTitleBarVisible] = useState(true);
+  
+  // Sessions state — start with empty, will be populated from Supabase or on first New Chat
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  
+  // Chat started (first message sent)
+  const [chatStarted, setChatStarted] = useState(false);
+  
+  // Loading state (AI is thinking) - local state
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Left panel messages for agent mode (includes both user and AI)
+  interface LeftPanelMessage {
+    id: string;
+    text: string;
+    sender: "user" | "ai";
+    pastedContents?: PastedContent[];
+  }
+  const [leftPanelMessages, setLeftPanelMessages] = useState<LeftPanelMessage[]>([]);
+  const [currentTypingText, setCurrentTypingText] = useState<string>("");
+  const [showPastedModalInChat, setShowPastedModalInChat] = useState<{messageId: string, pasteIndex: number} | null>(null);
+  
+  // Code panel state (for Code mode)
+  const [codeContent, setCodeContent] = useState<string>("");
+  const [codeLanguage, setCodeLanguage] = useState<string>("");
+  
+  // Timeline events state
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  
+  // HITL Wizard state
+  const [hitlQuestions, setHitlQuestions] = useState<ClarificationQuestion[]>([]);
+  const [hitlCurrentIndex, setHitlCurrentIndex] = useState(0);
+  const [hitlAnswers, setHitlAnswers] = useState<Record<string, string>>({});
+  const [showHitlWizard, setShowHitlWizard] = useState(false);
+  
+  // Follow-up suggestions state
+  const [suggestions, setSuggestions] = useState<FollowUpSuggestion[]>([]);
+  
+  // Global thinking context (for sidebar eyes)
+  const { setIsThinking } = useThinking();
+  
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const leftPanelMessagesRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesAreaRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to bottom button state
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+  // Current session (may be null if no sessions loaded yet)
+  const currentSession = sessions.find(s => s.id === currentSessionId) || sessions[0] || null;
+
+  // Dropdown options
+  const focusOptions: DropdownOption[] = [
+    { value: "research", label: "Research" },
+    { value: "development", label: "Development" },
+    { value: "analysis", label: "Analysis" },
+    { value: "documentation", label: "Documentation" },
+    { value: "troubleshooting", label: "Troubleshooting" },
+  ];
+
+  const modeOptions: DropdownOption[] = [
+    { value: "chat", label: "Chat" },
+    { value: "voice", label: "Voice" },
+    { value: "code", label: "Code" },
+    { value: "agent", label: "Agent" },
+  ];
+
+  const llmOptions: DropdownOption[] = [
+    { value: "gpt4", label: "GPT-4o" },
+    { value: "gpt4turbo", label: "GPT-4 Turbo" },
+    { value: "claude", label: "Claude Sonnet" },
+    { value: "gemini", label: "Gemini Pro" },
+    { value: "llama", label: "Llama 3" },
+  ];
+
+  const knowledgeOptions: DropdownOption[] = [
+    { value: "all", label: "All" },
+    { value: "specific", label: "Specific tables" },
+    { value: "add", label: "+ Add new" },
+  ];
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (currentSession && currentSession.messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [currentSession?.messages.length]);
+  
+  // Detect scroll position to show/hide scroll button
+  useEffect(() => {
+    const messagesArea = messagesAreaRef.current;
+    if (!messagesArea) return;
+    
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = messagesArea;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      // Show button if scrolled up more than 100px from bottom
+      setShowScrollButton(distanceFromBottom > 100);
+    };
+    
+    messagesArea.addEventListener('scroll', handleScroll);
+    return () => messagesArea.removeEventListener('scroll', handleScroll);
+  }, [chatStarted, currentSession?.messages.length]);
+  
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // File handling
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const filesArray = Array.from(e.target.files);
+    setPendingFiles((prev) => [...prev, ...filesArray]);
+    e.target.value = "";
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleChangeAgent = () => {
+    console.log("Change agent clicked");
+  };
+
+  // Stop the AI from thinking
+  const handleStopThinking = () => {
+    setIsLoading(false);
+    setIsThinking(false);
+    setTimelineEvents([]);
+    setShowHitlWizard(false);
+    setCurrentTypingText("");
+  };
+
+  const toggleSettings = () => {
+    setSettingsCollapsed(prev => !prev);
+  };
+
+  const handleNewChat = async () => {
+    const newSessionId = crypto.randomUUID();
+    const newSession: Session = {
+      id: newSessionId,
+      title: `Chat ${sessions.length + 1}`,
+      createdAt: new Date().toISOString(),
+      messages: [],
+    };
+    
+    // Persist to Supabase
+    if (userId && teamId) {
+      const { error } = await supabase.schema("chat").from("sessions").insert({
+        id: newSessionId,
+        auth_user_id: userId,
+        team_id: teamId,
+        title: newSession.title,
+        focused_on: focusedOn,
+        chat_mode: chatMode,
+        llm_model: selectedLlm,
+        knowledge: knowledge,
+      });
+      if (error) console.error("[NewChat] Failed to create session:", error);
+    }
+    
+    setSessions(prev => [newSession, ...prev]);
+    setCurrentSessionId(newSessionId);
+    setChatStarted(false);
+    setLeftPanelMessages([]);
+    setCurrentTypingText("");
+    
+    // Clear Timeline, HITL and Suggestions
+    setTimelineEvents([]);
+    setHitlQuestions([]);
+    setHitlCurrentIndex(0);
+    setHitlAnswers({});
+    setShowHitlWizard(false);
+    setSuggestions([]);
+    setCodeContent("");
+    setCodeLanguage("");
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    setCurrentSessionId(sessionId);
+    const session = sessions.find(s => s.id === sessionId);
+    setChatStarted((session?.messages.length || 0) > 0);
+    setLeftPanelMessages([]);
+    setCurrentTypingText("");
+    
+    // Clear Timeline, HITL and Suggestions when switching sessions
+    setTimelineEvents([]);
+    setHitlQuestions([]);
+    setHitlCurrentIndex(0);
+    setHitlAnswers({});
+    setShowHitlWizard(false);
+    setSuggestions([]);
+    setCodeContent("");
+    setCodeLanguage("");
+  };
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadUser = async () => {
+      setUserLoadError(null);
+
+      const { data, error } = await supabase.auth.getUser();
+      if (!alive) return;
+
+      if (error) {
+        setUserLoadError("Could not load user");
+        return;
+      }
+
+      const user = data?.user;
+      if (!user) {
+        setUserLoadError("Not authenticated");
+        return;
+      }
+
+      setUserId(user.id);
+
+      try {
+        const profile = await loadUserProfile(user);
+        if (!alive) return;
+
+        setUserName(profile.name);
+        setUserRole(profile.role);
+        setTeamId(profile.teamId);
+
+        if (!profile.teamId) return;
+
+        // Load token balance from chat schema
+        const { data: balanceData, error: balanceErr } = await supabase
+          .schema("chat")
+          .rpc("get_token_balance", {
+            p_auth_user_id: user.id,
+            p_team_id: profile.teamId,
+          });
+
+        if (balanceErr) console.error("[Init] Token balance error:", balanceErr);
+        if (alive && balanceData && balanceData.length > 0) {
+          setTotalTokens(balanceData[0].total_tokens);
+          setRemainingTokens(balanceData[0].remaining_tokens);
+        }
+
+        // Load dashboard stats from chat schema
+        const { data: statsData, error: statsErr } = await supabase
+          .schema("chat")
+          .rpc("get_dashboard_stats", {
+            p_auth_user_id: user.id,
+            p_team_id: profile.teamId,
+          });
+
+        if (statsErr) console.error("[Init] Dashboard stats error:", statsErr);
+        if (alive && statsData && statsData.length > 0) {
+          setDashStats({
+            notifications: Number(statsData[0].unread_notifications) || 0,
+            currentWorks: Number(statsData[0].current_works) || 0,
+            activeTasks: Number(statsData[0].active_tasks) || 0,
+          });
+        }
+
+        // Load existing sessions from chat schema
+        const { data: sessionsData, error: sessionsErr } = await supabase
+          .schema("chat")
+          .from("sessions")
+          .select("id, title, status, focused_on, chat_mode, llm_model, knowledge, message_count, tokens_used, created_at, updated_at")
+          .eq("auth_user_id", user.id)
+          .eq("team_id", profile.teamId)
+          .eq("status", "active")
+          .order("created_at", { ascending: false });
+
+        if (sessionsErr) console.error("[Init] Sessions load error:", sessionsErr);
+
+        if (alive && sessionsData && sessionsData.length > 0) {
+          // Load messages for each session
+          const loadedSessions: Session[] = [];
+          
+          for (const s of sessionsData) {
+            const { data: messagesData } = await supabase
+              .schema("chat")
+              .from("messages")
+              .select("id, sender, content, tokens_total, pasted_contents, created_at")
+              .eq("session_id", s.id)
+              .order("created_at", { ascending: true });
+
+            const messages: Message[] = (messagesData || []).map((m: any) => ({
+              id: m.id,
+              text: m.content,
+              sender: m.sender as "user" | "ai",
+              createdAt: m.created_at,
+              pastedContents: m.pasted_contents && m.pasted_contents.length > 0
+                ? m.pasted_contents
+                : undefined,
+            }));
+
+            loadedSessions.push({
+              id: s.id,
+              title: s.title,
+              createdAt: s.created_at,
+              messages,
+            });
+          }
+
+          if (alive) {
+            setSessions(loadedSessions);
+
+            // Check if we should open a specific session (from Chat History page)
+            let targetSessionId: string | null = null;
+            try {
+              targetSessionId = sessionStorage.getItem("sentinela.continueSessionId");
+              sessionStorage.removeItem("sentinela.continueSessionId");
+            } catch {}
+
+            const targetSession = targetSessionId
+              ? loadedSessions.find(s => s.id === targetSessionId)
+              : null;
+
+            if (targetSession) {
+              setCurrentSessionId(targetSession.id);
+              setChatStarted(targetSession.messages.length > 0);
+            } else {
+              setCurrentSessionId(loadedSessions[0].id);
+              setChatStarted(loadedSessions[0].messages.length > 0);
+            }
+          }
+        } else if (alive) {
+          // Check if a session was just created from Chat History
+          let targetSessionId: string | null = null;
+          try {
+            targetSessionId = sessionStorage.getItem("sentinela.continueSessionId");
+            sessionStorage.removeItem("sentinela.continueSessionId");
+          } catch {}
+
+          const firstId = targetSessionId || crypto.randomUUID();
+
+          // Try to fetch the session if it was created elsewhere
+          if (targetSessionId) {
+            const { data: existingSession } = await supabase
+              .schema("chat")
+              .from("sessions")
+              .select("id, title, created_at")
+              .eq("id", targetSessionId)
+              .maybeSingle();
+
+            if (existingSession) {
+              setSessions([{
+                id: existingSession.id,
+                title: existingSession.title,
+                createdAt: existingSession.created_at,
+                messages: [],
+              }]);
+              setCurrentSessionId(existingSession.id);
+              return;
+            }
+          }
+
+          // No target — create a first session
+          const { error: createErr } = await supabase.schema("chat").from("sessions").insert({
+            id: firstId,
+            auth_user_id: user.id,
+            team_id: profile.teamId,
+            title: "Chat 1",
+          });
+          if (createErr) console.error("[Init] Failed to create first session:", createErr);
+
+          setSessions([{
+            id: firstId,
+            title: "Chat 1",
+            createdAt: new Date().toISOString(),
+            messages: [],
+          }]);
+          setCurrentSessionId(firstId);
+        }
+
+      } catch {
+        if (alive) setUserLoadError("Error loading profile");
+      }
+    };
+
+    loadUser();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // ── Reload sessions when navigating back to Dashboard (e.g., from History) ──
+  useEffect(() => {
+    if (!userId || !teamId) return;
+
+    const reloadSessions = async () => {
+      let targetSessionId: string | null = null;
+      try {
+        targetSessionId = sessionStorage.getItem("sentinela.continueSessionId");
+        sessionStorage.removeItem("sentinela.continueSessionId");
+      } catch {}
+
+      const { data: sessionsData } = await supabase
+        .schema("chat")
+        .from("sessions")
+        .select("id, title, created_at")
+        .eq("auth_user_id", userId)
+        .eq("team_id", teamId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      if (sessionsData && sessionsData.length > 0) {
+        const loadedSessions: Session[] = [];
+        for (const s of sessionsData) {
+          const { data: messagesData } = await supabase
+            .schema("chat")
+            .from("messages")
+            .select("id, sender, content, tokens_total, pasted_contents, created_at")
+            .eq("session_id", s.id)
+            .order("created_at", { ascending: true });
+
+          loadedSessions.push({
+            id: s.id,
+            title: s.title,
+            createdAt: s.created_at,
+            messages: (messagesData || []).map((m: any) => ({
+              id: m.id,
+              text: m.content,
+              sender: m.sender as "user" | "ai",
+              createdAt: m.created_at,
+              pastedContents: m.pasted_contents?.length > 0 ? m.pasted_contents : undefined,
+            })),
+          });
+        }
+
+        setSessions(loadedSessions);
+
+        if (targetSessionId) {
+          const target = loadedSessions.find(s => s.id === targetSessionId);
+          if (target) {
+            setCurrentSessionId(target.id);
+            setChatStarted(target.messages.length > 0);
+          }
+        }
+      }
+    };
+
+    reloadSessions();
+  }, [userId, teamId, location.key]);
+
+  // ── Realtime: listen for AI messages, token changes, and notification/task updates ──
+  useEffect(() => {
+    if (!userId || !teamId) return;
+
+    // Subscribe to new messages in the current session (for AI responses)
+    const messagesChannel = supabase
+      .channel("chat-messages")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "chat",
+          table: "messages",
+          filter: `auth_user_id=eq.${userId}`,
+        },
+        (payload: any) => {
+          const msg = payload.new;
+          // Only process AI / system messages (user messages are added locally)
+          if (msg.sender === "user") return;
+
+          const aiMessage: Message = {
+            id: msg.id,
+            text: msg.content,
+            sender: msg.sender as "user" | "ai",
+            createdAt: msg.created_at,
+          };
+
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === msg.session_id
+                ? { ...s, messages: [...s.messages, aiMessage] }
+                : s
+            )
+          );
+
+          // Stop loading when AI responds
+          setIsLoading(false);
+          setIsThinking(false);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to token balance changes
+    const tokensChannel = supabase
+      .channel("token-balance")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "chat",
+          table: "token_balances",
+          filter: `auth_user_id=eq.${userId}`,
+        },
+        (payload: any) => {
+          const bal = payload.new;
+          setTotalTokens(bal.total_tokens);
+          setRemainingTokens(bal.total_tokens - bal.used_tokens - (bal.reserved_tokens || 0));
+        }
+      )
+      .subscribe();
+
+    // Subscribe to notifications & tasks for live stats
+    const statsChannel = supabase
+      .channel("dashboard-stats")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "chat",
+          table: "notifications",
+          filter: `auth_user_id=eq.${userId}`,
+        },
+        async () => {
+          // Re-fetch stats on any notification change
+          const { data } = await supabase
+            .schema("chat")
+            .rpc("get_dashboard_stats", {
+              p_auth_user_id: userId,
+              p_team_id: teamId,
+            });
+          if (data && data.length > 0) {
+            setDashStats({
+              notifications: Number(data[0].unread_notifications) || 0,
+              currentWorks: Number(data[0].current_works) || 0,
+              activeTasks: Number(data[0].active_tasks) || 0,
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "chat",
+          table: "tasks",
+          filter: `auth_user_id=eq.${userId}`,
+        },
+        async () => {
+          const { data } = await supabase
+            .schema("chat")
+            .rpc("get_dashboard_stats", {
+              p_auth_user_id: userId,
+              p_team_id: teamId,
+            });
+          if (data && data.length > 0) {
+            setDashStats({
+              notifications: Number(data[0].unread_notifications) || 0,
+              currentWorks: Number(data[0].current_works) || 0,
+              activeTasks: Number(data[0].active_tasks) || 0,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(tokensChannel);
+      supabase.removeChannel(statsChannel);
+    };
+  }, [userId, teamId]);
+
+  // Random greetings based on time of day
+  // Returns an SVG icon based on time of day
+  const getTimeOfDayIcon = () => {
+    const hour = new Date().getHours();
+
+    // Madrugada (0-5): Luna llena brillante
+    if (hour >= 0 && hour < 5) {
+      return (
+        <svg width="64" height="64" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="24" cy="24" r="10" />
+          <circle cx="20" cy="20" r="2" opacity="0.3" />
+          <circle cx="27" cy="18" r="1.2" opacity="0.25" />
+          <circle cx="22" cy="28" r="1.5" opacity="0.2" />
+          {/* Stars */}
+          <circle cx="8" cy="10" r="0.8" fill="currentColor" opacity="0.5" />
+          <circle cx="40" cy="8" r="0.6" fill="currentColor" opacity="0.4" />
+          <circle cx="38" cy="38" r="0.7" fill="currentColor" opacity="0.45" />
+          <circle cx="10" cy="36" r="0.5" fill="currentColor" opacity="0.35" />
+          <circle cx="6" cy="24" r="0.6" fill="currentColor" opacity="0.4" />
+          <circle cx="42" cy="22" r="0.5" fill="currentColor" opacity="0.3" />
+        </svg>
+      );
+    }
+
+    // Amanecer (5-7): Sol saliendo con horizonte
+    if (hour >= 5 && hour < 7) {
+      return (
+        <svg width="64" height="64" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          {/* Horizon line */}
+          <line x1="4" y1="32" x2="44" y2="32" />
+          {/* Half sun peeking above horizon */}
+          <path d="M14 32 A10 10 0 0 1 34 32" />
+          {/* Rays going up */}
+          <line x1="24" y1="14" x2="24" y2="18" />
+          <line x1="15" y1="17" x2="17" y2="20" />
+          <line x1="33" y1="17" x2="31" y2="20" />
+          <line x1="10" y1="24" x2="13" y2="25" />
+          <line x1="38" y1="24" x2="35" y2="25" />
+          {/* Glow lines below horizon */}
+          <line x1="8" y1="37" x2="16" y2="37" opacity="0.4" />
+          <line x1="32" y1="37" x2="40" y2="37" opacity="0.4" />
+          <line x1="18" y1="40" x2="30" y2="40" opacity="0.3" />
+        </svg>
+      );
+    }
+
+    // Mañana/Día (7-17): Sol normal
+    if (hour >= 7 && hour < 17) {
+      return (
+        <svg width="64" height="64" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="24" cy="24" r="7" />
+          <line x1="24" y1="5" x2="24" y2="10" />
+          <line x1="24" y1="38" x2="24" y2="43" />
+          <line x1="7.44" y1="7.44" x2="11.15" y2="11.15" />
+          <line x1="36.85" y1="36.85" x2="40.56" y2="40.56" />
+          <line x1="5" y1="24" x2="10" y2="24" />
+          <line x1="38" y1="24" x2="43" y2="24" />
+          <line x1="7.44" y1="40.56" x2="11.15" y2="36.85" />
+          <line x1="36.85" y1="11.15" x2="40.56" y2="7.44" />
+        </svg>
+      );
+    }
+
+    // Atardecer (17-20): Sol poniéndose con horizonte
+    if (hour >= 17 && hour < 20) {
+      return (
+        <svg width="64" height="64" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          {/* Horizon line */}
+          <line x1="4" y1="30" x2="44" y2="30" />
+          {/* Half sun sinking */}
+          <path d="M16 30 A8 8 0 0 1 32 30" />
+          {/* Soft rays */}
+          <line x1="24" y1="16" x2="24" y2="19" />
+          <line x1="16" y1="18" x2="18" y2="21" />
+          <line x1="32" y1="18" x2="30" y2="21" />
+          <line x1="11" y1="24" x2="14" y2="25" />
+          <line x1="37" y1="24" x2="34" y2="25" />
+          {/* Clouds / warm glow */}
+          <path d="M6 34 Q10 32 14 34" opacity="0.4" />
+          <path d="M34 34 Q38 32 42 34" opacity="0.4" />
+          <line x1="16" y1="38" x2="32" y2="38" opacity="0.25" />
+        </svg>
+      );
+    }
+
+    // Noche temprana (20-24): Luna creciente
+    return (
+      <svg width="64" height="64" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        {/* Crescent moon using two arcs */}
+        <path d="M28 10 A14 14 0 1 0 28 38 A10 10 0 0 1 28 10" />
+        {/* Stars */}
+        <circle cx="38" cy="12" r="0.8" fill="currentColor" opacity="0.5" />
+        <circle cx="12" cy="10" r="0.6" fill="currentColor" opacity="0.4" />
+        <circle cx="40" cy="30" r="0.7" fill="currentColor" opacity="0.45" />
+        <circle cx="8" cy="28" r="0.5" fill="currentColor" opacity="0.35" />
+        <circle cx="36" cy="42" r="0.6" fill="currentColor" opacity="0.3" />
+      </svg>
+    );
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    
+    const morningGreetings = [
+      "Good morning",
+      "Rise and shine",
+      "Morning",
+      "Ready to start",
+      "Fresh start",
+      "New day ahead",
+    ];
+    
+    const afternoonGreetings = [
+      "Good afternoon",
+      "Hey there",
+      "How's it going",
+      "Keep it up",
+      "Afternoon",
+      "Still going strong",
+    ];
+    
+    const eveningGreetings = [
+      "Good evening",
+      "Evening",
+      "Winding down",
+      "Almost there",
+      "End of day",
+    ];
+    
+    const nightGreetings = [
+      "Working late",
+      "Night owl",
+      "Burning midnight oil",
+      "Late night session",
+      "Still at it",
+      "Quiet hours",
+    ];
+    
+    let greetings: string[];
+    
+    if (hour >= 5 && hour < 12) {
+      greetings = morningGreetings;
+    } else if (hour >= 12 && hour < 18) {
+      greetings = afternoonGreetings;
+    } else if (hour >= 18 && hour < 22) {
+      greetings = eveningGreetings;
+    } else {
+      greetings = nightGreetings;
+    }
+    
+    // Use a seed based on the day so it stays consistent during the session
+    const today = new Date().toDateString();
+    const seed = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const index = seed % greetings.length;
+    
+    return greetings[index];
+  };
+
+  const displayName = (userName || "").trim() || "User";
+
+  const stats = [
+    { label: "notifications", value: dashStats.notifications },
+    { label: "current works", value: dashStats.currentWorks },
+    { label: "active tasks", value: dashStats.activeTasks },
+  ];
+
+  const handleSendMessage = async (pastedContents?: string[]) => {
+    if (!chatMessage.trim() && pendingFiles.length === 0 && (!pastedContents || pastedContents.length === 0)) return;
+    if (isLoading) return;
+
+    // Check token balance before sending
+    if (remainingTokens <= 0) {
+      // Add a system message indicating no tokens
+      const systemMsg: Message = {
+        id: crypto.randomUUID(),
+        text: "You've run out of tokens. Please request more to continue.",
+        sender: "ai",
+        createdAt: new Date().toISOString(),
+      };
+      setSessions(prev => prev.map(session =>
+        session.id === currentSessionId
+          ? { ...session, messages: [...session.messages, systemMsg] }
+          : session
+      ));
+      return;
+    }
+    
+    const messageText = chatMessage.trim() || (pastedContents && pastedContents.length > 0 ? "" : "(Attached files)");
+    
+    // Create pasted content objects
+    const pastedItems: PastedContent[] = pastedContents 
+      ? pastedContents.map(content => ({
+          id: crypto.randomUUID(),
+          content
+        }))
+      : [];
+
+    const messageId = crypto.randomUUID();
+    
+    const userMessage: Message = {
+      id: messageId,
+      text: messageText,
+      sender: "user",
+      createdAt: new Date().toISOString(),
+      pastedContents: pastedItems.length > 0 ? pastedItems : undefined,
+    };
+
+    // If there's no session in Supabase yet (first message in a local-only session), create it
+    if (userId && teamId) {
+      // Ensure session exists in DB
+      const existingSession = sessions.find(s => s.id === currentSessionId);
+      if (existingSession && existingSession.messages.length === 0) {
+        const { error: sessionErr } = await supabase.schema("chat").from("sessions").upsert({
+          id: currentSessionId,
+          auth_user_id: userId,
+          team_id: teamId,
+          title: existingSession.title,
+          focused_on: focusedOn,
+          chat_mode: chatMode,
+          llm_model: selectedLlm,
+          knowledge: knowledge,
+        }, { onConflict: "id" });
+        if (sessionErr) console.error("[SendMsg] Failed to upsert session:", sessionErr);
+      }
+
+      // Persist user message to chat.messages
+      const { error: msgErr } = await supabase.schema("chat").from("messages").insert({
+        id: messageId,
+        session_id: currentSessionId,
+        auth_user_id: userId,
+        sender: "user",
+        content: messageText,
+        pasted_contents: pastedItems.length > 0 ? pastedItems : [],
+      });
+      if (msgErr) console.error("[SendMsg] Failed to insert message:", msgErr);
+    }
+    
+    // Update session with new message (local state)
+    setSessions(prev => prev.map(session => 
+      session.id === currentSessionId
+        ? { ...session, messages: [...session.messages, userMessage] }
+        : session
+    ));
+    
+    // If mode is "agent", add user message to left panel
+    if (chatMode === "agent") {
+      setLeftPanelMessages(prev => [...prev, {
+        id: userMessage.id,
+        text: messageText,
+        sender: "user",
+        pastedContents: pastedItems.length > 0 ? pastedItems : undefined,
+      }]);
+    }
+    
+    // Mark chat as started
+    setChatStarted(true);
+    
+    // Clear input and suggestions
+    setChatMessage("");
+    setPendingFiles([]);
+    setSuggestions([]);
+    setTimelineEvents([]);
+    
+    // Start loading (AI thinking)
+    setIsLoading(true);
+    setIsThinking(true);
+    
+    // Scroll to bottom of left panel
+    setTimeout(() => {
+      leftPanelMessagesRef.current?.scrollTo({
+        top: leftPanelMessagesRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }, 100);
+    
+    // Simulate Timeline events progressively
+    const simulateTimeline = async () => {
+      const events: TimelineEvent[] = [
+        { id: "1", node: "BOOTSTRAP", message: "Initializing request processing...", timestamp: new Date().toISOString() },
+        { id: "2", node: "PLAN", message: "Analyzing user intent and creating execution plan", timestamp: new Date().toISOString() },
+        { id: "3", node: "ROUTE", message: "Selecting appropriate agent for task", timestamp: new Date().toISOString() },
+        { id: "4", node: "RESEARCH", message: "Gathering relevant information from knowledge base", timestamp: new Date().toISOString() },
+        { id: "5", node: "HUMAN_INPUT", message: "Requesting clarification from user...", timestamp: new Date().toISOString() },
+      ];
+      
+      // Add events one by one with delay
+      for (let i = 0; i < events.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        setTimelineEvents(prev => [...prev, events[i]]);
+      }
+      
+      // Always show HITL for demo purposes
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const questions: ClarificationQuestion[] = [
+        {
+          id: "q1",
+          question: "Which station is experiencing the issue?",
+          type: "choice",
+          options: [
+            { label: "Station 1 - Assembly Line", value: "station_1" },
+            { label: "Station 2 - Quality Control", value: "station_2" },
+            { label: "Station 3 - Packaging", value: "station_3" },
+            { label: "Other / Not sure", value: "other" },
+          ]
+        },
+        {
+          id: "q2",
+          question: "What type of problem are you experiencing?",
+          type: "choice",
+          options: [
+            { label: "Hardware malfunction", value: "hardware" },
+            { label: "Software error", value: "software" },
+            { label: "Performance degradation", value: "performance" },
+            { label: "Connectivity issue", value: "connectivity" },
+          ]
+        },
+        {
+          id: "q3",
+          question: "Please describe any additional details about the issue:",
+          type: "text",
+        }
+      ];
+      
+      setHitlQuestions(questions);
+      setHitlCurrentIndex(0);
+      setHitlAnswers({});
+      setShowHitlWizard(true);
+      setIsLoading(false);
+      setIsThinking(false);
+    };
+    
+    simulateTimeline();
+  };
+  
+  // Generate AI response (called after timeline or HITL completion)
+  const generateAIResponse = () => {
+    // Add more timeline events for synthesis
+    const synthesisEvents: TimelineEvent[] = [
+      { id: "6", node: "SYNTHESIZE", message: "Processing clarification answers...", timestamp: new Date().toISOString() },
+      { id: "7", node: "TROUBLESHOOTING", message: "Analyzing station diagnostics data", timestamp: new Date().toISOString() },
+      { id: "8", node: "RESPONSE", message: "Generating comprehensive solution", timestamp: new Date().toISOString() },
+    ];
+    
+    // Add synthesis events with delay
+    const addSynthesisEvents = async () => {
+      for (let i = 0; i < synthesisEvents.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setTimelineEvents(prev => [...prev, synthesisEvents[i]]);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
+      // Generate the actual response
+      const codeExample = `\`\`\`typescript
+// Diagnostic Script for Station Analysis
+async function runDiagnostics(stationId: string): Promise<DiagnosticResult> {
+  const station = await getStation(stationId);
+  
+  // Check hardware status
+  const hardwareStatus = await checkHardware(station);
+  if (!hardwareStatus.ok) {
+    return { status: 'error', type: 'hardware', details: hardwareStatus.errors };
+  }
+  
+  // Check software systems
+  const softwareStatus = await checkSoftware(station);
+  if (!softwareStatus.ok) {
+    return { status: 'warning', type: 'software', details: softwareStatus.warnings };
+  }
+  
+  // All systems operational
+  return { status: 'ok', type: 'none', details: [] };
+}
+
+// Usage
+const result = await runDiagnostics('station_1');
+console.log('Diagnostic complete:', result);
+\`\`\``;
+
+      // Build response based on HITL answers
+      const stationAnswer = hitlAnswers['q1'] || 'station_1';
+      const problemType = hitlAnswers['q2'] || 'hardware';
+      const additionalDetails = hitlAnswers['q3'] || '';
+      
+      const stationNames: Record<string, string> = {
+        'station_1': 'Station 1 - Assembly Line',
+        'station_2': 'Station 2 - Quality Control', 
+        'station_3': 'Station 3 - Packaging',
+        'other': 'Unknown Station'
+      };
+      
+      const problemDescriptions: Record<string, string> = {
+        'hardware': 'a hardware malfunction',
+        'software': 'a software error',
+        'performance': 'performance degradation',
+        'connectivity': 'a connectivity issue'
+      };
+
+      const responseText = `# Diagnostic Report: ${stationNames[stationAnswer]}
+
+Based on your responses, I've analyzed the issue and here's my assessment:
+
+## Problem Summary
+
+You reported **${problemDescriptions[problemType]}** at **${stationNames[stationAnswer]}**.${additionalDetails ? `\n\nAdditional context: *"${additionalDetails}"*` : ''}
+
+## Analysis Results
+
+After running diagnostics on the station systems, I found the following:
+
+### System Status
+- **Hardware Check**: ${problemType === 'hardware' ? '⚠️ Issues detected' : '✅ Operational'}
+- **Software Check**: ${problemType === 'software' ? '⚠️ Issues detected' : '✅ Operational'}
+- **Network Status**: ${problemType === 'connectivity' ? '⚠️ Issues detected' : '✅ Connected'}
+- **Performance Metrics**: ${problemType === 'performance' ? '⚠️ Below threshold' : '✅ Normal'}
+
+### Recommended Actions
+
+1. **Immediate**: Run the diagnostic script below to get detailed error logs
+2. **Short-term**: Schedule maintenance window for component inspection
+3. **Long-term**: Consider upgrading firmware to latest stable version
+
+## Diagnostic Script
+
+Here's a script you can run to get more detailed information:
+
+${codeExample}
+
+## Next Steps
+
+I recommend starting with the diagnostic script above. Once you have the results, I can help you interpret them and suggest specific fixes.
+
+Would you like me to:
+- Schedule a maintenance window?
+- Generate a detailed report for your team?
+- Check the status of related stations?`;
+      
+      const aiMessage: Message = {
+        id: crypto.randomUUID(),
+        text: responseText,
+        sender: "ai",
+        createdAt: new Date().toISOString(),
+      };
+      
+      setSessions(prev => prev.map(session => 
+        session.id === currentSessionId
+          ? { ...session, messages: [...session.messages, aiMessage] }
+          : session
+      ));
+      
+      // Stop loading
+      setIsLoading(false);
+      setIsThinking(false);
+      
+      // Clear timeline after a moment
+      setTimeout(() => {
+        setTimelineEvents([]);
+      }, 1000);
+      
+      // Add follow-up suggestions based on the response
+      setSuggestions([
+        { id: "s1", text: "Schedule a maintenance window for this station" },
+        { id: "s2", text: "Run diagnostics on all connected stations" },
+        { id: "s3", text: "Generate a detailed report for the engineering team" },
+      ]);
+      
+      // Handle response based on mode
+      if (chatMode === "agent") {
+        typewriterEffect(responseText, aiMessage.id);
+      } else if (chatMode === "code") {
+        const codeMatch = responseText.match(/```(\w+)?\n([\s\S]*?)```/);
+        if (codeMatch) {
+          setCodeLanguage(codeMatch[1] || "plaintext");
+          setCodeContent(codeMatch[2].trim());
+        }
+      }
+    };
+    
+    setIsLoading(true);
+    setIsThinking(true);
+    addSynthesisEvents();
+  };
+  
+  // HITL handlers
+  const handleHitlAnswer = (questionId: string, answer: string) => {
+    setHitlAnswers(prev => ({ ...prev, [questionId]: answer }));
+    setHitlCurrentIndex(prev => prev + 1);
+  };
+  
+  const handleHitlSkip = (questionId: string) => {
+    setHitlAnswers(prev => ({ ...prev, [questionId]: "Not answered" }));
+    setHitlCurrentIndex(prev => prev + 1);
+  };
+  
+  const handleHitlComplete = () => {
+    setShowHitlWizard(false);
+    setIsLoading(true);
+    setIsThinking(true);
+    
+    // Format answers and continue processing
+    const formattedAnswers = hitlQuestions.map(q => {
+      const answer = hitlAnswers[q.id] || "Not answered";
+      return `**${q.question}**\n${answer}`;
+    }).join("\n\n");
+    
+    console.log("HITL Answers:", formattedAnswers);
+    
+    // Continue with response generation
+    setTimeout(() => {
+      generateAIResponse();
+    }, 500);
+  };
+  
+  // Handle suggestion click
+  const handleSuggestionClick = (text: string) => {
+    setChatMessage(text);
+    // Optionally auto-send
+    // handleSendMessage();
+  };
+  
+  // Typewriter effect for left panel - fixed closure issue
+  const typewriterEffect = (text: string, messageId: string) => {
+    setCurrentTypingText("");
+    let currentIndex = 0;
+    
+    const interval = setInterval(() => {
+      if (currentIndex < text.length) {
+        const char = text.charAt(currentIndex);
+        setCurrentTypingText(prev => prev + char);
+        currentIndex++;
+        
+        // Auto-scroll while typing
+        leftPanelMessagesRef.current?.scrollTo({
+          top: leftPanelMessagesRef.current.scrollHeight,
+          behavior: "auto"
+        });
+      } else {
+        clearInterval(interval);
+        // When done typing, add to messages array and clear current
+        setLeftPanelMessages(prev => [...prev, {
+          id: messageId,
+          text: text,
+          sender: "ai"
+        }]);
+        setCurrentTypingText("");
+      }
+    }, 25);
+  };
+
+  return (
+    <div className="dash_root">
+      <DashboardHeader 
+        userName={userName} 
+        userRole={userRole}
+        userError={userLoadError}
+        currentPage="Home"
+        credits={remainingTokens}
+        maxCredits={totalTokens}
+        onChangeAgent={handleChangeAgent}
+        titleBarVisible={titleBarVisible}
+        onToggleTitleBar={() => setTitleBarVisible(v => !v)}
+      />
+
+      {/* Title bar with Settings, Session Selector, and New Chat button */}
+      {titleBarVisible && <div className="dash_titleBar">
+        <div className="dash_titleLeft">
+          <div className="dash_titleGroup">
+            <div className="dash_titleText">
+              <h2 className="dash_pageTitle">Research Hub</h2>
+              <p className="dash_pageSubtitle">Powered by Sentinela AI</p>
+            </div>
+            <button 
+              type="button" 
+              className={`dash_settingsBtn ${settingsCollapsed ? "is-active" : ""}`}
+              onClick={toggleSettings}
+              aria-label="Toggle settings"
+            >
+              <SettingsIcon />
+            </button>
+          </div>
+          
+          {/* Session Selector - always visible */}
+          <SessionSelector
+            sessions={sessions}
+            currentSessionId={currentSessionId}
+            onSelectSession={handleSelectSession}
+            onViewAll={() => navigate("/chat")}
+          />
+          
+          {/* Settings row - collapsible */}
+          {!settingsCollapsed && (
+            <>
+              <div className="dash_titleDivider" />
+              
+              <div className="dash_settingsRow">
+                <DropdownSelect
+                  label="Focused On"
+                  value={focusedOn}
+                  options={focusOptions}
+                  onChange={setFocusedOn}
+                />
+                
+                <div className={isLoading ? "dash_dropdownDisabled" : ""}>
+                  <DropdownSelect
+                    label="Mode"
+                    value={chatMode}
+                    options={modeOptions}
+                    onChange={isLoading ? () => {} : setChatMode}
+                  />
+                </div>
+                
+                <DropdownSelect
+                  label="LLM"
+                  value={selectedLlm}
+                  options={llmOptions}
+                  onChange={setSelectedLlm}
+                />
+                
+                <DropdownSelect
+                  label="Knowledge"
+                  value={knowledge}
+                  options={knowledgeOptions}
+                  onChange={setKnowledge}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        
+        <div className="dash_titleRight">
+          <button type="button" className="dash_newChatBtn" onClick={handleNewChat}>
+            New chat
+            <Plus size={16} />
+          </button>
+        </div>
+      </div>}
+      
+      <main className={`dash_content dash_content--${chatMode}`}>
+        {/* Left black panel - hidden in chat mode */}
+        {chatMode !== "chat" && (
+          <div className={`dash_left dash_left--${chatMode}`} ref={leftPanelRef}>
+            <ParticleGrid containerRef={leftPanelRef} isThinking={isLoading} />
+            
+            {/* Messages in left panel (Agent mode only) */}
+            {chatMode === "agent" && (leftPanelMessages.length > 0 || currentTypingText) && (
+            <div className="dash_leftResponse" ref={leftPanelMessagesRef}>
+              <div className="dash_leftResponseInner">
+                {/* All messages (user and AI) */}
+                {leftPanelMessages.map((msg) => (
+                  <div 
+                    key={msg.id} 
+                    className={`dash_leftMessageItem ${msg.sender === "user" ? "dash_leftMessageItem--user" : "dash_leftMessageItem--ai"}`}
+                  >
+                    <span className="dash_leftMessagePrefix">
+                      {msg.sender === "user" ? "you >" : "sentinela >"}
+                    </span>
+                    <div className="dash_leftResponseText">
+                      {/* Show pasted chips if any */}
+                      {msg.pastedContents && msg.pastedContents.length > 0 && (
+                        <div className="dash_leftPastedChips">
+                          {msg.pastedContents.map((paste, idx) => (
+                            <button
+                              key={paste.id}
+                              type="button"
+                              className="dash_leftPastedChip"
+                              onClick={() => setShowPastedModalInChat({ messageId: msg.id, pasteIndex: idx })}
+                            >
+                              PASTED {idx + 1}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Currently typing message */}
+                {currentTypingText && (
+                  <div className="dash_leftMessageItem dash_leftMessageItem--ai dash_leftMessageItem--typing">
+                    <span className="dash_leftMessagePrefix">sentinela &gt;</span>
+                    <div className="dash_leftResponseText">
+                      {currentTypingText}
+                      <span className="dash_cursor">|</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Modal for viewing pasted content in chat */}
+              {showPastedModalInChat && (
+                <div className="dash_pastedModalOverlay" onClick={() => setShowPastedModalInChat(null)}>
+                  <div className="dash_pastedModal" onClick={(e) => e.stopPropagation()}>
+                    <div className="dash_pastedModalHeader">
+                      <span>Pasted content {showPastedModalInChat.pasteIndex + 1}</span>
+                      <button 
+                        type="button" 
+                        className="dash_pastedModalClose"
+                        onClick={() => setShowPastedModalInChat(null)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="dash_pastedModalContent">
+                      {leftPanelMessages
+                        .find(m => m.id === showPastedModalInChat.messageId)
+                        ?.pastedContents?.[showPastedModalInChat.pasteIndex]?.content || ""}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Code panel (Code mode only) */}
+          {chatMode === "code" && codeContent && (
+            <div className="dash_codePanel">
+              <div className="dash_codePanelHeader">
+                <span className="dash_codePanelLang">{codeLanguage}</span>
+                <button 
+                  type="button" 
+                  className="dash_codePanelCopy"
+                  onClick={() => navigator.clipboard.writeText(codeContent)}
+                >
+                  Copy
+                </button>
+              </div>
+              <pre className="dash_codePanelContent">
+                <code dangerouslySetInnerHTML={{ __html: highlightCode(codeContent, codeLanguage) }} />
+              </pre>
+            </div>
+          )}
+          
+          {/* Voice mode talk button */}
+          {chatMode === "voice" && (
+            <div className="dash_panelControls">
+              <button 
+                className="dash_talkBtn"
+                onClick={() => console.log("Start voice call")}
+                aria-label="Talk to El"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+                Talk to Sentinela
+              </button>
+            </div>
+          )}
+          </div>
+        )}
+        
+        <div className={`dash_right ${chatMode === "chat" ? "dash_right--expanded" : ""}`}>
+          
+          {/* Welcome state - centered when no messages */}
+          {!chatStarted && timelineEvents.length === 0 && !showHitlWizard && (
+            <div className="dash_welcomeCenter">
+              <div className="dash_welcomeContent">
+                <div className="dash_welcomeSunIcon">
+                  {getTimeOfDayIcon()}
+                </div>
+                <div className="dash_welcomeTextBlock">
+                  <div className="dash_welcomeLabel">{displayName}'s Workspace</div>
+                  <h1 className="dash_welcomeGreeting dash_shineText">{getGreeting()}, {displayName}</h1>
+                  <div className="dash_welcomeStats">
+                    <div className="dash_statsLine" />
+                    <div className="dash_statsList">
+                      {stats.map((stat, index) => (
+                        <div 
+                          key={stat.label} 
+                          className="dash_statItem"
+                          style={{ animationDelay: `${0.9 + index * 0.55}s` }}
+                        >
+                          <span className="dash_statValue">{stat.value}</span>
+                          <span className="dash_statLabel">{stat.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Small workspace label when chat has messages */}
+          {chatStarted && currentSession && currentSession.messages.length > 0 && (
+            <div className="dash_rightHeaderCompact">
+              <span className="dash_rightLabel">{displayName}'s Workspace</span>
+            </div>
+          )}
+
+          {/* Agent Mode indicator (Agent mode only) */}
+          {chatMode === "agent" && chatStarted && !showHitlWizard && !isLoading && (
+            <div className="dash_agentMode">
+              <div className="dash_agentModeIcon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <h2 className="dash_agentModeTitle">Now in Agent Mode</h2>
+              <p className="dash_agentModeDesc">
+                In this mode, Sentinela will try to physically complete your demands, which means:
+              </p>
+              <ul className="dash_agentModeList">
+                <li>Real-Time Data driven thinking</li>
+                <li>Shorter Answers</li>
+                <li>Real World Actions</li>
+              </ul>
+            </div>
+          )}
+
+          {/* Timeline - shows processing steps */}
+          {timelineEvents.length > 0 && (
+            <div className="dash_timelineWrapper">
+              <Timeline events={timelineEvents} isLoading={isLoading} />
+            </div>
+          )}
+
+          {/* HITL Wizard - clarification questions */}
+          {showHitlWizard && (
+            <HITLWizard
+              questions={hitlQuestions}
+              currentIndex={hitlCurrentIndex}
+              answers={hitlAnswers}
+              onAnswer={handleHitlAnswer}
+              onSkip={handleHitlSkip}
+              onComplete={handleHitlComplete}
+            />
+          )}
+
+          {/* Messages area (Chat, Voice, Code modes) */}
+          {chatMode !== "agent" && chatStarted && currentSession && currentSession.messages.length > 0 && !showHitlWizard && (
+            <div className="dash_messagesArea" ref={messagesAreaRef}>
+              <div className="dash_messagesInner">
+                {currentSession.messages.map((msg, index) => (
+                  <div key={msg.id}>
+                    {/* Show timeline events before AI response */}
+                    {msg.sender === "ai" && timelineEvents.length > 0 && index === currentSession.messages.length - 1 && (
+                      <div className="dash_messageEvents">
+                        {timelineEvents.map((event) => (
+                          <div key={event.id} className="dash_messageEvent">
+                            <span className="dash_messageEventDot" />
+                            <span className="dash_messageEventNode">{event.node}</span>
+                            <span className="dash_messageEventText">{event.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <MessageBubble 
+                      message={msg} 
+                      hideCodeBlocks={chatMode === "code"}
+                    />
+                  </div>
+                ))}
+                
+                {/* Follow-up suggestions after messages */}
+                {!isLoading && suggestions.length > 0 && (
+                  <FollowUpSuggestions 
+                    suggestions={suggestions}
+                    onSelect={handleSuggestionClick}
+                  />
+                )}
+                
+                <div ref={messagesEndRef} />
+              </div>
+              
+              {/* Scroll to bottom button */}
+              {showScrollButton && (
+                <button 
+                  type="button"
+                  className="dash_scrollToBottom"
+                  onClick={scrollToBottom}
+                  aria-label="Scroll to bottom"
+                >
+                  <ArrowUp size={16} style={{ transform: 'rotate(180deg)' }} />
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="dash_chatWrapper">
+            <ChatInput 
+              value={chatMessage}
+              onChange={setChatMessage}
+              onSubmit={handleSendMessage}
+              placeholder="Try something..."
+              disabled={isLoading}
+              isLoading={isLoading}
+              onStop={handleStopThinking}
+              pendingFiles={pendingFiles}
+              onAttachClick={handleAttachClick}
+              onRemoveFile={handleRemoveFile}
+            />
+            <input 
+              ref={fileInputRef} 
+              type="file" 
+              multiple 
+              className="dash_hiddenInput" 
+              onChange={handleFilesSelected} 
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
