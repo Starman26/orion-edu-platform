@@ -4006,7 +4006,7 @@ html.cora-sidebar-collapsed .dash_content:has(.dash_welcomeCenter)::before {
 [data-theme="dark"] .dash_flyoutLabel { color: rgba(255, 255, 255, 0.4); border-bottom-color: rgba(255, 255, 255, 0.06); }
 [data-theme="dark"] .dash_flyoutItem { color: rgba(255, 255, 255, 0.5); }
 [data-theme="dark"] .dash_flyoutItem:hover { color: rgba(255, 255, 255, 0.9); }
-[data-theme="dark"] .dash_flyoutItem.is-selected { color: rgba(255, 255, 255, 0.95); background: rgba(255, 255, 255, 0.08); border-radius: 6px; }
+[data-theme="dark"] .dash_flyoutItem.is-selected { color: rgba(255, 255, 255, 0.95); background: transparent; }
 [data-theme="dark"] .dash_flyoutCheck { color: rgba(255, 255, 255, 0.9); }
 [data-theme="dark"] .dash_flyoutItem--action { color: rgba(255, 255, 255, 0.3); border-top-color: rgba(255, 255, 255, 0.06); }
 [data-theme="dark"] .dash_flyoutSection + .dash_flyoutSection { border-top-color: rgba(255, 255, 255, 0.06); }

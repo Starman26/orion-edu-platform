@@ -17,10 +17,10 @@
   --sidebar-bg-hover: rgba(255, 255, 255, 0.07);
   --sidebar-bg-active: rgba(255, 255, 255, 0.12);
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-text: #cfc5b7;
-  --sidebar-text-soft: #afa28f;
-  --sidebar-text-muted: #7e7264;
-  --sidebar-text-dim: #52493f;
+  --sidebar-text: #d8cfc2;
+  --sidebar-text-soft: #bfb3a0;
+  --sidebar-text-muted: #9e9182;
+  --sidebar-text-dim: #7a6e60;
   --sidebar-text-active: #ffffff;
   --sidebar-accent: #b5a187;
   --sidebar-accent-soft: rgba(200, 168, 128, 0.12);
@@ -291,6 +291,10 @@
 
 [data-theme="sand"] .dash_welcomeGreeting {
   color: #312b25;
+}
+
+[data-theme="sand"] .dash_leaf {
+  color: rgba(74, 120, 60, 0.35);
 }
 
 /* ─── Agent Mode ─── */
@@ -603,8 +607,8 @@
 [data-theme="sand"] .dash_logHistoryIcon { color: #5a5040; }
 
 [data-theme="sand"] .dash_messageBubble--user {
-  background: #736454;
-  color: #ffffff;
+  background: #4a4238;
+  color: #e8e0d6;
 }
 
 [data-theme="sand"] .dash_messageBubble--ai {
@@ -616,21 +620,21 @@
 }
 
 [data-theme="sand"] .dash_messageTime {
-  color: #6e6254;
+  color: #8a7c6a;
 }
 
 [data-theme="sand"] .dash_messageTimeExternal {
-  color: #8a7b68;
+  color: #9a8c78;
 }
 
 [data-theme="sand"] .dash_messageActionBtn {
-  color: #6e6254;
+  color: #8a7c6a;
 }
 
 [data-theme="sand"] .dash_messageActionBtn:hover {
   background: rgba(98, 90, 80, 0.08);
   border-color: rgba(98, 90, 80, 0.12);
-  color: #2b2622;
+  color: #4a4238;
 }
 
 [data-theme="sand"] .dash_scrollToBottom {
@@ -1978,20 +1982,37 @@
 [data-theme="sand"] .dash_toolbarBtn.is-active { color: #312b25; background: rgba(98, 90, 80, 0.1); }
 [data-theme="sand"] .dash_toolbarSep { background: rgba(98, 90, 80, 0.08); }
 [data-theme="sand"] .dash_flyout {
-  background: #f0eee9;
-  border-color: rgba(98, 90, 80, 0.1);
-  box-shadow: 0 8px 24px rgba(60, 50, 40, 0.12);
+  background: #f5f3ee;
+  border-color: rgba(98, 90, 80, 0.12);
+  box-shadow: none;
 }
-[data-theme="sand"] .dash_flyoutLabel { color: rgba(98, 90, 80, 0.4); }
-[data-theme="sand"] .dash_flyoutItem { color: #312b25; }
+[data-theme="sand"] .dash_flyoutLabel { color: rgba(98, 90, 80, 0.45); }
+[data-theme="sand"] .dash_flyoutItem { color: rgba(49, 43, 37, 0.55); }
 [data-theme="sand"] .dash_flyoutItem svg { color: rgba(98, 90, 80, 0.4); }
-[data-theme="sand"] .dash_flyoutItem:hover { background: rgba(98, 90, 80, 0.06); }
-[data-theme="sand"] .dash_flyoutItem.is-selected { background: #312b25; color: #ffffff; }
-[data-theme="sand"] .dash_flyoutItem.is-selected svg { color: rgba(255, 255, 255, 0.6); }
+[data-theme="sand"] .dash_flyoutItem:hover { color: #312b25; background: transparent; }
+[data-theme="sand"] .dash_flyoutItem.is-selected { background: transparent; color: #312b25; font-weight: 600; }
+[data-theme="sand"] .dash_flyoutItem.is-selected svg { color: #312b25; }
 [data-theme="sand"] .dash_flyoutSection + .dash_flyoutSection { border-top-color: rgba(98, 90, 80, 0.08); }
 [data-theme="sand"] .dash_flyoutItem--action { color: rgba(98, 90, 80, 0.4); border-top-color: rgba(98, 90, 80, 0.08); }
 [data-theme="sand"] .dash_flyoutItem--action:hover { color: #312b25; }
 [data-theme="sand"] .dash_flyout::-webkit-scrollbar-thumb { background: rgba(98, 90, 80, 0.12); }
+
+/* ─── @ Mention dropdown (match flyout) ─── */
+[data-theme="sand"] .dash_mentionDropdown {
+  background: #f5f3ee;
+  border-color: rgba(98, 90, 80, 0.12);
+  box-shadow: none;
+}
+[data-theme="sand"] .dash_mentionItem { color: rgba(49, 43, 37, 0.55); }
+[data-theme="sand"] .dash_mentionItem:hover,
+[data-theme="sand"] .dash_mentionItem--active { color: #312b25; background: transparent; font-weight: 600; }
+
+/* ─── Slash command dropdown (match flyout) ─── */
+[data-theme="sand"] .dash_slashDropdown {
+  background: #f5f3ee;
+  border-color: rgba(98, 90, 80, 0.12);
+  box-shadow: none;
+}
 
 /* ============================================================================
    STUDIO PAGE
