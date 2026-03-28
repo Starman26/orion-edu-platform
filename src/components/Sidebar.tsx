@@ -157,6 +157,13 @@ export function Sidebar({
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [showAgentInfo, setShowAgentInfo] = useState(false);
 
+  // Add Lab modal state
+  const [showAddLab, setShowAddLab] = useState(false);
+  const [newLabName, setNewLabName] = useState("");
+  const [newLabDescription, setNewLabDescription] = useState("");
+  const [creatingLab, setCreatingLab] = useState(false);
+  const [createLabError, setCreateLabError] = useState<string | null>(null);
+
   // ─── Eye animation state ──────────────────────────────────────────
   type EyeState =
     | "idle"
@@ -432,6 +439,65 @@ export function Sidebar({
 
   const handleProfile = () => navigate("/my-profile");
 
+  const handleCreateLab = async () => {
+    const name = newLabName.trim();
+    if (!name) { setCreateLabError("Enter a lab name."); return; }
+
+    setCreatingLab(true);
+    setCreateLabError(null);
+
+    try {
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !user) { setCreateLabError("Session expired. Please sign in again."); return; }
+
+      const join_code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      const { data: teamData, error: teamError } = await supabase
+        .from("teams")
+        .insert({
+          name,
+          description: newLabDescription.trim() || null,
+          join_code,
+          created_by: user.id,
+        })
+        .select("id, name, description")
+        .single();
+
+      if (teamError || !teamData) {
+        console.error("Error creating team:", teamError);
+        setCreateLabError("Could not create the lab.");
+        return;
+      }
+
+      const { error: membershipError } = await supabase
+        .from("team_memberships")
+        .upsert(
+          { team_id: teamData.id, auth_user_id: user.id, role: "admin" },
+          { onConflict: "team_id,auth_user_id" }
+        );
+
+      if (membershipError) {
+        console.error("Error creating membership:", membershipError);
+        setCreateLabError("Lab created but could not link membership.");
+        return;
+      }
+
+      // Update local state
+      setTeams((prev) => [...prev, teamData as Team]);
+      await handleSelectTeam(teamData.id);
+
+      // Reset & close
+      setNewLabName("");
+      setNewLabDescription("");
+      setShowAddLab(false);
+    } catch (e) {
+      console.error(e);
+      setCreateLabError("Something went wrong. Try again.");
+    } finally {
+      setCreatingLab(false);
+    }
+  };
+
   return (
     <aside
       className={`sidebar drag-region ${collapsed ? "is-collapsed" : ""}`}
@@ -486,6 +552,15 @@ export function Sidebar({
                 );
               })
             )}
+            <div className="sidebar__dropdownDivider" />
+            <button
+              type="button"
+              className="sidebar__dropdownItem sidebar__dropdownAdd"
+              onClick={() => { setSwitcherOpen(false); setShowAddLab(true); }}
+            >
+              <span className="sidebar__dropdownAddIcon">+</span>
+              <span className="sidebar__dropdownName">Add Lab</span>
+            </button>
           </div>
         )}
       </div>
@@ -643,6 +718,78 @@ export function Sidebar({
                 </ul>
               </div>
               <p className="sidebar__agentModalFooter">Just ask me anything in the chat. I'm here to help!</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Lab Modal */}
+      {showAddLab && (
+        <div className="sidebar__agentModalOverlay" onClick={() => setShowAddLab(false)}>
+          <div className="sidebar__agentModal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <button className="sidebar__agentModalClose" onClick={() => { setShowAddLab(false); setCreateLabError(null); }}>
+              <XMarkIcon className="sidebar__agentModalCloseIcon" />
+            </button>
+            <div className="sidebar__agentModalContent" style={{ paddingTop: 24 }}>
+              <h3 className="sidebar__agentModalTitle">Create a new Lab</h3>
+              <p className="sidebar__agentModalSubtitle">You'll be the administrator of this lab.</p>
+
+              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6, opacity: 0.6 }}>
+                    Lab Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. FrED Factory"
+                    value={newLabName}
+                    onChange={(e) => setNewLabName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && newLabName.trim()) handleCreateLab(); }}
+                    autoFocus
+                    style={{
+                      width: "100%", padding: "10px 12px", borderRadius: 10,
+                      border: "1px solid var(--sidebar-border, rgba(0,0,0,0.08))",
+                      background: "var(--sidebar-bg, #fafafa)",
+                      fontSize: 14, outline: "none", color: "inherit",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6, opacity: 0.6 }}>
+                    Description (optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="What does this lab focus on?"
+                    value={newLabDescription}
+                    onChange={(e) => setNewLabDescription(e.target.value)}
+                    style={{
+                      width: "100%", padding: "10px 12px", borderRadius: 10,
+                      border: "1px solid var(--sidebar-border, rgba(0,0,0,0.08))",
+                      background: "var(--sidebar-bg, #fafafa)",
+                      fontSize: 14, outline: "none", color: "inherit",
+                    }}
+                  />
+                </div>
+
+                {createLabError && (
+                  <p style={{ fontSize: 13, color: "#e53e3e", margin: 0 }}>{createLabError}</p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleCreateLab}
+                  disabled={creatingLab || !newLabName.trim()}
+                  style={{
+                    marginTop: 4, padding: "10px 0", borderRadius: 10,
+                    background: "#101113", color: "#fafafa",
+                    fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer",
+                    opacity: creatingLab || !newLabName.trim() ? 0.5 : 1,
+                  }}
+                >
+                  {creatingLab ? "Creating..." : "Create Lab"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

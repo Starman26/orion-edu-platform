@@ -277,6 +277,26 @@
 
 [data-theme="dark"] .sidebar__dropdownItem.is-selected { color: #111214; }
 
+.sidebar__dropdownDivider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  margin: 4px 8px;
+}
+
+.sidebar__dropdownAdd {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.sidebar__dropdownAdd:hover {
+  opacity: 1;
+}
+
+.sidebar__dropdownAddIcon {
+  font-size: 16px;
+  font-weight: 300;
+  margin-right: 4px;
+}
+
 .sidebar__dropdownName {
   font-family: var(--font-display);
   font-size: 13px;
