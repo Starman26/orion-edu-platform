@@ -1,17 +1,19 @@
 // src/components/Sidebar.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BeakerIcon,
-  ArrowRightOnRectangleIcon,
-  UserIcon,
-  ChevronUpDownIcon,
-  CheckIcon,
-  InformationCircleIcon,
-  XMarkIcon,
-  UserCircleIcon,
-  ClockIcon,
-  ChartBarIcon,
-} from "@heroicons/react/24/outline";
+  FlaskConical,
+  LogOut,
+  User,
+  ChevronDown,
+  Check,
+  Info,
+  X,
+  MessageSquare,
+  Clock,
+  BarChart3,
+  Settings,
+  LayoutGrid,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useThinking } from "../context/Thinkingcontext";
@@ -24,7 +26,8 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string | null;
-  isSubitem?: boolean;
+  /** If true, badge becomes a dot indicator in collapsed mode. Neutral badges (Beta, etc.) disappear. */
+  attention?: boolean;
 };
 
 type NavSection = {
@@ -55,13 +58,18 @@ type Member = {
   auth_user_id: string | null;
 };
 
-function BentoIcon({ className }: { className?: string }) {
+/** Orion brand mark — simple ring inside the workspace switcher square. */
+function OrionMark({ className }: { className?: string }) {
   return (
-    <svg className={className} width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="4.5" height="5" rx="1" />
-      <rect x="10.5" y="3" width="4.5" height="3" rx="1" />
-      <rect x="10.5" y="9" width="4.5" height="6" rx="1" />
-      <rect x="3" y="11" width="4.5" height="4" rx="1" />
+    <svg
+      className={className}
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      aria-hidden="true"
+    >
+      <circle cx="7" cy="7" r="5.25" />
     </svg>
   );
 }
@@ -82,6 +90,23 @@ function shortId(v: string | null) {
   if (!v) return "Unknown";
   if (v.length <= 10) return v;
   return `${v.slice(0, 6)}…${v.slice(-4)}`;
+}
+
+/**
+ * Renders a workspace name with the brand-italic tail.
+ * "Orion Edu" → "Orion <em>Edu</em>"  (single word → just the word)
+ */
+function renderWorkspaceName(name: string | null | undefined): React.ReactNode {
+  if (!name) return "No lab";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length <= 1) return parts[0] ?? "No lab";
+  const [first, ...rest] = parts;
+  return (
+    <>
+      {first}
+      <em className="sidebar__workspaceItalic">{rest.join(" ")}</em>
+    </>
+  );
 }
 
 function useClickOutside(
@@ -321,28 +346,21 @@ export function Sidebar({
     return teams.find((t) => t.id === activeTeamId) || null;
   }, [teams, activeTeamId]);
 
-  const allNavItems: NavItem[] = useMemo(() => [
-    { key: "inicio", label: "Agent", icon: UserCircleIcon, badge: null },
-    { key: "proyectos", label: "Studio", icon: BentoIcon, badge: "Beta" },
-    { key: "living", label: "Living Lab", icon: BeakerIcon, badge: null },
-    { key: "chat", label: "History", icon: ClockIcon, badge: null },
-    { key: "widget", label: "Analysis", icon: ChartBarIcon, badge: null },
-  ], []);
-
-  const mainSection: NavSection = useMemo(() => ({
-    title: "Main",
+  // ─── Sections ─────────────────────────────────────────────────────
+  const navSection: NavSection = useMemo(() => ({
+    title: "Navigation",
     items: [
-      { key: "inicio", label: "Agent", icon: UserCircleIcon, badge: null },
-      { key: "proyectos", label: "Studio", icon: BentoIcon, badge: "Beta", isSubitem: true },
-      { key: "living", label: "Living Lab", icon: BeakerIcon, badge: null },
-      { key: "chat", label: "History", icon: ClockIcon, badge: null },
+      { key: "inicio", label: "Agent", icon: MessageSquare },
+      { key: "proyectos", label: "Studio", icon: LayoutGrid, badge: "Beta" },
+      { key: "living", label: "Living Lab", icon: FlaskConical },
+      { key: "chat", label: "History", icon: Clock },
     ],
   }), []);
 
-  const configSection: NavSection = useMemo(() => ({
-    title: "Configure",
+  const insightsSection: NavSection = useMemo(() => ({
+    title: "Insights",
     items: [
-      { key: "widget", label: "Analysis", icon: ChartBarIcon },
+      { key: "widget", label: "Analysis", icon: BarChart3 },
     ],
   }), []);
 
@@ -438,6 +456,7 @@ export function Sidebar({
   };
 
   const handleProfile = () => navigate("/my-profile");
+  const handleSettings = () => navigate("/settings");
 
   const handleCreateLab = async () => {
     const name = newLabName.trim();
@@ -482,11 +501,9 @@ export function Sidebar({
         return;
       }
 
-      // Update local state
       setTeams((prev) => [...prev, teamData as Team]);
       await handleSelectTeam(teamData.id);
 
-      // Reset & close
       setNewLabName("");
       setNewLabDescription("");
       setShowAddLab(false);
@@ -496,6 +513,80 @@ export function Sidebar({
     } finally {
       setCreatingLab(false);
     }
+  };
+
+  // ─── Renderers ────────────────────────────────────────────────────
+  const renderNavItem = (item: NavItem) => {
+    const active = current === item.key;
+    const Icon = item.icon;
+    const showBadge = !collapsed && !!item.badge;
+    const showDot = collapsed && !!item.badge && !!item.attention;
+
+    return (
+      <button
+        key={item.key}
+        type="button"
+        onClick={() => onNavigate(item.key)}
+        className={`sidebar__item ${active ? "is-active" : ""}`}
+        title={collapsed ? item.label : undefined}
+        aria-label={item.label}
+        aria-current={active ? "page" : undefined}
+      >
+        <Icon className="sidebar__itemIcon" />
+        <span className="sidebar__itemLabel">{item.label}</span>
+        {showBadge && <span className="sidebar__badge">{item.badge}</span>}
+        {showDot && <span className="sidebar__badgeDot" aria-hidden="true" />}
+      </button>
+    );
+  };
+
+  const renderMembers = () => {
+    if (loadingMembers) {
+      return collapsed ? null : <div className="sidebar__hint">Loading...</div>;
+    }
+    if (members.length === 0) {
+      return collapsed ? null : <div className="sidebar__hint">No members</div>;
+    }
+
+    if (collapsed) {
+      const first = members[0];
+      const extra = members.length - 1;
+      return (
+        <div className="sidebar__membersCollapsed">
+          <div
+            className="sidebar__avatar"
+            title={first.full_name || ""}
+            aria-label={first.full_name || "Team member"}
+          >
+            {getInitials(first.full_name || first.auth_user_id || "?")}
+          </div>
+          {extra > 0 && (
+            <div
+              className="sidebar__memberMore"
+              title={`${extra} more member${extra === 1 ? "" : "s"}`}
+              aria-label={`${extra} more`}
+            >
+              +{extra}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="sidebar__membersList">
+        {members.slice(0, 8).map((m) => {
+          const displayName = m.full_name || shortId(m.auth_user_id) || "Member";
+          const initials = getInitials(m.full_name || m.auth_user_id || "?");
+          return (
+            <div key={m.id} className="sidebar__memberRow">
+              <div className="sidebar__avatar">{initials}</div>
+              <span className="sidebar__memberName">{displayName}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -511,29 +602,31 @@ export function Sidebar({
       }}
       onMouseMove={handleSidebarMouseMove}
     >
-      {/* ── Header: Current Lab switcher ── */}
-      <div className={`sidebar__header no-drag ${collapsed ? "is-collapsed" : ""}`} ref={switcherRef}>
+      {/* ── Header: Workspace switcher ── */}
+      <div className="sidebar__header no-drag" ref={switcherRef}>
         <button
           type="button"
           className="sidebar__workspaceBtn"
           onClick={() => setSwitcherOpen((v) => !v)}
           disabled={loadingTeams}
+          aria-label="Switch workspace"
+          aria-expanded={switcherOpen}
+          aria-haspopup="listbox"
         >
-          {/* Spacer — invisible in expanded, preserves space in collapsed */}
-          <div className="sidebar__headerSpacer" />
-
-          {/* Expanded: label + team name */}
-          <div className="sidebar__workspaceInfo">
-            <span className="sidebar__workspaceLabel">Current Lab</span>
+          <span className="sidebar__workspaceMark" aria-hidden="true">
+            <OrionMark className="sidebar__workspaceMarkIcon" />
+          </span>
+          <span className="sidebar__workspaceText">
+            <span className="sidebar__workspaceEyebrow">Workspace</span>
             <span className="sidebar__workspaceName">
-              {activeTeam?.name || "No lab"}
+              {renderWorkspaceName(activeTeam?.name)}
             </span>
-          </div>
-          <ChevronUpDownIcon className="sidebar__chev" />
+          </span>
+          <ChevronDown className="sidebar__workspaceChev" aria-hidden="true" />
         </button>
 
         {switcherOpen && (
-          <div className="sidebar__dropdown">
+          <div className="sidebar__dropdown" role="listbox">
             {teams.length === 0 ? (
               <div className="sidebar__dropdownEmpty">No labs found</div>
             ) : (
@@ -543,11 +636,13 @@ export function Sidebar({
                   <button
                     key={t.id}
                     type="button"
+                    role="option"
+                    aria-selected={selected}
                     className={`sidebar__dropdownItem ${selected ? "is-selected" : ""}`}
                     onClick={() => handleSelectTeam(t.id)}
                   >
                     <span className="sidebar__dropdownName">{t.name || "Untitled"}</span>
-                    {selected && <CheckIcon className="sidebar__check" />}
+                    {selected && <Check className="sidebar__check" />}
                   </button>
                 );
               })
@@ -565,129 +660,96 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Navigation */}
-      <div className={`sidebar__scroll no-drag ${collapsed ? "is-collapsed" : ""}`}>
-        {/* COLLAPSED VIEW */}
-        <div className="sidebar__collapsedNav">
-          <div className="sidebar__collapsedGroup sidebar__collapsedGroup--top">
-            {allNavItems.filter(item => item.key !== "widget").map(({ key, label, icon: Icon }) => {
-              const active = current === key;
-              return (
-                <button key={key} type="button" onClick={() => onNavigate(key)} className={`sidebar__item ${active ? "is-active" : ""}`} title={label}>
-                  <Icon className="sidebar__itemIcon" />
-                </button>
-              );
-            })}
-          </div>
-          <div className="sidebar__collapsedGroup sidebar__collapsedGroup--bottom">
-            {allNavItems.filter(item => item.key === "widget").map(({ key, label, icon: Icon }) => {
-              const active = current === key;
-              return (
-                <button key={key} type="button" onClick={() => onNavigate(key)} className={`sidebar__item ${active ? "is-active" : ""}`} title={label}>
-                  <Icon className="sidebar__itemIcon" />
-                </button>
-              );
-            })}
+      {/* ── Scroll area: nav sections + team ── */}
+      <div className="sidebar__scroll no-drag">
+        {/* Navigation */}
+        <div className="sidebar__section">
+          <div className="sidebar__sectionTitle">{navSection.title}</div>
+          <div className="sidebar__sectionItems">
+            {navSection.items.map(renderNavItem)}
           </div>
         </div>
 
-        {/* EXPANDED VIEW */}
-        <div className="sidebar__expandedNav">
-          <div className="sidebar__section">
-            <div className="sidebar__sectionTitle">{mainSection.title}</div>
-            <div className="sidebar__sectionItems">
-              {mainSection.items.map(({ key, label, icon: Icon, badge, isSubitem }) => {
-                const active = current === key;
-                return (
-                  <button key={key} type="button" onClick={() => onNavigate(key)} className={`sidebar__item ${active ? "is-active" : ""} ${isSubitem ? "is-subitem" : ""}`}>
-                    <Icon className="sidebar__itemIcon" />
-                    <span className="sidebar__itemLabel">{label}</span>
-                    {badge && <span className="sidebar__badge">{badge}</span>}
-                  </button>
-                );
-              })}
-            </div>
+        {/* Insights */}
+        <div className="sidebar__section">
+          <div className="sidebar__sectionTitle">{insightsSection.title}</div>
+          <div className="sidebar__sectionItems">
+            {insightsSection.items.map(renderNavItem)}
           </div>
+        </div>
 
-          {/* Team card with Pixel Eyes */}
+        {/* Team Card with Pixel Eyes — expanded only */}
+        <div
+          className="sidebar__teamCard"
+          onMouseEnter={() => setIsCardHovered(true)}
+          onMouseLeave={() => setIsCardHovered(false)}
+          aria-hidden={collapsed}
+        >
           <div
-            className="sidebar__teamCard"
-            onMouseEnter={() => setIsCardHovered(true)}
-            onMouseLeave={() => setIsCardHovered(false)}
+            ref={eyesContainerRef}
+            className={`sidebar__simpleEyes ${isThinking ? "is-thinking" : ""}`}
           >
-            <div ref={eyesContainerRef} className={`sidebar__simpleEyes ${isThinking ? "is-thinking" : ""}`}>
-              <div className={eyeClassName("left")} style={eyeStyle()} />
-              <div className={eyeClassName("right")} style={eyeStyle()} />
+            <div className={eyeClassName("left")} style={eyeStyle()} />
+            <div className={eyeClassName("right")} style={eyeStyle()} />
+          </div>
+
+          {eyeState === "zzz" && (
+            <div className="sidebar__zzzContainer">
+              <span className="sidebar__zFloat sidebar__zFloat--1">z</span>
+              <span className="sidebar__zFloat sidebar__zFloat--2">z</span>
+              <span className="sidebar__zFloat sidebar__zFloat--3">z</span>
             </div>
+          )}
 
-            {eyeState === "zzz" && (
-              <div className="sidebar__zzzContainer">
-                <span className="sidebar__zFloat sidebar__zFloat--1">z</span>
-                <span className="sidebar__zFloat sidebar__zFloat--2">z</span>
-                <span className="sidebar__zFloat sidebar__zFloat--3">z</span>
-              </div>
-            )}
+          <button
+            type="button"
+            className={`sidebar__infoBtn ${isCardHovered ? "is-visible" : ""}`}
+            onClick={() => setShowAgentInfo(true)}
+            aria-label="About Sentinela"
+            tabIndex={collapsed ? -1 : 0}
+          >
+            <Info className="sidebar__infoBtnIcon" />
+          </button>
+        </div>
 
-            <button
-              type="button"
-              className={`sidebar__infoBtn ${isCardHovered ? "is-visible" : ""}`}
-              onClick={() => setShowAgentInfo(true)}
-              aria-label="About Sentinela"
-            >
-              <InformationCircleIcon className="sidebar__infoBtnIcon" />
-            </button>
-          </div>
-
-          {/* Team members */}
-          <div className="sidebar__section sidebar__membersSection">
-            <div className="sidebar__sectionTitle">Team</div>
-            {loadingMembers ? (
-              <div className="sidebar__hint">Loading...</div>
-            ) : members.length === 0 ? (
-              <div className="sidebar__hint">No members</div>
-            ) : (
-              <div className="sidebar__membersList">
-                {members.slice(0, 8).map((m) => {
-                  const displayName = m.full_name || shortId(m.auth_user_id) || "Member";
-                  const initials = getInitials(m.full_name || m.auth_user_id || "?");
-                  return (
-                    <div key={m.id} className="sidebar__memberRow">
-                      <div className="sidebar__avatar">{initials}</div>
-                      <span className="sidebar__memberName">{displayName}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Config section */}
-          <div className="sidebar__section">
-            <div className="sidebar__sectionTitle">{configSection.title}</div>
-            <div className="sidebar__sectionItems">
-              {configSection.items.map(({ key, label, icon: Icon }) => {
-                const active = current === key;
-                return (
-                  <button key={key} type="button" onClick={() => onNavigate(key)} className={`sidebar__item ${active ? "is-active" : ""}`}>
-                    <Icon className="sidebar__itemIcon" />
-                    <span className="sidebar__itemLabel">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        {/* Team / members */}
+        <div className="sidebar__section sidebar__section--team">
+          <div className="sidebar__sectionTitle">Team</div>
+          {renderMembers()}
         </div>
       </div>
 
-      {/* Footer */}
-      <div className={`sidebar__footer no-drag ${collapsed ? "is-collapsed" : ""}`}>
-        <button type="button" onClick={handleProfile} className="sidebar__footerItem" title={collapsed ? "My Profile" : undefined}>
-          <UserIcon className="sidebar__footerIcon" />
-          <span>My Profile</span>
+      {/* ── Footer ── */}
+      <div className="sidebar__footer no-drag">
+        <button
+          type="button"
+          onClick={handleProfile}
+          className="sidebar__footerItem"
+          title={collapsed ? "My Profile" : undefined}
+          aria-label="My Profile"
+        >
+          <User className="sidebar__footerIcon" />
+          <span className="sidebar__footerLabel">My Profile</span>
         </button>
-        <button type="button" onClick={handleLogout} className="sidebar__footerItem" title={collapsed ? "Log Out" : undefined}>
-          <ArrowRightOnRectangleIcon className="sidebar__footerIcon" />
-          <span>Log Out</span>
+        <button
+          type="button"
+          onClick={handleSettings}
+          className="sidebar__footerItem"
+          title={collapsed ? "Settings" : undefined}
+          aria-label="Settings"
+        >
+          <Settings className="sidebar__footerIcon" />
+          <span className="sidebar__footerLabel">Settings</span>
+        </button>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="sidebar__footerItem"
+          title={collapsed ? "Log Out" : undefined}
+          aria-label="Log Out"
+        >
+          <LogOut className="sidebar__footerIcon" />
+          <span className="sidebar__footerLabel">Log Out</span>
         </button>
       </div>
 
@@ -695,8 +757,8 @@ export function Sidebar({
       {showAgentInfo && (
         <div className="sidebar__agentModalOverlay" onClick={() => setShowAgentInfo(false)}>
           <div className="sidebar__agentModal" onClick={(e) => e.stopPropagation()}>
-            <button className="sidebar__agentModalClose" onClick={() => setShowAgentInfo(false)}>
-              <XMarkIcon className="sidebar__agentModalCloseIcon" />
+            <button className="sidebar__agentModalClose" onClick={() => setShowAgentInfo(false)} aria-label="Close">
+              <X className="sidebar__agentModalCloseIcon" />
             </button>
             <div className="sidebar__agentModalHeader">
               <div className="sidebar__agentModalEyes">
@@ -727,8 +789,12 @@ export function Sidebar({
       {showAddLab && (
         <div className="sidebar__agentModalOverlay" onClick={() => setShowAddLab(false)}>
           <div className="sidebar__agentModal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380 }}>
-            <button className="sidebar__agentModalClose" onClick={() => { setShowAddLab(false); setCreateLabError(null); }}>
-              <XMarkIcon className="sidebar__agentModalCloseIcon" />
+            <button
+              className="sidebar__agentModalClose"
+              onClick={() => { setShowAddLab(false); setCreateLabError(null); }}
+              aria-label="Close"
+            >
+              <X className="sidebar__agentModalCloseIcon" />
             </button>
             <div className="sidebar__agentModalContent" style={{ paddingTop: 24 }}>
               <h3 className="sidebar__agentModalTitle">Create a new Lab</h3>
@@ -748,7 +814,7 @@ export function Sidebar({
                     autoFocus
                     style={{
                       width: "100%", padding: "10px 12px", borderRadius: 10,
-                      border: "1px solid var(--sidebar-border, rgba(0,0,0,0.08))",
+                      border: "1px solid var(--sidebar-hairline, rgba(0,0,0,0.08))",
                       background: "var(--sidebar-bg, #fafafa)",
                       fontSize: 14, outline: "none", color: "inherit",
                     }}
@@ -765,7 +831,7 @@ export function Sidebar({
                     onChange={(e) => setNewLabDescription(e.target.value)}
                     style={{
                       width: "100%", padding: "10px 12px", borderRadius: 10,
-                      border: "1px solid var(--sidebar-border, rgba(0,0,0,0.08))",
+                      border: "1px solid var(--sidebar-hairline, rgba(0,0,0,0.08))",
                       background: "var(--sidebar-bg, #fafafa)",
                       fontSize: 14, outline: "none", color: "inherit",
                     }}
