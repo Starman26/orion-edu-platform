@@ -21,6 +21,7 @@
   font-style: normal;
   font-display: swap;
 }
+@import url("https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap");
 
 /* ============================================================================
    CODE BLOCK CSS VARIABLES (theme-aware)
@@ -2148,7 +2149,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 13px;
   color: #101113;
   font-family: inherit;
   resize: none;
@@ -2262,7 +2263,7 @@
 
 .dash_typewriterPlaceholder {
   position: absolute;
-  top: 14px;
+  top: 13px;
   left: 18px;
   font-size: 14px;
   line-height: 1.5;
@@ -2506,7 +2507,7 @@
   border: none;
   cursor: pointer;
   text-align: left;
-  font-family: 'Neu Machina', 'Inter', system-ui, sans-serif;
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   transition: background 0.12s ease;
 }
 
@@ -2578,6 +2579,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.dash_eventCardText,
+.dash_eventCardItemText {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  font-size: 13.5px;
 }
 
 /* ── Dark theme ── */
@@ -2872,7 +2880,7 @@
   border-radius: 16px;
   font-family: 'Neu Machina', 'Inter', system-ui, sans-serif;
   font-weight: 300;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   flex-shrink: 0;
   width: fit-content;
@@ -2892,7 +2900,7 @@
 .dash_messageBubble--user {
   background: #18191c;
   color: #ffffff;
-  border-bottom-right-radius: 4px;
+  border-radius: 10px 10px 4px 10px;
 }
 
 /* Pasted content chips in message bubble */
@@ -3466,6 +3474,7 @@
 }
 
 .dash_suggestionBtn span {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
   flex: 1;
   font-size: 13.5px;
   color: #374151;
@@ -4009,4 +4018,54 @@ html.cora-sidebar-collapsed .dash_content:has(.dash_welcomeCenter)::before {
 [data-theme="dark"] .dash_flyoutItem.is-selected { color: rgba(255, 255, 255, 0.95); background: transparent; }
 [data-theme="dark"] .dash_flyoutCheck { color: rgba(255, 255, 255, 0.9); }
 [data-theme="dark"] .dash_flyoutItem--action { color: rgba(255, 255, 255, 0.3); border-top-color: rgba(255, 255, 255, 0.06); }
+
+/* ============================================================================
+   AI MESSAGE TYPOGRAPHY · Source Serif 4
+   Source Serif 4 for agent content (AI bubbles, event cards,
+   follow-up suggestions). User bubbles stay in sans-serif.
+   Convention: user = sans, agent = serif.
+   ============================================================================ */
+
+.dash_messageBubble--ai,
+.dash_messageBubble--ai .dash_messageText,
+.dash_messageBubble--ai .dash_mdParagraph,
+.dash_messageBubble--ai .dash_mdLI,
+.dash_messageBubble--ai .dash_mdBlockquoteLine,
+.dash_messageBubble--ai .dash_mdH1,
+.dash_messageBubble--ai .dash_mdH2,
+.dash_messageBubble--ai .dash_mdH3,
+.dash_messageBubble--ai .dash_mdH4,
+.dash_messageBubble--ai .dash_mdUL,
+.dash_messageBubble--ai .dash_mdOL {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+
+.dash_messageBubble--ai {
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.dash_messageBubble--ai .dash_mdParagraph {
+  line-height: 1.7;
+}
+
+.dash_messageBubble--ai .dash_mdH1,
+.dash_messageBubble--ai .dash_mdH2,
+.dash_messageBubble--ai .dash_mdH3,
+.dash_messageBubble--ai .dash_mdH4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dash_messageBubble--ai .dash_mdInlineCode,
+.dash_messageBubble--ai .dash_mdCodeContent,
+.dash_messageBubble--ai .dash_mdCodeLang,
+.dash_messageBubble--ai .dash_mdCodeCopy {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.dash_messageBubble--ai .dash_highlight {
+  padding: 1px 5px;
+}
 [data-theme="dark"] .dash_flyoutSection + .dash_flyoutSection { border-top-color: rgba(255, 255, 255, 0.06); }
