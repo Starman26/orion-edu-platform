@@ -954,7 +954,7 @@ export default function Dashboard() {
   // Settings dropdowns
   const [focusedOn] = useState("research");
   const [chatMode, setChatMode] = useState("chat");
-  const [selectedLlm, setSelectedLlm] = useState("claude-sonnet-4-20250514");
+  const [selectedLlm, setSelectedLlm] = useState("claude-sonnet-4-6");
   const [knowledge, _setKnowledge] = useState("all");
   
   // Vertical toolbar flyout: which panel is open (null = all closed)
@@ -1394,14 +1394,13 @@ export default function Dashboard() {
 
   // Dropdown options
   const llmOptions: DropdownOption[] = [
-    { value: "gpt-4o", label: "GPT-4o" },
-    { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
-    { value: "gpt-5", label: "GPT-5" },
-    { value: "claude-sonnet-4-20250514", label: "Claude Sonnet" },
-    { value: "claude-opus-4-20250514", label: "Claude Opus 4" },
+    { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+    { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
     { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
-    { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-    { value: "gemini-2.0-flash", label: "Gemini Flash" },
+    { value: "gpt-5.5", label: "GPT-5.5" },
+    { value: "gpt-5.4", label: "GPT-5.4" },
+    { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
+    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
   ];
 
 

@@ -22,7 +22,6 @@
     "noImplicitAny": false,
 
     /* === Alias para imports: "@/..." === */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
