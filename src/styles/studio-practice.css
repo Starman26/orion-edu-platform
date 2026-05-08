@@ -314,6 +314,48 @@
   overflow: hidden;
 }
 
+/* ── Automation view (full-width, no sidebar) ── */
+
+.studio__automationView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.studio__automationView .studio__practiceMsgs {
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.studio__automationView .studio__practiceChatInput {
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.studio__automationBackBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px 5px 6px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4a4a4a;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+
+.studio__automationBackBtn:hover {
+  background: #f3f4f6;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    STEPS SIDEBAR (left panel)
    ───────────────────────────────────────────────────────────────────────────── */
@@ -495,6 +537,84 @@
 }
 
 .studio__practiceStep.is-pending .studio__practiceStepName {
+  color: #A0A0A0;
+}
+
+/* ── Sidebar view toggle (Steps / State) ── */
+
+.studio__sidebarViewToggle {
+  display: flex;
+  width: 100%;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.studio__sidebarViewBtn {
+  flex: 1;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #8A8A8A;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.studio__sidebarViewBtn:hover {
+  color: #1A1A1A;
+}
+
+.studio__sidebarViewBtn.is-active {
+  color: #1A1A1A;
+  border-bottom-color: #1A1A1A;
+}
+
+/* ── State panel ── */
+
+.studio__practiceSidebarState {
+  flex: 1;
+  padding: 12px 8px;
+  overflow-y: auto;
+}
+
+.studio__practiceSidebarState .studio__robotGauge {
+  max-width: 100%;
+}
+
+.studio__robotStateEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  padding: 32px 16px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.studio__robotStateEmptyIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+}
+
+.studio__practiceSidebarStateWaiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 32px;
+  font-size: 12.5px;
   color: #A0A0A0;
 }
 
@@ -2488,3 +2608,60 @@
 .studio__equipmentTab > .studio__searchRow + .studio__equipmentList {
   margin-top: 16px;
 }
+
+/* ── Approval strip (joint authorization) ── */
+
+.studio__approvalOuter {
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 24px;
+}
+
+.studio__approvalStrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #fafafa;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 8px;
+  max-width: 680px;
+}
+
+.studio__approvalStripLabel {
+  font-family: inherit;
+  font-size: 13px;
+  color: #111;
+}
+
+.studio__approvalStripBtns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.studio__approvalStripBtns button {
+  padding: 4px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  transition: background 0.12s ease;
+}
+
+.studio__approvalStripBtns button:first-child {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+.studio__approvalStripBtns button:first-child:hover { background: #333; }
+.studio__approvalStripBtns button:last-child:hover { background: #f3f4f6; }

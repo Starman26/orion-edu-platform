@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Check, CheckCircle, Loader2, ArrowLeft, ChevronLeft, ChevronDown, Pause, Play, Eye, RotateCcw, Info, Phone, PhoneOff, Mic, AudioLines } from "lucide-react";
+import { Check, CheckCircle, Loader2, ArrowLeft, ChevronLeft, ChevronDown, Eye, RotateCcw, Info, Phone, PhoneOff, Mic, AudioLines, Unplug } from "lucide-react";
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import { useAgentChat } from "./useAgentChat";
@@ -220,13 +220,13 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
   const [messages, setMessages] = useState<PracticeMsg[]>([]);
   const [chatMessage, setChatMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState("00:00:00");
-  const [eventRuns, setEventRuns] = useState<Record<string, EventRun>>({});
+const [eventRuns, setEventRuns] = useState<Record<string, EventRun>>({});
   const [suggestions, setSuggestions] = useState<FollowUpSuggestion[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastResponseRef = useRef<string>("");
   const [toolExecuting, setToolExecuting] = useState<string | null>(null);
   const [robotGaugeData, setRobotGaugeData] = useState<{ title: string; rows: { label: string; value: string }[] }[] | null>(null);
+  const [sidebarView, setSidebarView] = useState<"steps" | "state">("steps");
   const practiceChunksRef = useRef<PracticeChunk[]>([]);
 
   // Dedup guard: prevent StrictMode double-inserts
@@ -281,35 +281,11 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
     isCallActiveRef.current = isCallActive;
   }, [isCallActive]);
 
-  const [isPaused, setIsPaused] = useState(progress?.status === "paused");
   const [isCompleted, setIsCompleted] = useState(progress?.status === "completed");
   const isCompletedRef = useRef(progress?.status === "completed");
   const [reviewMode, setReviewMode] = useState(false);
-  const pausedAtRef = useRef<number | null>(progress?.status === "paused" ? Date.now() : null);
-  const totalPausedRef = useRef(0);
 
-  const startedAtRef = useRef(progress?.started_at ?? new Date().toISOString());
-  const startedAt = startedAtRef.current;
-
-  // Timer (pause-aware)
-  useEffect(() => {
-    if (isPaused) return;
-    if (pausedAtRef.current) {
-      totalPausedRef.current += Date.now() - pausedAtRef.current;
-      pausedAtRef.current = null;
-    }
-    const interval = setInterval(() => {
-      const raw = Date.now() - new Date(startedAt).getTime() - totalPausedRef.current;
-      const totalSec = Math.max(0, Math.floor(raw / 1000));
-      const h = Math.floor(totalSec / 3600);
-      const m = Math.floor((totalSec % 3600) / 60);
-      const s = totalSec % 60;
-      setElapsedTime(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [startedAt, isPaused]);
-
-  // ── Fetch connected robots (poll every 15s) ──
+// ── Fetch connected robots (poll every 15s) ──
   useEffect(() => {
     let cancelled = false;
     const fetchRobots = async () => {
@@ -647,30 +623,7 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
     agentSend(text);
   };
 
-  const handlePause = async () => {
-    pausedAtRef.current = Date.now();
-    setIsPaused(true);
-    await supabase.schema("lab").from("user_automation_progress").update({
-      status: "paused",
-      last_active_at: new Date().toISOString(),
-    }).eq("auth_user_id", userId).eq("automation_id", automation.id);
-    onProgressUpdate(automation.id, { status: "paused" });
-  };
-
-  const handleResume = async () => {
-    if (pausedAtRef.current) {
-      totalPausedRef.current += Date.now() - pausedAtRef.current;
-      pausedAtRef.current = null;
-    }
-    setIsPaused(false);
-    await supabase.schema("lab").from("user_automation_progress").update({
-      status: "in_progress",
-      last_active_at: new Date().toISOString(),
-    }).eq("auth_user_id", userId).eq("automation_id", automation.id);
-    onProgressUpdate(automation.id, { status: "in_progress" });
-  };
-
-  const handleStepClick = async (stepIdx: number) => {
+const handleStepClick = async (stepIdx: number) => {
     if (stepIdx > currentStep) return;
     await supabase.schema("lab").from("user_automation_progress").upsert({
       auth_user_id: userId,
@@ -946,19 +899,10 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
           {inCall ? 'Stop Call' : 'Take Call'}
         </button>
 
-        <button
-          type="button"
-          className={`studio__practicePauseBtn ${isPaused ? "is-paused" : ""}`}
-          onClick={isPaused ? handleResume : handlePause}
-        >
-          {isPaused ? <Play size={14} /> : <Pause size={14} />}
-          {isPaused ? "Resume" : "Pause"}
-        </button>
-        <div className={`studio__practiceTimer ${isPaused ? "is-paused" : ""}`}>{elapsedTime}</div>
       </>
     );
     return () => onHeaderControls?.(null);
-  }, [onHeaderControls, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, isPaused, elapsedTime, startCall, stopCall, handlePause, handleResume, labOpen]);
+  }, [onHeaderControls, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, startCall, stopCall, labOpen]);
 
   // Cache segmentMessage per message to avoid re-parsing on every render
   const segmentedMessages = useMemo(() => {
@@ -1016,32 +960,62 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
             </div>
           )}
 
-          <div className="studio__practiceSteps">
-            {steps.map((step, idx) => {
-              const completed = idx < currentStep;
-              const active = idx === currentStep;
-              const pending = idx > currentStep;
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`studio__practiceStep ${completed ? "is-completed" : ""} ${active ? "is-active" : ""} ${pending ? "is-pending" : ""}`}
-                  onClick={() => handleStepClick(idx)}
-                  disabled={pending}
-                >
-                  <span className="studio__practiceStepDot">
-                    {completed ? <Check size={12} /> : null}
-                  </span>
-                  <span className="studio__practiceStepName">{step || `Step ${idx + 1}`}</span>
-                </button>
-              );
-            })}
+          <div className="studio__sidebarViewToggle">
+            <button
+              type="button"
+              className={`studio__sidebarViewBtn ${sidebarView === "steps" ? "is-active" : ""}`}
+              onClick={() => setSidebarView("steps")}
+            >
+              Steps
+            </button>
+            <button
+              type="button"
+              className={`studio__sidebarViewBtn ${sidebarView === "state" ? "is-active" : ""}`}
+              onClick={() => setSidebarView("state")}
+            >
+              State
+            </button>
           </div>
 
-          {robotGaugeData && (
-            <div className="studio__practiceSidebarGauge">
-              <span className="studio__practiceSidebarLabel">Robot State</span>
-              <RobotGaugeTable groups={robotGaugeData} />
+          {sidebarView === "steps" ? (
+            <div className="studio__practiceSteps">
+              {steps.map((step, idx) => {
+                const completed = idx < currentStep;
+                const active = idx === currentStep;
+                const pending = idx > currentStep;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`studio__practiceStep ${completed ? "is-completed" : ""} ${active ? "is-active" : ""} ${pending ? "is-pending" : ""}`}
+                    onClick={() => handleStepClick(idx)}
+                    disabled={pending}
+                  >
+                    <span className="studio__practiceStepDot">
+                      {completed ? <Check size={12} /> : null}
+                    </span>
+                    <span className="studio__practiceStepName">{step || `Step ${idx + 1}`}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="studio__practiceSidebarState">
+              {selectedRobotIds.length === 0 ? (
+                <div className="studio__robotStateEmpty">
+                  <div className="studio__robotStateEmptyIcon">
+                    <Unplug size={28} />
+                  </div>
+                  <span>Connect to a robot to see its state</span>
+                </div>
+              ) : !robotGaugeData ? (
+                <div className="studio__practiceSidebarStateWaiting">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Waiting for data...</span>
+                </div>
+              ) : (
+                <RobotGaugeTable groups={robotGaugeData} />
+              )}
             </div>
           )}
 
@@ -1054,7 +1028,7 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
 
         {/* Chat area */}
         <div className="studio__practiceChat">
-          <div className={`studio__practiceMsgs ${isPaused ? "is-paused" : ""} ${isCompleted && !reviewMode ? "is-paused" : ""} ${inCall ? "is-in-call" : ""}`}>
+          <div className={`studio__practiceMsgs ${isCompleted && !reviewMode ? "is-paused" : ""} ${inCall ? "is-in-call" : ""}`}>
             {messages.length === 0 && !isLoading && (
               <div className="studio__practiceChatEmpty">
                 <SparklesIcon className="w-8 h-8" style={{ color: "#d1d5db" }} />
@@ -1122,21 +1096,7 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
             <div ref={messagesEndRef} />
           </div>
 
-          {isPaused && !isCompleted && (
-            <div className="studio__practicePausedOverlay">
-              <div className="studio__practicePausedCard">
-                <Pause size={20} />
-                <span className="studio__practicePausedTitle">Practice paused</span>
-                <span className="studio__practicePausedDesc">Resume to continue</span>
-                <button type="button" className="studio__practicePausedResumeBtn" onClick={handleResume}>
-                  <Play size={14} />
-                  Resume
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isCompleted && !reviewMode && (
+{isCompleted && !reviewMode && (
             <div className="studio__practicePausedOverlay">
               <div className="studio__practiceCompletedCard">
                 <CheckCircle size={32} className="studio__practiceCompletedIcon" />
@@ -1224,13 +1184,13 @@ export default function PracticeView({ automation, sessionId, userId, teamId, pr
             </div>
           )}
 
-          <div className={`studio__practiceChatInput ${isPaused || isCompleted ? "is-paused" : ""}`}>
+          <div className={`studio__practiceChatInput ${isCompleted ? "is-paused" : ""}`}>
             <ChatInput
               value={chatMessage}
               onChange={setChatMessage}
               onSubmit={handleSend}
-              placeholder={isCompleted ? "Practice completed" : isPaused ? "Practice is paused..." : "Ask about this practice..."}
-              disabled={isLoading || isPaused || isCompleted}
+              placeholder={isCompleted ? "Practice completed" : "Ask about this practice..."}
+              disabled={isLoading || isCompleted}
               isLoading={isLoading}
               onStop={() => setIsLoading(false)}
               pendingFiles={[]}

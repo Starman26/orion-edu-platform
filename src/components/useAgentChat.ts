@@ -114,6 +114,7 @@ interface UseAgentChatOptions {
   onToolLifecycle?: (event: ToolLifecycleEvent) => void;
   onDiagnosticRecall?: (event: DiagnosticRecallEvent) => void;
   onStreamEnd?: () => void;
+  onStreamChunk?: (chunk: any) => void;
 }
 
 export interface ChatImage {
@@ -154,29 +155,28 @@ interface UseAgentChatReturn {
 
 function parseSSE(text: string): { event: string; data: string }[] {
   const events: { event: string; data: string }[] = [];
-  const blocks = text.split('\n\n');
 
-  for (const block of blocks) {
-    if (!block.trim()) continue;
+  let eventType = 'message';
+  const dataLines: string[] = [];
 
-    let eventType = 'message';
-    const dataLines: string[] = [];
-
-    for (const line of block.split('\n')) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith('data: ')) {
-        dataLines.push(line.slice(6));
-      } else if (line.startsWith('data:')) {
-        // SSE spec allows "data:" without space
-        dataLines.push(line.slice(5));
-      }
-    }
-
-    if (dataLines.length > 0) {
-      // SSE spec: multiple data lines are joined with newlines
+  for (const line of text.split('\n')) {
+    if (line.startsWith('event: ')) {
+      eventType = line.slice(7).trim();
+    } else if (line.startsWith('data: ')) {
+      dataLines.push(line.slice(6));
+    } else if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5));
+    } else if (line === '' && dataLines.length > 0) {
+      // blank line = event boundary
       events.push({ event: eventType, data: dataLines.join('\n') });
+      eventType = 'message';
+      dataLines.length = 0;
     }
+  }
+
+  // flush trailing event if text didn't end with blank line
+  if (dataLines.length > 0) {
+    events.push({ event: eventType, data: dataLines.join('\n') });
   }
 
   return events;
@@ -244,6 +244,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
   const onToolLifecycleRef = useRef(options.onToolLifecycle);
   const onDiagnosticRecallRef = useRef(options.onDiagnosticRecall);
   const onStreamEndRef = useRef(options.onStreamEnd);
+  const onStreamChunkRef = useRef(options.onStreamChunk);
 
   useEffect(() => { onEventRef.current = options.onEvent; }, [options.onEvent]);
   useEffect(() => { onResponseRef.current = options.onResponse; }, [options.onResponse]);
@@ -256,6 +257,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
   useEffect(() => { onToolLifecycleRef.current = options.onToolLifecycle; }, [options.onToolLifecycle]);
   useEffect(() => { onDiagnosticRecallRef.current = options.onDiagnosticRecall; }, [options.onDiagnosticRecall]);
   useEffect(() => { onStreamEndRef.current = options.onStreamEnd; }, [options.onStreamEnd]);
+  useEffect(() => { onStreamChunkRef.current = options.onStreamChunk; }, [options.onStreamChunk]);
 
   // ── Dedup: track last response to prevent double fire ──
   const lastResponseRef = useRef<string>('');
@@ -308,14 +310,16 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Parse complete SSE events from buffer
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
+        // Feed the full buffer into parseSSE each time; it handles
+        // event boundaries via blank lines and returns only complete events.
+        // Retain the tail after the last blank line for the next iteration.
+        const lastBlank = buffer.lastIndexOf('\n\n');
+        if (lastBlank === -1) continue;
+        const chunk = buffer.slice(0, lastBlank + 2);
+        buffer = buffer.slice(lastBlank + 2);
 
-        for (const part of parts) {
-          const sseEvents = parseSSE(part + '\n\n');
-          
-          for (const sse of sseEvents) {
+        const sseEvents = parseSSE(chunk);
+        for (const sse of sseEvents) {
             // Events that work without JSON data
             if (sse.event === 'audio_done') {
               console.log('[SSE] audio_done received');
@@ -375,6 +379,10 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
 
                 case 'practice_chunk':
                   onPracticeChunkRef.current?.(data as PracticeChunk);
+                  break;
+
+                case 'stream_chunk':
+                  onStreamChunkRef.current?.(data);
                   break;
 
                 case 'response':
@@ -500,7 +508,6 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
               console.warn('Failed to parse SSE data:', sse.event, sse.data, parseErr);
             }
           }
-        }
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {

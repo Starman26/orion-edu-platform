@@ -3,6 +3,7 @@ import { Menu, Plus, Search, LayoutGrid, List, FileText, Sparkles, Info, MoreHor
 import { MapIcon, SparklesIcon, BoltIcon, PlayCircleIcon, ChartBarIcon, PresentationChartLineIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import PracticeView from "../components/PracticeView";
+import AutomationView from "../components/AutomationView";
 import EquipmentTab from "../components/EquipmentTab";
 import TroubleshootView from "../components/TroubleshootView";
 import type { EquipmentProfile } from "../components/EquipmentTab";
@@ -212,6 +213,8 @@ export default function Studio() {
   const [userProgress, setUserProgress] = useState<Record<string, UserProgress>>({});
   const [dataLoading, setDataLoading] = useState(true);
   const [activePractice, setActivePractice] = useState<ActivePractice | null>(null);
+  const [activeAutomation, setActiveAutomation] = useState<ActivePractice | null>(null);
+  const [automationHeaderControls, setAutomationHeaderControls] = useState<React.ReactNode>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState<"automation" | "equipment" | null>(null);
   const [activeTroubleshoot, setActiveTroubleshoot] = useState<EquipmentProfile | null>(null);
@@ -362,6 +365,39 @@ export default function Studio() {
     }));
   };
 
+  const handleStartAutomation = async (automation: Automation) => {
+    const existing = userProgress[automation.id];
+    if (existing?.session_id) {
+      setActiveAutomation({ automation, sessionId: existing.session_id });
+      return;
+    }
+    const sessionId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const { error: sessionErr } = await supabase.schema("chat").from("sessions").insert({
+      id: sessionId,
+      auth_user_id: userId,
+      team_id: teamId,
+      title: `Automation: ${automation.title}`,
+      chat_mode: "automation",
+    });
+    if (sessionErr) console.error("[Studio] Automation session error:", sessionErr);
+    const { error: progressErr } = await supabase.schema("lab").from("user_automation_progress").upsert({
+      auth_user_id: userId,
+      automation_id: automation.id,
+      session_id: sessionId,
+      status: "in_progress",
+      current_step: 0,
+      started_at: now,
+      last_active_at: now,
+    }, { onConflict: "auth_user_id,automation_id" });
+    if (progressErr) console.error("[Studio] Automation progress error:", progressErr);
+    setUserProgress(prev => ({
+      ...prev,
+      [automation.id]: { automation_id: automation.id, status: "in_progress", current_step: 0, started_at: now, completed_at: null, session_id: sessionId },
+    }));
+    setActiveAutomation({ automation, sessionId });
+  };
+
   const handleRestartPractice = async (automation: Automation) => {
     // Create a fresh session and reset progress
     const newSessionId = crypto.randomUUID();
@@ -413,7 +449,7 @@ export default function Studio() {
       description: data.description || null,
       type: "automation",
       difficulty: data.difficulty,
-      md_content: null,
+      md_content: "",
       sort_order: automations.length,
       created_by: userId,
       team_id: teamId,
@@ -425,7 +461,7 @@ export default function Studio() {
       return;
     }
 
-    setAutomations(prev => [...prev, {
+    const newAutomation: Automation = {
       id: newId,
       title: data.title,
       description: data.description || null,
@@ -436,12 +472,42 @@ export default function Studio() {
       created_by: userId,
       team_id: teamId,
       created_at: now,
-    }]);
+    };
+    setAutomations(prev => [...prev, newAutomation]);
     setModalOpen(null);
+    handleStartAutomation(newAutomation);
   };
 
   const practiceIcons = [MapIcon, SparklesIcon, BoltIcon, PlayCircleIcon];
   const practiceIconStyles = ["studio__actionIcon--purple", "studio__actionIcon--red", "studio__actionIcon--purple", "studio__actionIcon--red"];
+
+  // ── Automation view ──
+  if (activeAutomation) {
+    return (
+      <div className={`dash_root ${headerMode === 1 ? "dash_root--headerMinimal" : ""}`}>
+        <DashboardHeader
+          userName={userName}
+          userRole={userRole}
+          userError={userLoadError}
+          currentPage="Studio"
+          titleBarVisible={headerMode === 2}
+          headerMinimal={headerMode === 1}
+          onToggleTitleBar={() => setHeaderMode(prev => (prev === 0 ? 1 : 0))}
+          headerControls={automationHeaderControls}
+        />
+        <div className="dash_body studio" style={{ flex: 1, overflow: "auto" }}>
+          <AutomationView
+            automation={activeAutomation.automation}
+            sessionId={activeAutomation.sessionId}
+            userId={userId}
+            teamId={teamId || ""}
+            onBack={() => setActiveAutomation(null)}
+            onHeaderControls={setAutomationHeaderControls}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // ── Troubleshoot view ──
   if (activeTroubleshoot) {
@@ -653,7 +719,7 @@ export default function Studio() {
                 </div>
               )}
               {filteredAutomations.map((a) => (
-                <div key={a.id} className="studio__bookCard">
+                <button key={a.id} type="button" className="studio__bookCard" onClick={() => handleStartAutomation(a)}>
                   <div className="studio__bookThumb">
                     <div className="studio__bookCover">
                       <span className="studio__coverTitle">{a.title}</span>
@@ -671,7 +737,7 @@ export default function Studio() {
                       <span className="studio__bookDate">{timeAgo(a.created_at)}</span>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -699,7 +765,7 @@ export default function Studio() {
               {filteredAutomations.map((a) => {
                 const status = userProgress[a.id]?.status;
                 return (
-                  <div key={a.id} className="studio__listRow">
+                  <div key={a.id} className="studio__listRow" onClick={() => handleStartAutomation(a)} style={{ cursor: "pointer" }}>
                     <div className="studio__listCell studio__listCell--title">
                       <FileText size={14} className="studio__listDocIcon" />
                       <span>{a.title}</span>
