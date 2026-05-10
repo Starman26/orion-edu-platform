@@ -110,7 +110,7 @@ function ProfileHeader({ userName, userRole, userError }: ProfileHeaderProps) {
         </button>
         <div className="prof_headerDivider" />
         <div className="prof_userInfo">
-          <span className="prof_pageName">My Profile</span>
+          <span className="prof_pageName">Settings</span>
           <span className="prof_pathSeparator">/</span>
           <span className="prof_userName">{displayName}</span>
           {displayRole && (
@@ -157,6 +157,17 @@ export default function ProfilePage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [allBadges, setAllBadges] = useState<{ id: string; name: string; description: string | null; category: string | null }[]>([]);
   const [selectedBadge, setSelectedBadge] = useState<(Badge & { locked?: boolean }) | null>(null);
+
+  const [buddyEnabled, setBuddyEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem("orion.buddy") !== "0"; } catch { return true; }
+  });
+
+  const toggleBuddy = () => {
+    const next = !buddyEnabled;
+    setBuddyEnabled(next);
+    try { localStorage.setItem("orion.buddy", next ? "1" : "0"); } catch {}
+    window.dispatchEvent(new CustomEvent("orion:buddy-toggle", { detail: { enabled: next } }));
+  };
 
   useEffect(() => {
     let alive = true;
@@ -420,6 +431,29 @@ export default function ProfilePage() {
                     {s.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* ── Divider ── */}
+            <div className="prof_divider" />
+
+            {/* ── Interface settings ── */}
+            <div className="prof_fieldsSection">
+              <div className="prof_sectionLabel">Interface</div>
+              <div className="prof_settingRow">
+                <div className="prof_settingInfo">
+                  <span className="prof_settingName">Orion Buddy</span>
+                  <span className="prof_settingDesc">Show the animated companion in the sidebar</span>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={buddyEnabled}
+                  onClick={toggleBuddy}
+                  className={`prof_toggle ${buddyEnabled ? "prof_toggle--on" : ""}`}
+                >
+                  <span className="prof_toggleThumb" />
+                </button>
               </div>
             </div>
 

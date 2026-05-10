@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   FlaskConical,
   LogOut,
-  User,
   ChevronDown,
   Check,
   Info,
@@ -177,6 +176,19 @@ export function Sidebar({
 
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+
+  const [buddyEnabled, setBuddyEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem("orion.buddy") !== "0"; } catch { return true; }
+  });
+
+  useEffect(() => {
+    const onBuddy = (e: Event) => {
+      const ce = e as CustomEvent<{ enabled: boolean }>;
+      setBuddyEnabled(ce.detail.enabled);
+    };
+    window.addEventListener("orion:buddy-toggle", onBuddy as EventListener);
+    return () => window.removeEventListener("orion:buddy-toggle", onBuddy as EventListener);
+  }, []);
 
   // Agent info modal state
   const [isCardHovered, setIsCardHovered] = useState(false);
@@ -456,7 +468,6 @@ export function Sidebar({
   };
 
   const handleProfile = () => navigate("/my-profile");
-  const handleSettings = () => navigate("/settings");
 
   const handleCreateLab = async () => {
     const name = newLabName.trim();
@@ -679,7 +690,7 @@ export function Sidebar({
         </div>
 
         {/* Team Card with Pixel Eyes — expanded only */}
-        <div
+        {buddyEnabled && <div
           className="sidebar__teamCard"
           onMouseEnter={() => setIsCardHovered(true)}
           onMouseLeave={() => setIsCardHovered(false)}
@@ -710,7 +721,7 @@ export function Sidebar({
           >
             <Info className="sidebar__infoBtnIcon" />
           </button>
-        </div>
+        </div>}
 
         {/* Team / members */}
         <div className="sidebar__section sidebar__section--team">
@@ -724,16 +735,6 @@ export function Sidebar({
         <button
           type="button"
           onClick={handleProfile}
-          className="sidebar__footerItem"
-          title={collapsed ? "My Profile" : undefined}
-          aria-label="My Profile"
-        >
-          <User className="sidebar__footerIcon" />
-          <span className="sidebar__footerLabel">My Profile</span>
-        </button>
-        <button
-          type="button"
-          onClick={handleSettings}
           className="sidebar__footerItem"
           title={collapsed ? "Settings" : undefined}
           aria-label="Settings"

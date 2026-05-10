@@ -1,6 +1,6 @@
 // src/pages/Config.tsx — Analysis page with real Supabase data + embedded chat
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Plus, Search, BarChart2, PieChart, TrendingUp, Activity, Clock, Target, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { Menu, Plus, Search, BarChart2, PieChart, TrendingUp, Activity, Clock, Target, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useThinking } from "../context/Thinkingcontext";
 import { useAgentChat } from "../components/useAgentChat";
@@ -14,6 +14,8 @@ import { AnalysisChartRenderer } from "../components/AnalysisChartRenderer";
 import "../styles/analysis-ui.css";
 import "../styles/dashboard-ui.css";
 
+const PmTrackerPanel = lazy(() => import("../components/PmTrackerPanel"));
+
 const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
 const LS_KEY = "cora.sidebarCollapsed";
 const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || "https://sentinela-909652673285.us-central1.run.app";
@@ -21,6 +23,15 @@ const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || "https://sentinela-9
 // ============================================================================
 // TYPES
 // ============================================================================
+
+interface AnalysisTemplate {
+  id: string;
+  name: string;
+  description: string;
+  template_type: string;
+  icon_name: string;
+  config: Record<string, unknown>;
+}
 
 interface AnalysisSession {
   id: string;
@@ -31,6 +42,9 @@ interface AnalysisSession {
   createdAt: string;
   updatedAt: string;
   lastUserMessage: string | null;
+  templateType: string | null;
+  templateId: string | null;
+  templateConfig: Record<string, unknown> | null;
 }
 
 // ============================================================================
@@ -298,6 +312,12 @@ export default function Analysis() {
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Left panel collapse
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  // Templates
+  const [templates, setTemplates] = useState<AnalysisTemplate[]>([]);
+  const [createTemplateId, setCreateTemplateId] = useState<string | null>(null);
+
   // Thinking context
   const { setIsThinking } = useThinking();
 
@@ -384,6 +404,26 @@ export default function Analysis() {
     },
   });
 
+  // ── Load templates (table may not exist yet — fail silently) ──
+  useEffect(() => {
+    supabase
+      .schema("chat")
+      .from("analysis_templates")
+      .select("*")
+      .order("created_at")
+      .then(({ data, error }) => {
+        if (error) {
+          // Table doesn't exist yet or other transient error — silently skip
+          setTemplates([]);
+          return;
+        }
+        if (data && data.length > 0) {
+          setTemplates(data as AnalysisTemplate[]);
+          setCreateTemplateId(data[0].id);
+        }
+      });
+  }, []);
+
   // ── Load user data ──
   useEffect(() => {
     const loadUser = async () => {
@@ -425,7 +465,7 @@ export default function Analysis() {
       const { data: sessions, error: sessErr } = await supabase
         .schema("chat")
         .from("sessions")
-        .select("id, title, created_at, updated_at, auth_user_id")
+        .select("id, title, created_at, updated_at, auth_user_id, template_id")
         .eq("chat_mode", "analysis")
         .eq("status", "active")
         .eq("team_id", teamId)
@@ -439,6 +479,26 @@ export default function Analysis() {
         setAnalysisSessions([]);
         setSessionsLoading(false);
         return;
+      }
+
+      // Fetch template info for sessions that have a template_id (fail silently)
+      const sessionTemplateIds = [
+        ...new Set(
+          sessions
+            .map((s: any) => s.template_id)
+            .filter(Boolean) as string[],
+        ),
+      ];
+      const tplMap: Record<string, { template_type: string; icon_name: string; config: Record<string, unknown> }> = {};
+      if (sessionTemplateIds.length > 0) {
+        const { data: tplRows } = await supabase
+          .schema("chat")
+          .from("analysis_templates")
+          .select("id, template_type, icon_name, config")
+          .in("id", sessionTemplateIds);
+        for (const t of tplRows ?? []) {
+          tplMap[t.id] = { template_type: t.template_type, icon_name: t.icon_name, config: t.config ?? {} };
+        }
       }
 
       // Fetch last user message for each session + author names
@@ -468,6 +528,8 @@ export default function Analysis() {
           .limit(1)
           .maybeSingle();
 
+        const tid = (s as any).template_id ?? null;
+        const tpl = tid ? tplMap[tid] ?? null : null;
         mapped.push({
           id: s.id,
           title: s.title || "Untitled Analysis",
@@ -477,6 +539,9 @@ export default function Analysis() {
           createdAt: s.created_at,
           updatedAt: s.updated_at,
           lastUserMessage: lastMsg?.content || null,
+          templateType: tpl?.template_type ?? null,
+          templateId: tid,
+          templateConfig: tpl?.config ?? null,
         });
       }
 
@@ -601,6 +666,9 @@ export default function Analysis() {
       createdAt: now,
       updatedAt: now,
       lastUserMessage: null,
+      templateType: null,
+      templateId: null,
+      templateConfig: null,
     };
 
     setAnalysisSessions((prev) => [newSession, ...prev]);
@@ -622,15 +690,19 @@ export default function Analysis() {
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    // 1. Create session
-    const { error } = await supabase.schema("chat").from("sessions").insert({
+    // 1. Create session — only send template_id if the templates table exists
+    const sessionPayload: Record<string, unknown> = {
       id: newId,
       auth_user_id: userId,
       team_id: teamId,
       title,
       chat_mode: "analysis",
       status: "active",
-    });
+    };
+    if (templates.length > 0 && createTemplateId) {
+      sessionPayload.template_id = createTemplateId;
+    }
+    const { error } = await supabase.schema("chat").from("sessions").insert(sessionPayload);
 
     if (error) {
       console.error("Failed to create analysis:", error);
@@ -651,6 +723,7 @@ export default function Analysis() {
     }
 
     // 3. Add card to left panel
+    const chosenTemplate = templates.find((t) => t.id === createTemplateId) ?? null;
     const newSession: AnalysisSession = {
       id: newId,
       title,
@@ -660,6 +733,9 @@ export default function Analysis() {
       createdAt: now,
       updatedAt: now,
       lastUserMessage: description || null,
+      templateType: chosenTemplate?.template_type ?? null,
+      templateId: createTemplateId ?? null,
+      templateConfig: chosenTemplate?.config ?? null,
     };
 
     setAnalysisSessions((prev) => [newSession, ...prev]);
@@ -849,62 +925,91 @@ export default function Analysis() {
         userError={userLoadError}
       />
 
-      <main className="analysis_content">
-        {/* Left Panel — Session Cards */}
-        <div className="analysis_left">
-          <div className="analysis_leftHeader">
-            <h1 className="analysis_leftTitle">Analysis</h1>
-          </div>
-
-          <div className="analysis_search">
-            <Search size={16} className="analysis_searchIcon" />
-            <input
-              type="text"
-              className="analysis_searchInput"
-              placeholder="Search analyses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="analysis_cardList">
-            {sessionsLoading ? (
-              <div className="analysis_previewEmpty" style={{ padding: 24 }}>
-                <p>Loading sessions...</p>
+      <main
+        className={`analysis_content${leftCollapsed && selectedSession?.templateType === "pm_tracker" ? " analysis_content--full" : ""}`}
+        style={{
+          gridTemplateColumns: leftCollapsed
+            ? (selectedSession?.templateType === "pm_tracker" ? "1fr" : "0px 1fr")
+            : undefined,
+        }}
+      >
+        {/* Left Panel — Session Cards (hidden entirely in pm_tracker collapsed state) */}
+        {!(leftCollapsed && selectedSession?.templateType === "pm_tracker") && (
+          <div className={`analysis_left${leftCollapsed ? " analysis_left--collapsed" : ""}`}>
+            <div className="analysis_leftHeader">
+              <div className="analysis_leftHeaderTop">
+                <h1 className="analysis_leftTitle">Analysis</h1>
+                <button
+                  type="button"
+                  className="analysis_leftCollapseBtn"
+                  onClick={() => setLeftCollapsed(true)}
+                  aria-label="Collapse panel"
+                >
+                  <ChevronLeft size={16} />
+                </button>
               </div>
-            ) : filteredSessions.length === 0 ? (
-              <div className="analysis_previewEmpty" style={{ padding: 24 }}>
-                <p>No analyses yet. Create one to get started.</p>
-              </div>
-            ) : (
-              filteredSessions.map((session) => (
-                <AnalysisCardItem
-                  key={session.id}
-                  session={session}
-                  isSelected={selectedSessionId === session.id}
-                  isDeleting={deletingId === session.id}
-                  onClick={() => handleSelectSession(session.id)}
-                  onEdit={() => handleEditSession(session.id)}
-                  onDelete={() => handleDeleteSession(session.id)}
-                  onConfirmDelete={() => handleConfirmDelete(session.id)}
-                  onCancelDelete={handleCancelDelete}
-                />
-              ))
-            )}
-          </div>
+            </div>
 
-          <div className="analysis_leftFooter">
-            <button type="button" className="analysis_btnSecondary" onClick={handleStartFromBlank}>
-              Start from blank
-            </button>
-            <button type="button" className="analysis_btnPrimary" onClick={() => { setSelectedSessionId(null); setShowCreateForm(true); }}>
-              Create analysis
-            </button>
+            <div className="analysis_search">
+              <Search size={16} className="analysis_searchIcon" />
+              <input
+                type="text"
+                className="analysis_searchInput"
+                placeholder="Search analyses..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="analysis_cardList">
+              {sessionsLoading ? (
+                <div className="analysis_previewEmpty" style={{ padding: 24 }}>
+                  <p>Loading sessions...</p>
+                </div>
+              ) : filteredSessions.length === 0 ? (
+                <div className="analysis_previewEmpty" style={{ padding: 24 }}>
+                  <p>No analyses yet. Create one to get started.</p>
+                </div>
+              ) : (
+                filteredSessions.map((session) => (
+                  <AnalysisCardItem
+                    key={session.id}
+                    session={session}
+                    isSelected={selectedSessionId === session.id}
+                    isDeleting={deletingId === session.id}
+                    onClick={() => handleSelectSession(session.id)}
+                    onEdit={() => handleEditSession(session.id)}
+                    onDelete={() => handleDeleteSession(session.id)}
+                    onConfirmDelete={() => handleConfirmDelete(session.id)}
+                    onCancelDelete={handleCancelDelete}
+                  />
+                ))
+              )}
+            </div>
+
+            <div className="analysis_leftFooter">
+              <button type="button" className="analysis_btnSecondary" onClick={handleStartFromBlank}>
+                Start from blank
+              </button>
+              <button type="button" className="analysis_btnPrimary" onClick={() => { setSelectedSessionId(null); setShowCreateForm(true); }}>
+                Create analysis
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Right Panel — Create Form / Edit Form / Results / Empty */}
-        <div className={`analysis_right ${selectedSessionId || showCreateForm || showEditForm ? "analysis_right--active" : ""}`}>
+        <div className={`analysis_right ${selectedSessionId || showCreateForm || showEditForm ? "analysis_right--active" : ""}${leftCollapsed ? " analysis_right--collapsed" : ""}`}>
+          {leftCollapsed && selectedSession?.templateType !== "pm_tracker" && (
+            <button
+              type="button"
+              className="analysis_expandTab"
+              onClick={() => setLeftCollapsed(false)}
+              aria-label="Expand panel"
+            >
+              <ChevronRight size={14} />
+            </button>
+          )}
           {showCreateForm ? (
             /* ── Inline Create Form ── */
             <div className="analysis_createWrapper">
@@ -920,6 +1025,23 @@ export default function Analysis() {
 
               <div className="analysis_createCard">
                 <div className="analysis_createForm">
+                  {templates.length > 0 && (
+                    <div className="analysis_createField">
+                      <label>Template</label>
+                      <div className="analysis_templateSelector">
+                        {templates.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            className={`analysis_templatePill${createTemplateId === t.id ? " analysis_templatePill--selected" : ""}`}
+                            onClick={() => setCreateTemplateId(t.id)}
+                          >
+                            {t.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="analysis_createField">
                     <label htmlFor="create-name">Write a name</label>
                     <input
@@ -1047,67 +1169,78 @@ export default function Analysis() {
           ) : (
             /* ── Results view ── */
             <>
-              {/* Results header: title + Run Analysis button */}
-              <div className="analysis_resultsHeader">
-                <div className="analysis_resultsHeaderLeft">
-                  <div className="analysis_resultsIcon">
-                    {selectedSession && getCardIconByIndex(selectedSession.iconIndex)}
-                  </div>
-                  <h2 className="analysis_resultsTitle">{selectedSession?.title || "Analysis"}</h2>
-                </div>
-                <button
-                  type="button"
-                  className="analysis_runBtn"
-                  onClick={handleRunAnalysis}
-                  disabled={isLoading || !analysisPrompt}
-                >
-                  {isLoading ? (
-                    <>
-                      <svg className="analysis_runBtnSpinner" width="16" height="16" viewBox="0 0 16 16">
-                        <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28" strokeDashoffset="8" />
-                      </svg>
-                      Running...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <polygon points="4,2 14,8 4,14" />
-                      </svg>
-                      Run Analysis
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Results body */}
-              <div className="analysis_resultsBody">
-                {/* Loading: show event run */}
-                {activeRun && (
-                  <InlineEventRun
-                    run={activeRun}
-                    onToggleExpand={handleToggleExpand}
-                  />
-                )}
-
-                {/* Latest AI response */}
-                {latestResponse && !isLoading ? (
-                  <AnalysisChartRenderer
-                    text={latestResponse}
-                    isLatestAi
-                  />
-                ) : !isLoading && !latestResponse ? (
-                  /* Empty state — before first run */
-                  <div className="analysis_previewEmpty" style={{ flex: 1 }}>
-                    <div className="analysis_previewEmptyIcon">
-                      <BarChart2 size={48} strokeWidth={1} />
+              {/* Results header: hidden for pm_tracker */}
+              {selectedSession?.templateType !== "pm_tracker" && (
+                <div className="analysis_resultsHeader">
+                  <div className="analysis_resultsHeaderLeft">
+                    <div className="analysis_resultsIcon">
+                      {selectedSession && getCardIconByIndex(selectedSession.iconIndex)}
                     </div>
-                    <h3>{analysisPrompt ? "Ready to run" : "No prompt configured"}</h3>
-                    <p>{analysisPrompt ? "Click 'Run Analysis' to execute this analysis" : "Create a new analysis with a description to get started"}</p>
+                    <h2 className="analysis_resultsTitle">{selectedSession?.title || "Analysis"}</h2>
                   </div>
-                ) : null}
+                  <button
+                    type="button"
+                    className="analysis_runBtn"
+                    onClick={handleRunAnalysis}
+                    disabled={isLoading || !analysisPrompt}
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg className="analysis_runBtnSpinner" width="16" height="16" viewBox="0 0 16 16">
+                          <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="28" strokeDashoffset="8" />
+                        </svg>
+                        Running...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <polygon points="4,2 14,8 4,14" />
+                        </svg>
+                        Run Analysis
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
-                <div ref={messagesEndRef} />
-              </div>
+              {/* Results body — PM Tracker or AI chat */}
+              {selectedSession?.templateType === "pm_tracker" ? (
+                <div className="analysis_resultsBody analysis_resultsBody--full">
+                  <Suspense fallback={<div className="analysis_previewEmpty"><p>Loading tracker...</p></div>}>
+                    <PmTrackerPanel
+                      sessionId={selectedSessionId!}
+                      teamId={teamId ?? ""}
+                      userId={userId ?? ""}
+                      config={selectedSession.templateConfig ?? {}}
+                      onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
+                    />
+                  </Suspense>
+                </div>
+              ) : (
+                <div className="analysis_resultsBody">
+                  {activeRun && (
+                    <InlineEventRun
+                      run={activeRun}
+                      onToggleExpand={handleToggleExpand}
+                    />
+                  )}
+                  {latestResponse && !isLoading ? (
+                    <AnalysisChartRenderer
+                      text={latestResponse}
+                      isLatestAi
+                    />
+                  ) : !isLoading && !latestResponse ? (
+                    <div className="analysis_previewEmpty" style={{ flex: 1 }}>
+                      <div className="analysis_previewEmptyIcon">
+                        <BarChart2 size={48} strokeWidth={1} />
+                      </div>
+                      <h3>{analysisPrompt ? "Ready to run" : "No prompt configured"}</h3>
+                      <p>{analysisPrompt ? "Click 'Run Analysis' to execute this analysis" : "Create a new analysis with a description to get started"}</p>
+                    </div>
+                  ) : null}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
             </>
           )}
         </div>

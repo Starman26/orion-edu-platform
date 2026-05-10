@@ -22,6 +22,10 @@
   --sidebar-text-muted: #7a9ab8;
   --sidebar-text-dim: #5a7e9a;
   --sidebar-text-active: #ffffff;
+  --sidebar-ink: #c8d8e8;
+  --sidebar-ink-70: #9abcd6;
+  --sidebar-ink-50: #7a9ab8;
+  --sidebar-ink-30: #5a7e9a;
   --sidebar-accent: #8aaec8;
   --sidebar-accent-soft: rgba(138, 174, 200, 0.12);
 
