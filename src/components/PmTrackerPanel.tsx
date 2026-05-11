@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Pencil, Search, Grid3X3, List, RefreshCw, Plus, X,
   Calendar, CalendarDays, ShieldCheck, Settings, Trash2, ChevronLeft, ChevronDown,
+  Copy, Clipboard,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -449,6 +450,7 @@ function TeamDrawer({
   onStatusChange,
   onAddCommit, onDeleteCommit, onEditCommitLabel,
   isFirstPlace, canEdit, teamMembers, currentUserId, onUpdateEditors,
+  copiedCommits, onCopyCommits, onPasteCommits,
 }: {
   entry: TraceTeamEntry;
   commits: TraceCommit[];
@@ -471,6 +473,9 @@ function TeamDrawer({
   onAddCommit: (draft: { label: string; element: string; deadline_day: number; due_date?: string }) => void;
   onDeleteCommit: (commitId: string) => void;
   onEditCommitLabel: (commitId: string, label: string) => void;
+  copiedCommits: TraceCommit[];
+  onCopyCommits: (commits: TraceCommit[]) => void;
+  onPasteCommits: () => Promise<void>;
 }) {
   const [addCommitOpen, setAddCommitOpen]   = useState(false);
   const [commitDraft, setCommitDraft]       = useState({
@@ -611,6 +616,24 @@ function TeamDrawer({
                   ))}
                 </div>
               )}
+              {/* Copy / Paste toolbar */}
+              <div className="pmt_commitClipbar">
+                {commits.length > 0 && (
+                  <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--copy"
+                    onClick={() => onCopyCommits(commits)}>
+                    <Copy size={11} />
+                    Copiar metas ({commits.length})
+                  </button>
+                )}
+                {copiedCommits.length > 0 && canEdit && (
+                  <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--paste"
+                    onClick={onPasteCommits}>
+                    <Clipboard size={11} />
+                    Pegar {copiedCommits.length} meta{copiedCommits.length !== 1 ? "s" : ""}
+                  </button>
+                )}
+              </div>
+
               <div className="pmt_drawerCommits">
                 {commits.length === 0 && !addCommitOpen && (
                   <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--pmt-text-subtle)", fontSize: 13 }}>
@@ -1699,6 +1722,33 @@ export default function PmTrackerPanel({
     setProject((prev) => prev ? { ...prev, config: newConfig } : prev);
   }, [project]);
 
+  // ── Commit clipboard ─────────────────────────────────────────────────────────
+  const [copiedCommits, setCopiedCommits] = useState<TraceCommit[]>([]);
+
+  const handlePasteCommits = useCallback(async (entryId: string) => {
+    if (copiedCommits.length === 0) return;
+    const now = new Date().toISOString();
+    const inserts = copiedCommits.map((c) => ({
+      id: crypto.randomUUID(),
+      entry_id: entryId,
+      commit_key: `goal_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      element_key: c.element_key,
+      label: c.label,
+      deadline_day: c.deadline_day,
+      ...(c.due_date ? { due_date: c.due_date } : {}),
+      status: "pending" as const,
+      updated_at: now,
+    }));
+    const { data, error } = await supabase.from("trace_commits").insert(inserts).select();
+    if (error) { console.error("[PmTracker] Paste commits error:", error); return; }
+    setCommitsByEntry((prev) => ({
+      ...prev,
+      [entryId]: [...(prev[entryId] ?? []), ...(data as TraceCommit[])].sort(
+        (a, b) => a.deadline_day - b.deadline_day,
+      ),
+    }));
+  }, [copiedCommits]);
+
   // ── Custom KPI save ──────────────────────────────────────────────────────────
   const handleSaveCustomKpi = useCallback(async (kpiName: string, kpiScore: number) => {
     if (!project) return;
@@ -2161,6 +2211,9 @@ export default function PmTrackerPanel({
           teamMembers={teamMembers}
           currentUserId={currentUserId}
           onUpdateEditors={handleUpdateEditors}
+          copiedCommits={copiedCommits}
+          onCopyCommits={setCopiedCommits}
+          onPasteCommits={() => handlePasteCommits(drawerEntry.id)}
         />
       )}
 

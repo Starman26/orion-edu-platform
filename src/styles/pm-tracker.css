@@ -2404,6 +2404,50 @@
   border-color: rgba(230, 230, 230, 0.6);
 }
 
+/* ─── Commit clipboard toolbar ───────────────────────────────────────────── */
+
+.pmt_commitClipbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--pmt-border-soft);
+  min-height: 38px;
+}
+
+.pmt_commitClipBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: var(--pmt-r-sm);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.pmt_commitClipBtn--copy {
+  background: transparent;
+  color: var(--pmt-text-muted);
+  border: 1px solid var(--pmt-border);
+}
+.pmt_commitClipBtn--copy:hover {
+  background: var(--pmt-border-soft);
+  color: var(--pmt-text);
+}
+
+.pmt_commitClipBtn--paste {
+  background: var(--st-info-soft, rgba(37,99,235,0.1));
+  color: var(--st-info, #2563eb);
+  border: 1px solid var(--st-info, #2563eb);
+}
+.pmt_commitClipBtn--paste:hover {
+  background: var(--st-info, #2563eb);
+  color: #fff;
+}
+
 /* ─── Drawer area filter (Metas tab) ────────────────────────────────────── */
 
 .pmt_drawerAreaFilter {
