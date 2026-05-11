@@ -7,15 +7,28 @@ export default function AuthCallback() {
   const [status, setStatus] = useState("Signing you in...");
 
   useEffect(() => {
-    // Supabase v2 auto-processes the hash on page load.
-    // onAuthStateChange fires immediately if session already exists.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN" && session) {
-          subscription.unsubscribe();
-          setStatus("Loading your workspace...");
+    const handleCallback = async () => {
+      // Check if session already exists (Supabase may have already processed the hash)
+      const { data: { session } } = await supabase.auth.getSession();
 
-          try {
+      if (session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_completed, active_team_id")
+          .eq("auth_user_id", session.user.id)
+          .maybeSingle();
+
+        const ready = Boolean(profile?.onboarding_completed && profile?.active_team_id);
+        navigate(ready ? "/agent" : "/onboarding", { replace: true });
+        return;
+      }
+
+      // No session yet — listen for it
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === "SIGNED_IN" && session) {
+            subscription.unsubscribe();
+
             const { data: profile } = await supabase
               .from("profiles")
               .select("onboarding_completed, active_team_id")
@@ -24,39 +37,28 @@ export default function AuthCallback() {
 
             const ready = Boolean(profile?.onboarding_completed && profile?.active_team_id);
             navigate(ready ? "/agent" : "/onboarding", { replace: true });
-          } catch {
-            navigate("/agent", { replace: true });
+          }
+
+          if (event === "PASSWORD_RECOVERY") {
+            subscription.unsubscribe();
+            navigate("/auth/reset-password", { replace: true });
           }
         }
+      );
 
-        if (event === "PASSWORD_RECOVERY") {
-          subscription.unsubscribe();
-          navigate("/auth/reset-password", { replace: true });
-        }
-
-        if (event === "SIGNED_OUT") {
-          subscription.unsubscribe();
-          navigate("/login", { replace: true });
-        }
-      }
-    );
-
-    // Fallback: if no event fires in 5 seconds, try getSession directly
-    const timeout = setTimeout(async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        subscription.unsubscribe();
-        navigate("/agent", { replace: true });
-      } else {
+      // Fallback after 4 seconds
+      const timeout = setTimeout(() => {
         subscription.unsubscribe();
         navigate("/login", { replace: true });
-      }
-    }, 5000);
+      }, 4000);
 
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
+      return () => {
+        subscription.unsubscribe();
+        clearTimeout(timeout);
+      };
     };
+
+    handleCallback();
   }, [navigate]);
 
   return (
