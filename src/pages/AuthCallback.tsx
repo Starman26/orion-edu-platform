@@ -1,10 +1,7 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 export default function AuthCallback() {
-  const navigate = useNavigate();
-
   useEffect(() => {
     const handleCallback = async () => {
       // Check if session already exists (Supabase may have already processed the hash)
@@ -18,7 +15,7 @@ export default function AuthCallback() {
           .maybeSingle();
 
         const ready = Boolean(profile?.onboarding_completed && profile?.active_team_id);
-        navigate(ready ? "/agent" : "/onboarding", { replace: true });
+        window.location.replace(ready ? "/agent" : "/onboarding");
         return;
       }
 
@@ -35,12 +32,12 @@ export default function AuthCallback() {
               .maybeSingle();
 
             const ready = Boolean(profile?.onboarding_completed && profile?.active_team_id);
-            navigate(ready ? "/agent" : "/onboarding", { replace: true });
+            window.location.replace(ready ? "/agent" : "/onboarding");
           }
 
           if (event === "PASSWORD_RECOVERY") {
             subscription.unsubscribe();
-            navigate("/auth/reset-password", { replace: true });
+            window.location.replace("/auth/reset-password");
           }
         }
       );
@@ -48,7 +45,7 @@ export default function AuthCallback() {
       // Fallback after 4 seconds
       const timeout = setTimeout(() => {
         subscription.unsubscribe();
-        navigate("/login", { replace: true });
+        window.location.replace("/login");
       }, 4000);
 
       return () => {
@@ -58,7 +55,7 @@ export default function AuthCallback() {
     };
 
     handleCallback();
-  }, [navigate]);
+  }, []);
 
   return (
     <div style={{
