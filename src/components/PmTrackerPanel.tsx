@@ -1271,7 +1271,7 @@ function SharePanel({
               onMouseEnter={() => setHoverCode(true)}
               onMouseLeave={() => setHoverCode(false)}
               style={{
-                padding: "12px 16px", cursor: joinCode ? "pointer" : "default",
+                padding: "22px 16px", cursor: joinCode ? "pointer" : "default",
                 background: copiedCode ? "var(--st-ok-soft, #dcfce7)" : hoverCode ? "var(--pmt-surface-3, var(--pmt-surface-2))" : "var(--pmt-surface-2)",
                 border: `1px solid ${copiedCode ? "var(--st-ok)" : "var(--pmt-border)"}`,
                 borderRadius: 8, transition: "background 0.15s, border-color 0.15s",
