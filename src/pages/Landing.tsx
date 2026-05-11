@@ -193,12 +193,10 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="land-footer">
-        <div className="land-footer-left">
-          <span className="land-wordmark"><span className="land-wordmark-o">O</span>RION<span className="land-wordmark-edu">Edu</span></span>
-          <span className="land-footer-text">ORION Edu operates real equipment — verify all movements before execution.</span>
-        </div>
-        <span className="land-footer-text">by Cyclicall</span>
+      <footer className="land-footer" style={{ justifyContent: "center" }}>
+        <span className="land-footer-text" style={{ opacity: 0.9, fontSize: "0.7rem", letterSpacing: "0.08em" }}>
+          designed by Cyclicall CC
+        </span>
       </footer>
     </div>
   );
