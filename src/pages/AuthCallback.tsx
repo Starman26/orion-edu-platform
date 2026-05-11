@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("Signing you in...");
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -80,7 +79,7 @@ export default function AuthCallback() {
         borderRadius: "50%",
         animation: "spin 0.75s linear infinite",
       }} />
-      <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>{status}</p>
+      <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>Signing you in...</p>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
