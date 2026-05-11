@@ -4,6 +4,17 @@ import { supabase } from "../lib/supabaseClient";
 export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
+      console.log("[AuthCallback] URL hash:", window.location.hash.slice(0, 100));
+      console.log("[AuthCallback] Full URL:", window.location.href.slice(0, 150));
+
+      const hash = window.location.hash.replace(/^#/, "");
+      const params = new URLSearchParams(hash);
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+
+      console.log("[AuthCallback] access_token present:", !!access_token);
+      console.log("[AuthCallback] refresh_token present:", !!refresh_token);
+
       // Check if session already exists (Supabase may have already processed the hash)
       const { data: { session } } = await supabase.auth.getSession();
 
