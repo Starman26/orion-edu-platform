@@ -241,12 +241,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return (data.user as AuthUser) ?? null;
   };
 
+  const getCallbackUrl = () => {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${window.location.origin}/auth/callback`;
+    }
+    return "https://www.orion-learning.com/auth/callback";
+  };
+
   const loginWithGoogle = async () => {
-    console.log("[Auth] Google login redirectTo:", window.location.origin + "/auth/callback");
+    console.log("[Auth] Google login redirectTo:", getCallbackUrl());
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getCallbackUrl(),
       },
     });
 

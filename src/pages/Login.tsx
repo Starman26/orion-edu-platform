@@ -131,6 +131,14 @@ export default function Login() {
     }
   }
 
+  const getCallbackUrl = () => {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${window.location.origin}/auth/callback`;
+    }
+    return "https://www.orion-learning.com/auth/callback";
+  };
+
   async function handleGoogleLogin() {
     setError(null);
     setLoading(true);
@@ -140,7 +148,7 @@ export default function Login() {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
+            redirectTo: getCallbackUrl(),
           },
         });
         if (error) {
