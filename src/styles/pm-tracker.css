@@ -1533,15 +1533,16 @@
 
 .pmt_ganttDays .pmt_ganttTrack { display: flex; overflow: hidden; }
 
-.pmt_ganttDayTick {
-  flex: 1;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 10px;
+.pmt_ganttDateTick {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  font-size: 9px;
   color: var(--pmt-text-subtle);
-  border-right: 1px solid var(--pmt-border);
+  white-space: nowrap;
+  pointer-events: none;
+  padding-left: 3px;
+  border-left: 1px solid var(--pmt-border);
 }
-.pmt_ganttDayTick:last-child { border-right: none; }
-.pmt_ganttDayTick--today { background: rgba(37,99,235,0.08); color: var(--st-info); font-weight: 600; }
 
 .pmt_ganttTodayLine {
   position: absolute;

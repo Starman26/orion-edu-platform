@@ -243,26 +243,7 @@ function dayToDate(day: number, projectStartDate: string): string {
   return cur.toISOString().split("T")[0];
 }
 
-function effectiveDeadlineDay(commit: TraceCommit, projectStartDate: string): number {
-  if (commit.due_date) return dateToDay(commit.due_date, projectStartDate);
-  return commit.deadline_day;
-}
 
-function getStartDay(
-  element: string,
-  commitKey: string,
-  commits: TraceCommit[],
-  projectStartDate?: string,
-): number {
-  const effDay = (c: TraceCommit) =>
-    projectStartDate ? effectiveDeadlineDay(c, projectStartDate) : c.deadline_day;
-  const sameArea = commits
-    .filter((c) => c.element_key === element)
-    .sort((a, b) => effDay(a) - effDay(b));
-  const idx = sameArea.findIndex((c) => c.commit_key === commitKey);
-  if (idx <= 0) return 1;
-  return effDay(sameArea[idx - 1]) + 1;
-}
 
 function elKey(c: TraceCommit): string {
   return c.element_key;
@@ -985,27 +966,96 @@ function TeamListRow({
 
 // ─── ProjectGantt ─────────────────────────────────────────────────────────────
 
+function weekendBg(dates: Date[], totalCalDays: number): string {
+  if (totalCalDays <= 0) return "transparent";
+  const stops: string[] = [];
+  let segStart = 0;
+  let curWeekend = dates[0]?.getDay() === 0 || dates[0]?.getDay() === 6;
+  for (let i = 1; i <= totalCalDays; i++) {
+    const nowWeekend = i < dates.length && (dates[i].getDay() === 0 || dates[i].getDay() === 6);
+    if (nowWeekend !== curWeekend || i === totalCalDays) {
+      const s = ((segStart / totalCalDays) * 100).toFixed(3);
+      const e = ((i / totalCalDays) * 100).toFixed(3);
+      const col = curWeekend ? "rgba(0,0,0,0.04)" : "transparent";
+      stops.push(`${col} ${s}%`, `${col} ${e}%`);
+      segStart = i;
+      curWeekend = nowWeekend;
+    }
+  }
+  return stops.length ? `linear-gradient(90deg,${stops.join(",")})` : "transparent";
+}
+
 function ProjectGantt({
-  entries, commitsByEntry, areas, todayDay, totalDays, projectStartDate, onDeadlineChange,
+  entries, commitsByEntry, areas, projectStartDate, projectEndDate, onDeadlineChange,
 }: {
   entries: TraceTeamEntry[];
   commitsByEntry: Record<string, TraceCommit[]>;
   areas: AreaDef[];
-  todayDay: number;
-  totalDays: number;
   projectStartDate: string;
+  projectEndDate: string | null;
   onDeadlineChange: (id: string, newDate: string) => void;
 }) {
+  const commitDeadlineDate = (c: TraceCommit) =>
+    c.due_date ?? dayToDate(c.deadline_day, projectStartDate);
+
+  const resolvedEnd = projectEndDate ?? (() => {
+    const allC = entries.flatMap((e) => commitsByEntry[e.id] ?? []);
+    if (allC.length === 0) return projectStartDate;
+    return allC.reduce((best, c) => {
+      const d = commitDeadlineDate(c);
+      return d > best ? d : best;
+    }, projectStartDate);
+  })();
+
+  const totalCalDays = Math.max(1, calendarDaysBetween(projectStartDate, resolvedEnd) + 1);
+  const startObj = new Date(projectStartDate + "T00:00:00");
+  const dates: Date[] = Array.from({ length: totalCalDays }, (_, i) => {
+    const d = new Date(startObj);
+    d.setDate(startObj.getDate() + i);
+    return d;
+  });
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayOff = calendarDaysBetween(projectStartDate, todayStr);
+  const todayPct = (todayOff / totalCalDays) * 100;
+
+  const wkBg = weekendBg(dates, totalCalDays);
+
+  const tickEvery = totalCalDays > 90 ? 14 : totalCalDays > 45 ? 7 : totalCalDays > 21 ? 3 : 1;
+  const months = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  const fmtDate = (d: Date) => `${d.getDate()} ${months[d.getMonth()]}`;
+
+  const commitStart = (commit: TraceCommit, allCommits: TraceCommit[]) => {
+    const el = elKey(commit);
+    const sorted = allCommits
+      .filter((c) => c.element_key === el)
+      .sort((a, b) =>
+        calendarDaysBetween(projectStartDate, commitDeadlineDate(a)) -
+        calendarDaysBetween(projectStartDate, commitDeadlineDate(b)),
+      );
+    const idx = sorted.findIndex((c) => c.commit_key === commit.commit_key);
+    if (idx <= 0) return projectStartDate;
+    const prev = new Date(commitDeadlineDate(sorted[idx - 1]) + "T00:00:00");
+    prev.setDate(prev.getDate() + 1);
+    return prev.toISOString().split("T")[0];
+  };
+
   return (
     <div className="pmt_projectGantt">
       <div className="pmt_pgHeader">
         <div className="pmt_pgLabelCol">Equipo / Meta</div>
-        <div className="pmt_ganttTrack pmt_pgDayTrack">
-          {Array.from({ length: totalDays }, (_, i) => (
-            <div key={i} className={`pmt_ganttDayTick${i + 1 === todayDay ? " pmt_ganttDayTick--today" : ""}`}>
-              {i + 1}
-            </div>
-          ))}
+        <div className="pmt_ganttTrack pmt_pgDayTrack" style={{ background: wkBg, overflow: "visible" }}>
+          {dates.map((d, i) => {
+            if (i % tickEvery !== 0) return null;
+            return (
+              <div key={i} className="pmt_ganttDateTick" style={{ left: `${(i / totalCalDays) * 100}%` }}>
+                {fmtDate(d)}
+              </div>
+            );
+          })}
+          {todayOff >= 0 && todayOff < totalCalDays && (
+            <div className="pmt_ganttTodayLine" style={{ left: `${todayPct}%` }} />
+          )}
         </div>
       </div>
 
@@ -1023,9 +1073,8 @@ function ProjectGantt({
                   <span className="pmt_pgPmName">{entry.pm_name}</span>
                 </div>
               </div>
-              <div className="pmt_ganttTrack pmt_pgTeamTrack">
-                <div className="pmt_ganttTodayLine"
-                  style={{ left: `${((todayDay - 1) / totalDays) * 100}%` }} />
+              <div className="pmt_ganttTrack pmt_pgTeamTrack" style={{ background: wkBg }}>
+                <div className="pmt_ganttTodayLine" style={{ left: `${todayPct}%` }} />
               </div>
             </div>
 
@@ -1034,20 +1083,21 @@ function ProjectGantt({
                 <div className="pmt_pgLabelCol pmt_pgCommitLabel">
                   <span style={{ color: "var(--pmt-text-subtle)", fontSize: 10 }}>Sin metas</span>
                 </div>
-                <div className="pmt_ganttTrack pmt_pgCommitTrack">
-                  <div className="pmt_ganttTodayLine"
-                    style={{ left: `${((todayDay - 1) / totalDays) * 100}%` }} />
+                <div className="pmt_ganttTrack pmt_pgCommitTrack" style={{ background: wkBg }}>
+                  <div className="pmt_ganttTodayLine" style={{ left: `${todayPct}%` }} />
                 </div>
               </div>
             )}
 
             {commits.map((commit) => {
-              const deadlineDay = effectiveDeadlineDay(commit, projectStartDate);
-              const startDay  = getStartDay(elKey(commit), commit.commit_key, commits, projectStartDate);
-              const barLeft   = `${((startDay - 1) / totalDays) * 100}%`;
-              const barWidth  = `${((deadlineDay - startDay + 1) / totalDays) * 100}%`;
-              const isLate    = isCommitLate(commit);
-              const el        = elKey(commit);
+              const deadlineDate = commitDeadlineDate(commit);
+              const startDateStr = commitStart(commit, commits);
+              const startOff = Math.max(0, calendarDaysBetween(projectStartDate, startDateStr));
+              const endOff   = Math.min(totalCalDays - 1, calendarDaysBetween(projectStartDate, deadlineDate));
+              const barLeft  = (startOff / totalCalDays) * 100;
+              const barWidth = Math.max(0.5, ((endOff - startOff + 1) / totalCalDays) * 100);
+              const isLate   = isCommitLate(commit);
+              const el       = elKey(commit);
               const baseColor =
                 commit.status === "failed"      ? "#dc2626" :
                 commit.status === "success"     ? (entry.color || "#16a34a") :
@@ -1066,17 +1116,16 @@ function ProjectGantt({
                     <span className="pmt_pgCommitText" title={commit.label}>{commit.label}</span>
                     <span className="pmt_deadlineEdit" onClick={(e) => e.stopPropagation()}>
                       <input type="date"
-                        value={commit.due_date ?? dayToDate(commit.deadline_day, projectStartDate)}
+                        value={deadlineDate}
                         onChange={(e) => onDeadlineChange(commit.id, e.target.value)}
                         className="pmt_deadlineInput" />
                     </span>
                   </div>
-                  <div className="pmt_ganttTrack pmt_pgCommitTrack">
-                    <div className="pmt_ganttTodayLine"
-                      style={{ left: `${((todayDay - 1) / totalDays) * 100}%` }} />
+                  <div className="pmt_ganttTrack pmt_pgCommitTrack" style={{ background: wkBg }}>
+                    <div className="pmt_ganttTodayLine" style={{ left: `${todayPct}%` }} />
                     <div className={`pmt_ganttBar${isLate ? " pmt_ganttBar--late" : ""}`}
-                      style={{ left: barLeft, width: barWidth, background: barBg }}
-                      title={`${commit.label}: Día ${startDay}–${deadlineDay}`} />
+                      style={{ left: `${barLeft}%`, width: `${barWidth}%`, background: barBg }}
+                      title={`${commit.label}: ${startDateStr} – ${deadlineDate}`} />
                   </div>
                 </div>
               );
@@ -2512,9 +2561,8 @@ export default function PmTrackerPanel({
               entries={filteredEntries}
               commitsByEntry={commitsByEntry}
               areas={areas}
-              todayDay={todayDay}
-              totalDays={totalDays}
               projectStartDate={project.start_date}
+              projectEndDate={project.end_date ?? null}
               onDeadlineChange={handleDeadlineChange}
             />
           )}
