@@ -9,7 +9,7 @@ import { supabase } from "../lib/supabaseClient";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, signup, loginWithGoogle } = useAuth() as any;
+  const { login, signup } = useAuth() as any;
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,6 +17,10 @@ export default function Login() {
   const startAsSignup = searchParams.get("signup") === "true";
   const [isSignup, setIsSignup] = useState(startAsSignup);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const isElectron = useMemo(() => Boolean((window as any).electronAPI), []);
 
@@ -133,11 +137,16 @@ export default function Login() {
 
     try {
       if (!isElectron) {
-        if (!loginWithGoogle) {
-          console.warn("loginWithGoogle no está definido en AuthContext.");
-          return;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+        if (error) {
+          setError(error.message);
+          setLoading(false);
         }
-        await loginWithGoogle();
         return;
       }
 
@@ -163,6 +172,21 @@ export default function Login() {
       setError(err.message || "No se pudo iniciar sesión con Google.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      forgotEmail.trim(),
+      { redirectTo: `${window.location.origin}/auth/reset-password` }
+    );
+    setForgotLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setForgotSent(true);
     }
   }
 
@@ -249,7 +273,10 @@ export default function Login() {
                   Password
                 </label>
                 {!isSignup && (
-                  <button type="button" className="login-forgot">
+                  <button
+                    type="button"
+                    className="login-forgot"
+                    onClick={() => { setShowForgot(true); setForgotSent(false); setForgotEmail(""); }}>
                     Forgot?
                   </button>
                 )}
@@ -386,6 +413,57 @@ export default function Login() {
       <footer className="login-footer">
         <span>Created by Cyclicall International Industries</span>
       </footer>
+
+      {showForgot && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+          zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
+        }} onClick={() => setShowForgot(false)}>
+          <div style={{
+            background: "#fff", borderRadius: 6, padding: 32, width: 380,
+            maxWidth: "90vw", display: "flex", flexDirection: "column", gap: 16,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Reset password</h2>
+            {forgotSent ? (
+              <>
+                <p style={{ color: "#111", fontSize: 14, margin: 0 }}>
+                  Check your inbox. We sent you a reset link.
+                </p>
+                <button type="button"
+                  onClick={() => setShowForgot(false)}
+                  style={{ padding: "10px", borderRadius: 8, border: "none",
+                    background: "#111", color: "#fff", fontSize: 14,
+                    fontWeight: 600, cursor: "pointer" }}>
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>
+                  Enter your email and we'll send you a reset link.
+                </p>
+                <input type="email" placeholder="you@company.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleForgotPassword()}
+                  style={{ padding: "10px 14px", borderRadius: 8,
+                    border: "1px solid #e5e7eb", fontSize: 14,
+                    outline: "none", fontFamily: "inherit" }}
+                  autoFocus />
+                <button type="button" onClick={handleForgotPassword}
+                  disabled={forgotLoading || !forgotEmail.trim()}
+                  style={{ padding: "10px", borderRadius: 8, border: "none",
+                    background: "#111", color: "#fff", fontSize: 14, fontWeight: 600,
+                    cursor: "pointer",
+                    opacity: (forgotLoading || !forgotEmail.trim()) ? 0.6 : 1 }}>
+                  {forgotLoading ? "Sending..." : "Send reset link"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

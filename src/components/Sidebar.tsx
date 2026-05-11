@@ -176,6 +176,7 @@ export function Sidebar({
 
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [showTeamPopup, setShowTeamPopup] = useState(false);
 
   const [buddyEnabled, setBuddyEnabled] = useState<boolean>(() => {
     try { return localStorage.getItem("orion.buddy") !== "0"; } catch { return true; }
@@ -585,18 +586,87 @@ export function Sidebar({
     }
 
     return (
-      <div className="sidebar__membersList">
-        {members.slice(0, 8).map((m) => {
-          const displayName = m.full_name || shortId(m.auth_user_id) || "Member";
-          const initials = getInitials(m.full_name || m.auth_user_id || "?");
-          return (
-            <div key={m.id} className="sidebar__memberRow">
-              <div className="sidebar__avatar">{initials}</div>
-              <span className="sidebar__memberName">{displayName}</span>
+      <>
+        <div className="sidebar__membersList">
+          {members.slice(0, 4).map((m) => {
+            const displayName = m.full_name || shortId(m.auth_user_id) || "Member";
+            const initials = getInitials(m.full_name || m.auth_user_id || "?");
+            return (
+              <div key={m.id} className="sidebar__memberRow">
+                <div className="sidebar__avatar">{initials}</div>
+                <span className="sidebar__memberName">{displayName}</span>
+              </div>
+            );
+          })}
+          {members.length > 4 && (
+            <button
+              type="button"
+              onClick={() => setShowTeamPopup(true)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 11, color: "var(--text-muted, #6b7280)",
+                padding: "4px 8px", width: "100%", textAlign: "left",
+                fontFamily: "inherit",
+              }}>
+              + {members.length - 4} more teammates
+            </button>
+          )}
+        </div>
+
+        {showTeamPopup && (
+          <div
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+              zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+            onClick={() => setShowTeamPopup(false)}>
+            <div
+              style={{
+                background: "var(--bg-surface, #1a1a1a)",
+                border: "1px solid var(--border, #2a2a2a)",
+                borderRadius: 12, padding: 24, width: 400, maxWidth: "90vw",
+                maxHeight: "70vh", overflow: "hidden",
+                display: "flex", flexDirection: "column", gap: 16,
+              }}
+              onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 600, fontSize: 15 }}>Team Members ({members.length})</span>
+                <button
+                  type="button"
+                  onClick={() => setShowTeamPopup(false)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "inherit" }}>
+                  ×
+                </button>
+              </div>
+              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+                {members.map((member) => (
+                  <div key={member.id} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+                    borderBottom: "1px solid var(--border, #2a2a2a)",
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                      background: "var(--accent, #3b82f6)", color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 13, fontWeight: 600,
+                    }}>
+                      {getInitials(member.full_name || member.auth_user_id || "?")}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {member.full_name || "Sin nombre"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted, #6b7280)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {shortId(member.auth_user_id)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        )}
+      </>
     );
   };
 

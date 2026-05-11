@@ -518,6 +518,10 @@
   [data-theme="dark"] .analysis_cardDesc { color: var(--text-secondary); }
   [data-theme="dark"] .analysis_cardAuthorAvatar { background: var(--hover-overlay); color: var(--text-primary); }
   [data-theme="dark"] .analysis_cardAuthorName { color: var(--text-secondary); }
+  [data-theme="dark"] .analysis_cardActionBtn { color: var(--text-dim); }
+  [data-theme="dark"] .analysis_cardActionBtn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+  [data-theme="dark"] .analysis_leftCollapseBtn { color: var(--text-muted); border-color: var(--border-base); }
+  [data-theme="dark"] .analysis_leftCollapseBtn:hover { color: var(--text-primary); background: var(--hover-overlay); }
   [data-theme="dark"] .analysis_leftFooter { border-top-color: var(--border-soft); }
   [data-theme="dark"] .analysis_btnSecondary { color: var(--text-primary); background: var(--bg-elevated); border-color: var(--border-base); }
   [data-theme="dark"] .analysis_btnSecondary:hover { background: var(--hover-overlay); border-color: var(--border-strong); }
@@ -1133,6 +1137,10 @@
   /* Profile extras */
   [data-theme="dark"] .prof_divider { background: var(--border-soft); }
   [data-theme="dark"] .prof_sectionLabel { color: var(--text-dim); }
+  [data-theme="dark"] .prof_settingName { color: var(--text-primary); }
+  [data-theme="dark"] .prof_settingDesc { color: var(--text-muted); }
+  [data-theme="dark"] .prof_toggle { background: var(--border-strong); }
+  [data-theme="dark"] .prof_toggle--on { background: var(--accent); }
   [data-theme="dark"] .prof_stylePill { border-color: var(--border-base); color: var(--text-secondary); }
   [data-theme="dark"] .prof_stylePill:hover { border-color: var(--border-strong); color: var(--text-primary); }
   [data-theme="dark"] .prof_stylePill.is-selected { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }

@@ -65,6 +65,10 @@
   --pmt-accent-text: #141414;
   --pmt-header-bg:   #141414;
   --pmt-header-text: rgba(230, 230, 230, 1.0);
+  --st-ok-soft:      rgba(22, 163, 74, 0.15);
+  --st-crit-soft:    rgba(220, 38, 38, 0.15);
+  --st-warn-soft:    rgba(234, 179, 8, 0.15);
+  --st-info-soft:    rgba(37, 99, 235, 0.15);
 }
 
 /* ============================================================================
@@ -384,7 +388,7 @@
 }
 
 .pmt_leftCol {
-  flex: 0 0 60%;
+  flex: 0 0 67%;
   display: flex; flex-direction: column;
   overflow: hidden;
   min-height: 0;
@@ -1360,6 +1364,8 @@
 .pmt_drawerBody::-webkit-scrollbar { width: 5px; }
 .pmt_drawerBody::-webkit-scrollbar-thumb { background: var(--pmt-border); border-radius: 3px; }
 
+.pmt_drawerInner { max-width: 90%; margin: 0 auto; padding: 28px 0; }
+
 /* Overview tab */
 .pmt_drawerOverview { padding: 20px; display: flex; flex-direction: column; gap: 24px; }
 
@@ -1510,6 +1516,12 @@
 }
 .pmt_deadlineInput:focus { border-color: var(--st-info); background: var(--pmt-surface); }
 
+.pmt_root[data-theme="slate"] .pmt_deadlineInput,
+.pmt_root[data-theme="forest"] .pmt_deadlineInput,
+.pmt_root[data-theme="ocean"] .pmt_deadlineInput,
+.pmt_root[data-theme="sunset"] .pmt_deadlineInput,
+.pmt_root[data-theme="midnight"] .pmt_deadlineInput { color-scheme: dark; }
+
 .pmt_ganttTrack {
   flex: 1;
   height: 18px;
@@ -1609,12 +1621,12 @@
 
 /* ─── Settings rows ───────────────────────────────────────────────────────── */
 
-.pmt_settingsSection      { display: flex; flex-direction: column; gap: 8px; }
+.pmt_settingsSection      { display: flex; flex-direction: column; gap: 6px; }
 .pmt_settingsSectionTitle {
-  font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: .06em;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
   color: var(--pmt-text-subtle);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .pmt_settingsRow         { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pmt_settingsRow label   { font-size: 13px; color: var(--pmt-text); }
@@ -1664,99 +1676,138 @@
 .pmt_areaCommitStatus--in_progress { background: var(--st-info-soft); color: var(--st-info); }
 .pmt_areaCommitStatus--pending     { background: var(--pmt-border-soft); color: var(--pmt-text-subtle); }
 
-/* ─── Theme grid (picker en settings) ─────────────────────────────────────── */
+/* ─── Theme dropdown (picker en settings) ─────────────────────────────────── */
 
-.pmt_themeGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+.pmt_themeDropdown {
+  position: relative;
+  width: 100%;
 }
 
-.pmt_themeBtn {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 6px;
-  padding: 10px 8px;
+.pmt_themeDropdownTrigger {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
   background: var(--pmt-surface);
-  border: 1.5px solid var(--pmt-border);
-  border-radius: var(--pmt-r-md);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-sm);
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  font-size: 13px;
+  color: var(--pmt-text);
+  transition: border-color 0.12s;
 }
-.pmt_themeBtn:hover { border-color: var(--pmt-text-subtle); }
-.pmt_themeBtn--active {
-  border-color: var(--pmt-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
+.pmt_themeDropdownTrigger:hover { border-color: var(--pmt-text-subtle); }
 
-.pmt_themeSwatch {
-  width: 100%; height: 36px;
-  border-radius: 5px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--pmt-font-display);
-  font-size: 14px; font-weight: 600;
+.pmt_themeDropdownSwatches {
+  display: flex; gap: 3px;
+  flex-shrink: 0;
+}
+.pmt_themeDropdownSwatches > span {
+  width: 12px; height: 12px;
+  border-radius: 3px;
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.pmt_themeName {
-  font-size: 11px; font-weight: 500;
+.pmt_themeDropdownName {
+  flex: 1;
+  text-align: left;
+  font-weight: 500;
+}
+
+.pmt_themeDropdownChevron {
+  color: var(--pmt-text-subtle);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.pmt_themeDropdownChevron--open { transform: rotate(180deg); }
+
+.pmt_themeDropdownMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+  padding: 4px;
+  display: flex; flex-direction: column;
+}
+
+.pmt_themeDropdownItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
   color: var(--pmt-text);
-  letter-spacing: 0.02em;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background 0.1s;
+}
+.pmt_themeDropdownItem:hover { background: var(--pmt-border-soft); }
+.pmt_themeDropdownItem--active { font-weight: 600; }
+.pmt_themeDropdownItem--active::after {
+  content: "";
+  flex-shrink: 0;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--pmt-accent);
 }
 
 /* ─── ZoneSlider (umbrales draggables) ────────────────────────────────────── */
 
-.pmt_zoneSlider { padding: 28px 6px 0; }
+.pmt_zoneSlider { padding: 22px 4px 4px; }
 
 .pmt_zoneBar {
   position: relative;
-  height: 14px;
-  border-radius: 7px;
-  margin-bottom: 44px;
+  height: 4px;
+  border-radius: 2px;
+  margin-bottom: 4px;
 }
 
 .pmt_zoneSeg { position: absolute; top: 0; bottom: 0; }
-.pmt_zoneSeg--red    { background: #dc2626; border-radius: 7px 0 0 7px; }
+.pmt_zoneSeg--red    { background: #dc2626; border-radius: 2px 0 0 2px; }
 .pmt_zoneSeg--orange { background: #ea580c; }
 .pmt_zoneSeg--yellow { background: #d97706; }
-.pmt_zoneSeg--green  { background: #16a34a; border-radius: 0 7px 7px 0; }
+.pmt_zoneSeg--green  { background: #16a34a; border-radius: 0 2px 2px 0; }
 
 .pmt_zoneThumb {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 22px; height: 22px;
+  width: 12px; height: 12px;
   background: var(--pmt-surface);
-  border: 2.5px solid;
+  border: 1.5px solid;
   border-radius: 50%;
   cursor: grab;
   touch-action: none;
   z-index: 2;
   transition: box-shadow 0.12s;
 }
-.pmt_zoneThumb:hover  { box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.06); }
+.pmt_zoneThumb:hover  { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05); }
 .pmt_zoneThumb:active { cursor: grabbing; }
 
 .pmt_zoneBubble {
   position: absolute;
-  bottom: 28px;
+  bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 12px; font-weight: 600;
+  font-size: 10px; font-weight: 500;
   font-family: var(--pmt-font-mono);
-  color: var(--pmt-text);
-  background: var(--pmt-surface-2);
-  padding: 2px 8px;
-  border-radius: 5px;
+  color: var(--pmt-text-muted);
+  background: transparent;
+  padding: 0;
   white-space: nowrap;
   pointer-events: none;
 }
 
-.pmt_zoneLabels {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
+/* Zone labels under the bar — hidden, the bar speaks for itself */
+.pmt_zoneLabels { display: none; }
 
 .pmt_zoneLabel {
   display: flex; flex-direction: column;
@@ -1832,6 +1883,123 @@
   background: var(--pmt-surface-2) !important;
   color: var(--pmt-text-muted) !important;
 }
+
+/* ─── Note KPI Tile (Word of the Day) ────────────────────────────────────── */
+
+.pmt_kpiNoteTile {
+  flex: 1; min-width: 180px; height: 210px;
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-md);
+  padding: 18px 22px 14px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+.pmt_kpiNoteTile:hover { border-color: var(--pmt-text-subtle); }
+
+.pmt_kpiNoteTile--editing {
+  cursor: default;
+  height: auto;
+  min-height: 150px;
+}
+.pmt_kpiNoteTile--editing:hover { border-color: var(--pmt-border); }
+
+.pmt_kpiNoteText {
+  flex: 1;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pmt-text);
+}
+.pmt_kpiNoteText p  { margin: 0; }
+.pmt_kpiNoteText em { font-style: italic; }
+.pmt_kpiNoteText strong { font-weight: 700; }
+
+.pmt_kpiNoteEmpty {
+  flex: 1;
+  font-size: 11px;
+  color: var(--pmt-text-subtle);
+  font-style: italic;
+  margin: 0;
+}
+
+.pmt_kpiNoteHint {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--pmt-text-subtle);
+  opacity: 0;
+  transition: opacity 0.15s;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pmt_kpiNoteTile:hover .pmt_kpiNoteHint { opacity: 1; }
+
+.pmt_kpiNoteRefresh {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10px;
+  color: var(--pmt-text-subtle);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s;
+  user-select: none;
+}
+.pmt_kpiNoteRefresh:hover { color: var(--pmt-text-muted); }
+
+.pmt_kpiNoteRefresh--loading {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Edit mode */
+.pmt_kpiNoteTextarea {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.6;
+  color: var(--pmt-text);
+  min-height: 80px;
+}
+.pmt_kpiNoteTextarea::placeholder { color: var(--pmt-text-subtle); }
+
+.pmt_kpiNoteActions {
+  display: flex; justify-content: flex-end; gap: 6px;
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.pmt_kpiNoteCancel {
+  font-size: 11px; padding: 4px 10px;
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-sm);
+  background: transparent;
+  color: var(--pmt-text-muted);
+  cursor: pointer; font-family: inherit;
+  transition: background 0.12s;
+}
+.pmt_kpiNoteCancel:hover { background: var(--pmt-border-soft); }
+
+.pmt_kpiNoteSave {
+  font-size: 11px; padding: 4px 10px;
+  border: none;
+  border-radius: var(--pmt-r-sm);
+  background: var(--pmt-accent);
+  color: var(--pmt-accent-text);
+  cursor: pointer; font-family: inherit;
+  font-weight: 500;
+  transition: opacity 0.12s;
+}
+.pmt_kpiNoteSave:hover { opacity: 0.85; }
+.pmt_kpiNoteSave:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* List view status pill (CRITICO/OK/etc) — italic, original case, neutral */
 .pmt_root[data-theme="midnight"] .pmt_listStatus--ok,
@@ -1930,4 +2098,308 @@
 .pmt_root[data-theme=""] .pmt_card--selected {
   border-color: var(--pmt-accent) !important;
   box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.10) !important;
+}
+
+/* ============================================================================
+   FIRST-PLACE PM treatment (gold in light themes, silver in midnight)
+   ============================================================================
+   Apply .pmt_avatar--first to ANY avatar of the #1 PM (card, list, ranking,
+   drawer) — the same user shows up across multiple views and all instances
+   pick up the metallic treatment. Apply .pmt_card--first to that PM's card
+   in grid view for the gold border. Add both via JSX based on which entry
+   holds the top score. */
+
+/* ─── Avatar: gold gradient + shimmer (works on any avatar size) ─────────── */
+.pmt_avatar--first {
+  background: linear-gradient(135deg, #d4af37 0%, #f4d976 45%, #b8860b 100%) !important;
+  color: #5a4612 !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 0 1px rgba(184, 134, 11, 0.35),
+    0 2px 8px rgba(212, 175, 55, 0.25);
+}
+
+.pmt_avatar--first::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: 0;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-180%) rotate(20deg);
+  animation: pmt_rankShimmer 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pmt_rankShimmer {
+  0%, 60%   { transform: translateX(-180%) rotate(20deg); }
+  85%, 100% { transform: translateX(280%) rotate(20deg); }
+}
+
+/* Rank number for #1 (when applied alongside rankRow--first or standalone) */
+.pmt_rankRow--first .pmt_rankNum {
+  color: #b8860b;
+  font-weight: 700;
+}
+
+/* ─── Card: gold border on the first-place card (grid view) ──────────────── */
+.pmt_card--first {
+  border-color: #d4af37 !important;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.18) !important;
+}
+/* When also selected, keep gold border but slightly stronger shadow */
+.pmt_card--first.pmt_card--selected {
+  border-color: #d4af37 !important;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25) !important;
+}
+
+/* ─── Midnight: silver/platinum instead of gold ──────────────────────────── */
+.pmt_root[data-theme="midnight"] .pmt_avatar--first {
+  background: linear-gradient(135deg, #d8d8d8 0%, #ffffff 50%, #9e9e9e 100%) !important;
+  color: #1f1f1f !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 0 0 1px rgba(220, 220, 220, 0.35),
+    0 2px 8px rgba(255, 255, 255, 0.12);
+}
+
+.pmt_root[data-theme="midnight"] .pmt_avatar--first::after {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 100%
+  );
+}
+
+.pmt_root[data-theme="midnight"] .pmt_rankRow--first .pmt_rankNum {
+  color: #d8d8d8;
+  font-weight: 700;
+}
+
+.pmt_root[data-theme="midnight"] .pmt_card--first {
+  border-color: #e5e7eb !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15) !important;
+}
+.pmt_root[data-theme="midnight"] .pmt_card--first.pmt_card--selected {
+  border-color: #f3f4f6 !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.20) !important;
+}
+
+/* ============================================================================
+   pm-tracker PATCH — agregar al final de pm-tracker.css
+   (o reemplazar los bloques equivalentes si ya existen)
+   ============================================================================ */
+
+/* ─── KPI Strip: tiles más compactos ─────────────────────────────────────── */
+
+/* Sobreescribir el tile base para hacerlo menos alto */
+.pmt_kpiStrip {
+  /* flex-wrap: nowrap por defecto — los tiles comprimidos + nota caben en una fila */
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
+  padding: 10px 14px;
+}
+
+.pmt_kpiTile {
+  flex: 1;
+  min-width: 80px;
+  height: 110px;
+  padding: 12px 12px;
+}
+
+.pmt_kpiTile--sm {
+  min-width: 96px;
+}
+
+/* Hero number más pequeño para que quepa en 90px de alto */
+.pmt_kpiValue {
+  font-size: 1.65rem;     /* antes: 2.5rem */
+  font-weight: 600;
+  font-family: var(--pmt-font-mono);
+  line-height: 1;
+  color: var(--pmt-text);
+  letter-spacing: -0.02em;
+}
+
+.pmt_kpiUnit {
+  font-size: 0.75rem;     /* antes: 1rem */
+  font-weight: 600;
+  color: var(--pmt-text-subtle);
+  font-family: var(--pmt-font-mono);
+  margin-left: 2px;
+}
+
+.pmt_kpiLabel {
+  font-size: 9px;         /* antes: 10px */
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--pmt-text-subtle);
+}
+
+.pmt_kpiSub {
+  font-size: 10px;        /* antes: 11px */
+  font-weight: 500;
+  color: var(--pmt-text-muted);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── KPI Note Tile (esquina editable) ───────────────────────────────────── */
+
+.pmt_kpiNoteTile {
+  flex: 0 0 33%;
+  min-width: 200px;
+  height: 110px;
+  background: transparent;
+  border: none;
+  border-radius: var(--pmt-r-md);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.pmt_kpiNoteTile:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.pmt_kpiNoteTile--editing {
+  cursor: default;
+  border: 1px solid var(--st-info);
+  flex: 0 0 33%;
+  height: auto;         /* crecer si el contenido lo requiere */
+}
+.pmt_kpiNoteTile--editing:hover {
+  background: var(--pmt-surface);
+}
+
+.pmt_kpiNoteText {
+  font-size: 17px;
+  font-weight: 400;
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  color: var(--pmt-text);
+  line-height: 1.45;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+.pmt_kpiNoteText p,
+.pmt_kpiNoteText ul,
+.pmt_kpiNoteText ol,
+.pmt_kpiNoteText h1,
+.pmt_kpiNoteText h2,
+.pmt_kpiNoteText h3 {
+  margin: 0 0 2px;
+}
+.pmt_kpiNoteText strong { font-weight: 700; }
+.pmt_kpiNoteText em     { font-style: italic; }
+.pmt_kpiNoteText ul,
+.pmt_kpiNoteText ol     { padding-left: 16px; }
+.pmt_kpiNoteText li     { margin: 0; }
+.pmt_kpiNoteText code   { font-size: 0.85em; background: var(--pmt-border-soft); border-radius: 3px; padding: 0 3px; }
+
+.pmt_kpiNoteEmpty {
+  font-size: 11px;
+  color: var(--pmt-text-subtle);
+  margin: 0;
+  font-style: italic;
+}
+
+.pmt_kpiNoteHint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pmt-text-subtle);
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.pmt_kpiNoteTile:hover .pmt_kpiNoteHint {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pmt_kpiNoteTextarea {
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--pmt-text);
+  line-height: 1.45;
+  flex: 1;
+  padding: 0;
+}
+.pmt_kpiNoteTextarea::placeholder {
+  color: var(--pmt-text-subtle);
+  font-style: italic;
+}
+
+.pmt_kpiNoteActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.pmt_kpiNoteCancel,
+.pmt_kpiNoteSave {
+  padding: 3px 10px;
+  border-radius: var(--pmt-r-xs);
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.pmt_kpiNoteCancel {
+  background: transparent;
+  border: 1px solid var(--pmt-border);
+  color: var(--pmt-text-muted);
+}
+.pmt_kpiNoteCancel:hover { background: var(--pmt-border-soft); }
+
+.pmt_kpiNoteSave {
+  background: var(--pmt-accent);
+  border: 1px solid var(--pmt-accent);
+  color: var(--pmt-accent-text);
+}
+.pmt_kpiNoteSave:hover:not(:disabled) { opacity: 0.85; }
+.pmt_kpiNoteSave:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Midnight overrides para el tile nota ───────────────────────────────── */
+.pmt_root[data-theme="midnight"] .pmt_kpiNoteTile:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.pmt_root[data-theme="midnight"] .pmt_kpiNoteTile--editing {
+  border-color: rgba(230, 230, 230, 0.6);
 }

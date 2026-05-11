@@ -676,11 +676,13 @@
     font-size: 13px;
     font-weight: 500;
     color: #1A1A1A;
+    font-family: inherit;
   }
 
   .prof_settingDesc {
     font-size: 11.5px;
     color: #9ca3af;
+    font-family: inherit;
   }
 
   /* Toggle switch */

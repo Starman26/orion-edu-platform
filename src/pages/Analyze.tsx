@@ -39,6 +39,7 @@ interface AnalysisSession {
   description: string;
   iconIndex: number;
   authorName: string;
+  auth_user_id: string;
   createdAt: string;
   updatedAt: string;
   lastUserMessage: string | null;
@@ -179,6 +180,7 @@ interface CardProps {
   session: AnalysisSession;
   isSelected: boolean;
   isDeleting: boolean;
+  currentUserId: string | null;
   onClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -186,7 +188,7 @@ interface CardProps {
   onCancelDelete: () => void;
 }
 
-function AnalysisCardItem({ session, isSelected, isDeleting, onClick, onEdit, onDelete, onConfirmDelete, onCancelDelete }: CardProps) {
+function AnalysisCardItem({ session, isSelected, isDeleting, currentUserId, onClick, onEdit, onDelete, onConfirmDelete, onCancelDelete }: CardProps) {
   return (
     <button
       type="button"
@@ -241,24 +243,28 @@ function AnalysisCardItem({ session, isSelected, isDeleting, onClick, onEdit, on
           </div>
         ) : (
           <div className="analysis_cardActions">
-            <span
-              role="button"
-              tabIndex={0}
-              className="analysis_cardActionBtn"
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onEdit(); } }}
-            >
-              <Pencil size={14} />
-            </span>
-            <span
-              role="button"
-              tabIndex={0}
-              className="analysis_cardActionBtn"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onDelete(); } }}
-            >
-              <Trash2 size={14} />
-            </span>
+            {session.auth_user_id === currentUserId && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="analysis_cardActionBtn"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onEdit(); } }}
+              >
+                <Pencil size={14} />
+              </span>
+            )}
+            {session.auth_user_id === currentUserId && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="analysis_cardActionBtn"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onDelete(); } }}
+              >
+                <Trash2 size={14} />
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -536,6 +542,7 @@ export default function Analysis() {
           description: "",
           iconIndex: hashIconIndex(s.id),
           authorName: nameMap[s.auth_user_id] || "Unknown",
+          auth_user_id: s.auth_user_id,
           createdAt: s.created_at,
           updatedAt: s.updated_at,
           lastUserMessage: lastMsg?.content || null,
@@ -663,6 +670,7 @@ export default function Analysis() {
       description: "",
       iconIndex: hashIconIndex(newId),
       authorName: userName || "User",
+      auth_user_id: userId ?? "",
       createdAt: now,
       updatedAt: now,
       lastUserMessage: null,
@@ -730,6 +738,7 @@ export default function Analysis() {
       description: "",
       iconIndex: hashIconIndex(newId),
       authorName: userName || "User",
+      auth_user_id: userId ?? "",
       createdAt: now,
       updatedAt: now,
       lastUserMessage: description || null,
@@ -977,6 +986,7 @@ export default function Analysis() {
                     session={session}
                     isSelected={selectedSessionId === session.id}
                     isDeleting={deletingId === session.id}
+                    currentUserId={userId}
                     onClick={() => handleSelectSession(session.id)}
                     onEdit={() => handleEditSession(session.id)}
                     onDelete={() => handleDeleteSession(session.id)}

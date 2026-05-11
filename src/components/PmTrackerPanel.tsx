@@ -1,82 +1,76 @@
 // src/components/PmTrackerPanel.tsx
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Pencil, Search, Grid3X3, List, RefreshCw, Plus, X,
-  Calendar, CalendarDays, ShieldCheck, Settings, Trash2, ChevronLeft,
+  Calendar, CalendarDays, ShieldCheck, Settings, Trash2, ChevronLeft, ChevronDown,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { supabase } from "../lib/supabaseClient";
+import { useAgentChat } from "./useAgentChat";
+import type { AgentEvent } from "./useAgentChat";
 import "../styles/pm-tracker.css";
 
-// --- Constants ---
+const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || "https://sentinela-909652673285.us-central1.run.app";
 
-const COMMIT_DEFS = {
-  robot: [
-    { id: "r1", label: "Definition of Routines",  deadline: 2 },
-    { id: "r2", label: "Programming of Routines",  deadline: 4 },
-    { id: "r3", label: "Integration with PLC",     deadline: 6 },
-    { id: "r4", label: "Testing",                  deadline: 8 },
-    { id: "r5", label: "Live with ORION",          deadline: 10 },
-  ],
-  plc: [
-    { id: "p1", label: "Process Operating Diagram",      deadline: 2 },
-    { id: "p2", label: "Program Definition",             deadline: 3 },
-    { id: "p3", label: "Sensor & Actuator Integration",  deadline: 4 },
-    { id: "p4", label: "I/O Configuration",              deadline: 5 },
-    { id: "p5", label: "Programming",                    deadline: 6 },
-    { id: "p6", label: "Testing",                        deadline: 8 },
-    { id: "p7", label: "Live with ORION",                deadline: 10 },
-  ],
-  sensor: [
-    { id: "s1", label: "Sensor Selection & Wiring", deadline: 2 },
-    { id: "s2", label: "Signal Configuration",      deadline: 3 },
-    { id: "s3", label: "Calibration",               deadline: 4 },
-    { id: "s4", label: "PLC Tag Mapping",           deadline: 5 },
-    { id: "s5", label: "Testing",                   deadline: 7 },
-    { id: "s6", label: "Live with ORION",           deadline: 10 },
-  ],
-  hmi: [
-    { id: "h1", label: "Definition of User Interfaces", deadline: 3 },
-    { id: "h2", label: "Configuration of Signals",      deadline: 4 },
-    { id: "h3", label: "Visual Programming",            deadline: 6 },
-    { id: "h4", label: "Integration with PLC",          deadline: 7 },
-    { id: "h5", label: "Testing",                       deadline: 8 },
-    { id: "h6", label: "Live with ORION",               deadline: 10 },
-  ],
-  mes: [
-    { id: "m1", label: "Definition of SOP",          deadline: 3 },
-    { id: "m2", label: "Definition of Inventory",    deadline: 4 },
-    { id: "m3", label: "Quality Control Validation", deadline: 6 },
-    { id: "m4", label: "CT / LT / OEE Integration",  deadline: 7 },
-    { id: "m5", label: "Testing",                    deadline: 8 },
-    { id: "m6", label: "Live with ORION",            deadline: 10 },
-  ],
-  erp: [
-    { id: "e1", label: "Order Management Definition", deadline: 4 },
-    { id: "e2", label: "Inventory Definition",        deadline: 5 },
-    { id: "e3", label: "MES-ERP Integration",         deadline: 7 },
-    { id: "e4", label: "Testing",                     deadline: 9 },
-    { id: "e5", label: "Live with ORION",             deadline: 10 },
-  ],
-} as const;
+const WORD_PROMPT_TEMPLATE = `You are a witty PM tracking assistant for a university manufacturing project.
+Given the KPI snapshot in JSON below, respond ONLY with the following three lines — copy the format character by character, no variations allowed:
 
-type ElementKey = keyof typeof COMMIT_DEFS;
+Line 1 — bold label using double asterisks:    **Word of the day:**
+Line 2 — the word in single asterisks (italic): *YourWord*
+Line 3 — empty line
+Line 4 — a short quote in single asterisks and curly quotes: *"Your one-liner here."*
+
+Rules (strict):
+- Use ONLY standard markdown: ** for bold, * for italic. NEVER use ==, #, >, -, or any other markdown syntax.
+- The label MUST be exactly: **Word of the day:**
+- The word MUST be wrapped in single asterisks: *Word*
+- The quote MUST be wrapped in single asterisks with curly quotes inside: *"..."*
+- No preamble, no explanation, no extra text before or after — just those four lines.
+- The one-liner must be funny, punchy, max 12 words, roasting or celebrating the KPI situation.
+- Always change the word and the one-liner based on the KPI snapshot. Be creative and witty!
+- You should include the word you choose in the one-liner as well, to make it more relevant and humorous.
+
+Example of the ONLY acceptable output format:
+**Word of the day:**
+*Survival*
+
+*"These KPIs chose survival mode and honestly, same."*
+
+KPI Snapshot:
+\`\`\`json
+{SNAPSHOT}
+\`\`\`
+`;
+
+// ─── Area definitions (user-configurable) ────────────────────────────────────
+
+interface AreaDef {
+  key: string;
+  label: string;
+  color: string;
+}
+
+const DEFAULT_AREAS: AreaDef[] = [
+  { key: "robot",  label: "Robot",    color: "#e11d48" },
+  { key: "plc",    label: "PLC",      color: "#2563eb" },
+  { key: "sensor", label: "Sensores", color: "#16a34a" },
+  { key: "hmi",    label: "HMI",      color: "#d97706" },
+  { key: "mes",    label: "MES",      color: "#7c3aed" },
+  { key: "erp",    label: "ERP",      color: "#0891b2" },
+];
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const THEMES = [
-  { id: "light",    name: "Light",    bg: "#ffffff", fg: "#111111" },
-  { id: "slate",    name: "Slate",    bg: "#1e293b", fg: "#f8fafc" },
-  { id: "forest",   name: "Forest",   bg: "#14532d", fg: "#f0fdf4" },
-  { id: "ocean",    name: "Ocean",    bg: "#0c4a6e", fg: "#f0f9ff" },
-  { id: "sunset",   name: "Sunset",   bg: "#9a3412", fg: "#fff7ed" },
-  { id: "midnight", name: "Midnight", bg: "#020617", fg: "#f1f5f9" },
-] as const;
-const EL_COLOR: Record<string, string> = {
-  robot: "#e11d48", plc: "#2563eb", sensor: "#16a34a",
-  hmi: "#d97706",  mes: "#7c3aed",  erp: "#0891b2",
-};
-
-const EL_LABEL: Record<string, string> = {
-  robot: "Robot", plc: "PLC", sensor: "Sensores",
-  hmi: "HMI",     mes: "MES",  erp: "ERP",
-};
+  { id: "light",    name: "Light",    bg: "#ffffff", fg: "#111111", accent: "#2563eb" },
+  { id: "slate",    name: "Slate",    bg: "#1e293b", fg: "#f8fafc", accent: "#38bdf8" },
+  { id: "forest",   name: "Forest",   bg: "#14532d", fg: "#f0fdf4", accent: "#4ade80" },
+  { id: "ocean",    name: "Ocean",    bg: "#0c4a6e", fg: "#f0f9ff", accent: "#7dd3fc" },
+  { id: "sunset",   name: "Sunset",   bg: "#9a3412", fg: "#fff7ed", accent: "#fb923c" },
+  { id: "midnight", name: "Midnight", bg: "#020617", fg: "#f1f5f9", accent: "#818cf8" },
+];
 
 const STATUS_CYCLE: Record<string, TraceCommit["status"]> = {
   pending: "in_progress",
@@ -89,7 +83,7 @@ const ST_COLOR: Record<string, string> = {
   ok: "#16a34a", info: "#2563eb", warning: "#d97706", critical: "#dc2626",
 };
 
-// --- Types ---
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TraceProject {
   id: string;
@@ -112,18 +106,28 @@ interface TraceTeamEntry {
   pm_user_id: string | null;
   color: string;
   orion_validated: boolean;
+  editor_ids?: string[];
 }
 
 interface TraceCommit {
   id: string;
   entry_id: string;
   commit_key: string;
-  element: string;
-  element_key?: string;
+  element_key: string;
   label: string;
   deadline_day: number;
+  start_date?: string;
+  due_date?: string;
   status: "pending" | "in_progress" | "success" | "failed";
   updated_at: string;
+}
+
+interface TeamMember {
+  user_id: string;
+  role: string;
+  email?: string;
+  full_name?: string;
+  created_at?: string;
 }
 
 interface PmTrackerPanelProps {
@@ -134,23 +138,17 @@ interface PmTrackerPanelProps {
   onExpandSidebar?: () => void;
 }
 
-// --- Score helpers ---
+// ─── Score helpers ────────────────────────────────────────────────────────────
 
-type ZoneThresholds = [number, number, number]; // [crítico_max, deficiente_max, riesgo_max]
+type ZoneThresholds = [number, number, number];
 const DEFAULT_ZONES: ZoneThresholds = [40, 65, 85];
 
 function getTodayDay(project: TraceProject): number {
-  const anchor = project.today_override ? new Date(project.today_override) : new Date();
-  const anchorDate = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
-  const d = new Date(project.start_date);
-  const startDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  let day = 0;
-  const cur = new Date(startDate);
-  while (cur <= anchorDate) {
-    if (cur.getDay() !== 0 && cur.getDay() !== 6) day++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return Math.max(1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(project.start_date + "T00:00:00");
+  const diff = Math.round((today.getTime() - start.getTime()) / 86_400_000);
+  return Math.max(1, diff + 1);
 }
 
 function calcPenalty(
@@ -163,6 +161,28 @@ function calcPenalty(
   return Math.min(maxPenalty, daysLate * penaltyPerDay);
 }
 
+function calendarDaysBetween(from: Date | string, to: Date | string): number {
+  const fromMs = (typeof from === "string" ? new Date(from + "T00:00:00") : from).setHours(0, 0, 0, 0);
+  const toMs   = (typeof to   === "string" ? new Date(to   + "T00:00:00") : to  ).setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((toMs - fromMs) / 86_400_000));
+}
+
+function isCommitLate(commit: TraceCommit): boolean {
+  if (commit.status === "success") return false;
+  if (commit.due_date) {
+    const due = new Date(commit.due_date + "T23:59:59");
+    return new Date() > due;
+  }
+  return false;
+}
+
+function commitDaysLate(commit: TraceCommit, penaltyPerDay: number, maxPenalty: number): number {
+  if (commit.status === "success" || !commit.due_date) return 0;
+  const daysLate = calendarDaysBetween(commit.due_date, new Date().toISOString().split("T")[0]);
+  if (daysLate <= 0) return 0;
+  return Math.min(maxPenalty, daysLate * penaltyPerDay);
+}
+
 function calcEntryScore(
   commits: TraceCommit[], todayDay: number,
   penaltyPerDay: number, maxPenalty: number,
@@ -171,10 +191,10 @@ function calcEntryScore(
   const base = Math.round(
     (commits.filter((c) => c.status === "success").length / commits.length) * 100,
   );
-  const totalPenalty = commits.reduce(
-    (s, c) => s + calcPenalty(c.deadline_day, c.status, todayDay, penaltyPerDay, maxPenalty),
-    0,
-  );
+  const totalPenalty = commits.reduce((s, c) => {
+    if (c.due_date) return s + commitDaysLate(c, penaltyPerDay, maxPenalty);
+    return s + calcPenalty(c.deadline_day, c.status, todayDay, penaltyPerDay, maxPenalty);
+  }, 0);
   return Math.max(0, base - totalPenalty);
 }
 
@@ -198,23 +218,74 @@ function statusFromScore(
   return "critical";
 }
 
-function getStartDay(element: string, commitKey: string): number {
-  const defs = COMMIT_DEFS[element as ElementKey];
-  if (!defs) return 1;
-  const idx = defs.findIndex((d: { id: string }) => d.id === commitKey);
+function dateToDay(dateStr: string, projectStartDate: string): number {
+  const start = new Date(projectStartDate);
+  const end   = new Date(dateStr);
+  let day = 0;
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const target = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (cur <= target) {
+    if (cur.getDay() !== 0 && cur.getDay() !== 6) day++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return Math.max(1, day);
+}
+
+function dayToDate(day: number, projectStartDate: string): string {
+  const start = new Date(projectStartDate);
+  let count = 0;
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  while (count < day) {
+    if (cur.getDay() !== 0 && cur.getDay() !== 6) count++;
+    if (count < day) cur.setDate(cur.getDate() + 1);
+  }
+  return cur.toISOString().split("T")[0];
+}
+
+function effectiveDeadlineDay(commit: TraceCommit, projectStartDate: string): number {
+  if (commit.due_date) return dateToDay(commit.due_date, projectStartDate);
+  return commit.deadline_day;
+}
+
+function getStartDay(
+  element: string,
+  commitKey: string,
+  commits: TraceCommit[],
+  projectStartDate?: string,
+): number {
+  const effDay = (c: TraceCommit) =>
+    projectStartDate ? effectiveDeadlineDay(c, projectStartDate) : c.deadline_day;
+  const sameArea = commits
+    .filter((c) => c.element_key === element)
+    .sort((a, b) => effDay(a) - effDay(b));
+  const idx = sameArea.findIndex((c) => c.commit_key === commitKey);
   if (idx <= 0) return 1;
-  return defs[idx - 1].deadline + 1;
+  return effDay(sameArea[idx - 1]) + 1;
 }
 
 function elKey(c: TraceCommit): string {
-  return c.element_key ?? c.element;
+  return c.element_key;
 }
 
-// --- ZoneSlider (umbrales draggables) ---
+function areaColor(areas: AreaDef[], key: string): string {
+  return areas.find((a) => a.key === key)?.color ?? "#64748b";
+}
+
+function areaLabel(areas: AreaDef[], key: string): string {
+  return areas.find((a) => a.key === key)?.label ?? key;
+}
+
+function canEditEntry(entry: TraceTeamEntry, currentUserId: string | null): boolean {
+  if (!currentUserId) return false;
+  if (entry.pm_user_id === currentUserId) return true;
+  if (entry.editor_ids?.includes(currentUserId)) return true;
+  return false;
+}
+
+// ─── ZoneSlider ───────────────────────────────────────────────────────────────
 
 function ZoneSlider({
-  values,
-  onChange,
+  values, onChange,
 }: {
   values: ZoneThresholds;
   onChange: (v: ZoneThresholds) => void;
@@ -229,7 +300,6 @@ function ZoneSlider({
     const bar = barRef.current;
     if (!bar) return;
     const rect = bar.getBoundingClientRect();
-
     const onMove = (ev: PointerEvent) => {
       const next = [...values] as ZoneThresholds;
       let pct = Math.round(((ev.clientX - rect.left) / rect.width) * 100);
@@ -253,151 +323,163 @@ function ZoneSlider({
         <div className="pmt_zoneSeg pmt_zoneSeg--orange" style={{ left: `${a}%`,  width: `${b - a}%` }} />
         <div className="pmt_zoneSeg pmt_zoneSeg--yellow" style={{ left: `${b}%`,  width: `${c - b}%` }} />
         <div className="pmt_zoneSeg pmt_zoneSeg--green"  style={{ left: `${c}%`,  width: `${100 - c}%` }} />
-
         {([0, 1, 2] as const).map((i) => (
-          <div
-            key={i}
-            className="pmt_zoneThumb"
+          <div key={i} className="pmt_zoneThumb"
             style={{ left: `${values[i]}%`, borderColor: thumbColors[i] }}
-            onPointerDown={startDrag(i)}
-          >
+            onPointerDown={startDrag(i)}>
             <div className="pmt_zoneBubble">{values[i]}</div>
           </div>
         ))}
       </div>
-
-      <div className="pmt_zoneLabels">
-        <div className="pmt_zoneLabel pmt_zoneLabel--red">
-          <span>0 – {a}</span><strong>Crítico</strong>
-        </div>
-        <div className="pmt_zoneLabel pmt_zoneLabel--orange">
-          <span>{a} – {b}</span><strong>Deficiente</strong>
-        </div>
-        <div className="pmt_zoneLabel pmt_zoneLabel--yellow">
-          <span>{b} – {c}</span><strong>En Riesgo</strong>
-        </div>
-        <div className="pmt_zoneLabel pmt_zoneLabel--green">
-          <span>{c} – 100</span><strong>OK</strong>
-        </div>
-      </div>
     </div>
   );
 }
 
-// --- Stacked area bar row ---
+// ─── StackedRow ───────────────────────────────────────────────────────────────
+// Shows 0–100% scale. Each segment is proportional to ok/failed/pending vs total.
 
-function StackedRow({
-  label, commits,
-}: { label: string; commits: TraceCommit[] }) {
-  const total   = commits.length;
-  const ok      = commits.filter((c) => c.status === "success").length;
-  const failed  = commits.filter((c) => c.status === "failed").length;
-  const pending = commits.filter((c) => c.status === "pending" || c.status === "in_progress").length;
+function StackedRow({ label, commits, color }: {
+  label: string;
+  commits: TraceCommit[];
+  color?: string;
+}) {
+  const total    = commits.length;
+  const ok       = commits.filter((c) => c.status === "success").length;
+  const pct      = total > 0 ? Math.round((ok / total) * 100) : 0;
+  const barColor = color ?? "var(--st-ok)";
+
   return (
     <div className="pmt_stackedRow">
       <span className="pmt_stackedLabel">{label}</span>
-      <div className="pmt_stackedBar">
-        {total > 0 ? (
-          <>
-            <div className="pmt_stackedSeg pmt_stackedSeg--ok"   style={{ width: `${(ok / total) * 100}%` }}     title={`OK: ${ok}`} />
-            <div className="pmt_stackedSeg pmt_stackedSeg--fail" style={{ width: `${(failed / total) * 100}%` }} title={`Fail: ${failed}`} />
-            <div className="pmt_stackedSeg pmt_stackedSeg--pend" style={{ width: `${(pending / total) * 100}%` }} title={`Pending: ${pending}`} />
-          </>
-        ) : (
-          <div style={{ width: "100%", background: "#f3f4f6", height: "100%" }} />
+      <div className="pmt_stackedBar" style={{ position: "relative" }}>
+        {total > 0 && (
+          <div style={{
+            position: "absolute",
+            top: 0, left: 0, bottom: 0,
+            width: `${pct}%`,
+            background: barColor,
+            borderRadius: 4,
+            transition: "width 0.4s ease",
+          }} />
         )}
       </div>
-      <span className="pmt_stackedCount">{ok}/{total}</span>
+      <span className="pmt_stackedCount" style={{ minWidth: 30, textAlign: "right" }}>
+        {total > 0 ? `${pct}%` : "—"}
+      </span>
     </div>
   );
 }
 
-// --- Gantt Chart ---
+// ─── ManageAccessSection ──────────────────────────────────────────────────────
 
-function GanttChart({
-  entry, commits, todayDay, totalDays, onDeadlineChange,
+function ManageAccessSection({
+  entry, teamMembers, onUpdateEditors,
 }: {
   entry: TraceTeamEntry;
-  commits: TraceCommit[];
-  todayDay: number;
-  totalDays: number;
-  onDeadlineChange: (commitId: string, newDay: number) => void;
+  teamMembers: TeamMember[];
+  currentUserId: string | null;
+  onUpdateEditors: (entryId: string, editorIds: string[]) => Promise<void>;
 }) {
+  const editors = entry.editor_ids ?? [];
+
+  const toggle = async (userId: string) => {
+    const next = editors.includes(userId)
+      ? editors.filter((id) => id !== userId)
+      : [...editors, userId];
+    await onUpdateEditors(entry.id, next);
+  };
+
   return (
-    <div className="pmt_gantt">
-      <div className="pmt_ganttDays">
-        <div className="pmt_ganttLabelSpacer" />
-        <div className="pmt_ganttTrack">
-          {Array.from({ length: totalDays }, (_, i) => (
-            <div key={i} className={`pmt_ganttDayTick${i + 1 === todayDay ? " pmt_ganttDayTick--today" : ""}`}>
-              {i + 1}
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {teamMembers
+        .filter((m) => m.user_id !== entry.pm_user_id)
+        .map((member) => {
+          const isEditor = editors.includes(member.user_id);
+          return (
+            <div key={member.user_id} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 0", borderBottom: "1px solid var(--pmt-border-soft)",
+            }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                background: "var(--pmt-accent)", color: "var(--pmt-accent-text)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 600,
+              }}>
+                {(member.full_name || member.email || "?").slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: "var(--pmt-text)" }}>
+                  {member.full_name || member.email || member.user_id.slice(0, 8)}
+                </div>
+                {member.email && member.full_name && (
+                  <div style={{ fontSize: 10, color: "var(--pmt-text-subtle)" }}>
+                    {member.email}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(member.user_id)}
+                style={{
+                  padding: "4px 12px", fontSize: 11, fontWeight: 600,
+                  fontFamily: "inherit", borderRadius: 5, cursor: "pointer",
+                  border: isEditor ? "1px solid var(--st-ok)" : "1px solid var(--pmt-border)",
+                  background: isEditor ? "var(--st-ok-soft)" : "transparent",
+                  color: isEditor ? "var(--st-ok)" : "var(--pmt-text-muted)",
+                  transition: "all 0.12s",
+                }}>
+                {isEditor ? "✓ Editor" : "Solo lectura"}
+              </button>
             </div>
-          ))}
-        </div>
+          );
+        })}
+      <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)", marginTop: 4 }}>
+        El creador siempre tiene acceso completo.
       </div>
-      {commits.map((commit) => {
-        const startDay = getStartDay(commit.element, commit.commit_key);
-        const barLeft  = `${((startDay - 1) / totalDays) * 100}%`;
-        const barWidth = `${((commit.deadline_day - startDay + 1) / totalDays) * 100}%`;
-        const isLate   = commit.status !== "success" && todayDay > commit.deadline_day;
-        const baseColor =
-          commit.status === "failed"      ? "#dc2626" :
-          commit.status === "success"     ? (entry.color || "#16a34a") :
-          commit.status === "in_progress" ? (entry.color || "#2563eb") : "#94a3b8";
-        const barBg =
-          commit.status === "in_progress"
-            ? `repeating-linear-gradient(45deg,${baseColor},${baseColor} 4px,${baseColor}55 4px,${baseColor}55 8px)`
-            : baseColor;
-        return (
-          <div key={commit.id} className="pmt_ganttRow">
-            <div className="pmt_ganttRowLabel">
-              <span className="pmt_ganttLabelText" title={commit.label}>{commit.label}</span>
-              <span className="pmt_deadlineEdit" onClick={(e) => e.stopPropagation()}>
-                Day{" "}
-                <input type="number" min={1} max={totalDays} value={commit.deadline_day}
-                  onChange={(e) => onDeadlineChange(commit.id, Number(e.target.value))}
-                  className="pmt_deadlineInput" />
-              </span>
-            </div>
-            <div className="pmt_ganttTrack">
-              <div className="pmt_ganttTodayLine" style={{ left: `${((todayDay - 1) / totalDays) * 100}%` }} />
-              <div className={`pmt_ganttBar${isLate ? " pmt_ganttBar--late" : ""}`}
-                style={{ left: barLeft, width: barWidth, background: barBg }}
-                title={`${commit.label}: Day ${startDay}-${commit.deadline_day}`} />
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
 
-// --- Team Drawer ---
+// ─── TeamDrawer ───────────────────────────────────────────────────────────────
 
 function TeamDrawer({
-  entry, commits, tab, onTabChange, onClose,
-  todayDay, totalDays, penaltyPerDay, maxPenalty, zones,
-  onStatusChange, onDeadlineChange,
+  entry, commits, tab, areas, onTabChange, onClose,
+  todayDay, totalDays, projectStartDate, penaltyPerDay, maxPenalty, zones,
+  onStatusChange,
   onAddCommit, onDeleteCommit, onEditCommitLabel,
+  isFirstPlace, canEdit, teamMembers, currentUserId, onUpdateEditors,
 }: {
   entry: TraceTeamEntry;
   commits: TraceCommit[];
-  tab: "overview" | "commits" | "gantt" | "area";
-  onTabChange: (t: "overview" | "commits" | "gantt" | "area") => void;
+  tab: "overview" | "commits";
+  areas: AreaDef[];
+  onTabChange: (t: "overview" | "commits") => void;
   onClose: () => void;
   todayDay: number;
   totalDays: number;
+  projectStartDate: string;
   penaltyPerDay: number;
   maxPenalty: number;
   zones: ZoneThresholds;
   onStatusChange: (id: string, s: TraceCommit["status"]) => void;
-  onDeadlineChange: (id: string, day: number) => void;
-  onAddCommit: (draft: { label: string; element: string; deadline_day: number }) => void;
+  isFirstPlace?: boolean;
+  canEdit: boolean;
+  teamMembers: TeamMember[];
+  currentUserId: string | null;
+  onUpdateEditors: (entryId: string, editorIds: string[]) => Promise<void>;
+  onAddCommit: (draft: { label: string; element: string; deadline_day: number; due_date?: string }) => void;
   onDeleteCommit: (commitId: string) => void;
   onEditCommitLabel: (commitId: string, label: string) => void;
 }) {
   const [addCommitOpen, setAddCommitOpen]   = useState(false);
-  const [commitDraft, setCommitDraft]       = useState({ label: "", element: "robot", deadline_day: 5 });
+  const [commitDraft, setCommitDraft]       = useState({
+    label: "",
+    element: areas[0]?.key ?? "robot",
+    deadline_day: Math.ceil(totalDays / 2),
+    start_date: "",
+    due_date: "",
+  });
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [labelDraft, setLabelDraft]         = useState("");
 
@@ -414,16 +496,16 @@ function TeamDrawer({
       <div className="pmt_drawer">
         {/* Head */}
         <div className="pmt_drawerHead">
-          <div className="pmt_drawerAvatar" style={{ background: entry.color || "#64748b" }}>
+          <div
+            className={`pmt_drawerAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`}
+            style={{ background: entry.color || "#64748b" }}>
             {entry.pm_name.charAt(0).toUpperCase()}
           </div>
           <div className="pmt_drawerInfo">
             <div className="pmt_drawerTitle">{entry.team_name}</div>
             <div className="pmt_drawerSub">
               PM · {entry.pm_name} ·{" "}
-              <span style={{ color: grade.color }}>
-                {score} pts · {grade.label}
-              </span>
+              <span style={{ color: grade.color }}>{score} pts · {grade.label}</span>
             </div>
           </div>
           <button type="button" className="pmt_drawerClose" onClick={onClose}>
@@ -433,17 +515,18 @@ function TeamDrawer({
 
         {/* Tabs */}
         <div className="pmt_drawerTabs">
-          {(["overview", "commits", "gantt", "area"] as const).map((t) => (
+          {(["overview", "commits"] as const).map((t) => (
             <button key={t} type="button"
               className={`pmt_drawerTab${tab === t ? " pmt_drawerTab--active" : ""}`}
               onClick={() => onTabChange(t)}>
-              {t === "commits" ? `Commits (${total})` : t === "area" ? "Area" : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === "commits" ? `Metas (${total})` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
 
         {/* Body */}
         <div className="pmt_drawerBody">
+          <div className="pmt_drawerInner">
 
           {/* Overview */}
           {tab === "overview" && (
@@ -459,40 +542,77 @@ function TeamDrawer({
                 </div>
                 <div className="pmt_drawerKpi pmt_drawerKpi--fail">
                   <span className="pmt_drawerKpiVal">{failed}</span>
-                  <span className="pmt_drawerKpiLbl">Failed</span>
+                  <span className="pmt_drawerKpiLbl">Fallidos</span>
                 </div>
                 <div className="pmt_drawerKpi pmt_drawerKpi--warn">
                   <span className="pmt_drawerKpiVal">{pending}</span>
-                  <span className="pmt_drawerKpiLbl">Pending</span>
+                  <span className="pmt_drawerKpiLbl">Pendientes</span>
                 </div>
               </div>
-              <div className="pmt_drawerSection">
-                <div className="pmt_drawerSectionTitle">Progreso por área</div>
-                {Object.entries(EL_LABEL).map(([el, label]) => (
-                  <StackedRow key={el} label={label}
-                    commits={commits.filter((c) => elKey(c) === el)} />
-                ))}
-              </div>
+              {total === 0 ? (
+                <div className="pmt_noEntries" style={{ flexDirection: "column", gap: 8 }}>
+                  <span style={{ fontSize: 13 }}>Sin metas registradas.</span>
+                  {canEdit && (
+                    <button type="button" className="pmt_addEntryConfirm"
+                      style={{ fontSize: 12, padding: "6px 14px" }}
+                      onClick={() => onTabChange("commits")}>
+                      + Agregar primera meta
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="pmt_drawerSection">
+                  <div className="pmt_drawerSectionTitle">Progreso por área</div>
+                  {areas.map((area) => (
+                    <StackedRow key={area.key} label={area.label}
+                      color={area.color}
+                      commits={commits.filter((c) => elKey(c) === area.key)} />
+                  ))}
+                </div>
+              )}
+              {canEdit && (
+                <div className="pmt_drawerSection">
+                  <div className="pmt_drawerSectionTitle">Acceso de edición</div>
+                  <ManageAccessSection
+                    entry={entry}
+                    teamMembers={teamMembers}
+                    currentUserId={currentUserId}
+                    onUpdateEditors={onUpdateEditors}
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Commits */}
+          {/* Commits (Metas) */}
           {tab === "commits" && (
             <>
               <div className="pmt_drawerCommits">
+                {commits.length === 0 && !addCommitOpen && (
+                  <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--pmt-text-subtle)", fontSize: 13 }}>
+                    Aún no hay metas para este equipo.<br />
+                    <span style={{ fontSize: 12 }}>Escribe una meta abajo y asígnale un día límite.</span>
+                  </div>
+                )}
                 {commits.map((commit) => {
-                  const isLate  = commit.status !== "success" && todayDay > commit.deadline_day;
-                  const penalty = calcPenalty(commit.deadline_day, commit.status, todayDay, penaltyPerDay, maxPenalty);
+                  const isLate  = isCommitLate(commit);
+                  const penalty = commit.due_date
+                    ? commitDaysLate(commit, penaltyPerDay, maxPenalty)
+                    : calcPenalty(commit.deadline_day, commit.status, todayDay, penaltyPerDay, maxPenalty);
                   const el      = elKey(commit);
                   return (
                     <div key={commit.id} className={`pmt_commitRow2${isLate ? " pmt_commitRow2--late" : ""}`}>
                       <button type="button"
                         className={`pmt_commitPip pmt_commitPip--${commit.status}`}
-                        onClick={() => onStatusChange(commit.id, STATUS_CYCLE[commit.status])}
-                        title="Click to cycle status" />
+                        onClick={canEdit ? () => onStatusChange(commit.id, STATUS_CYCLE[commit.status]) : undefined}
+                        style={canEdit ? undefined : { cursor: "default", pointerEvents: "none" }}
+                        title={canEdit ? "Click para cambiar estado" : undefined} />
                       <span className="pmt_commitArea"
-                        style={{ background: (EL_COLOR[el] ?? "#64748b") + "22", color: EL_COLOR[el] ?? "#64748b" }}>
-                        {EL_LABEL[el] ?? el}
+                        style={{
+                          background: areaColor(areas, el) + "22",
+                          color: areaColor(areas, el),
+                        }}>
+                        {areaLabel(areas, el)}
                       </span>
                       {editingLabelId === commit.id ? (
                         <input className="pmt_commitLabelInput" value={labelDraft} autoFocus
@@ -503,116 +623,115 @@ function TeamDrawer({
                             if (e.key === "Escape") { setEditingLabelId(null); }
                           }} />
                       ) : (
-                        <span className="pmt_commitLabel2" title="Click to edit"
+                        <span className="pmt_commitLabel2" title="Click para editar"
                           onClick={() => { setEditingLabelId(commit.id); setLabelDraft(commit.label); }}>
                           {commit.label}
                         </span>
                       )}
-                      <span className="pmt_commitDay">Day {commit.deadline_day}</span>
+                      <span className="pmt_commitDay">
+                        {commit.due_date
+                          ? new Date(commit.due_date + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" })
+                          : `Día ${commit.deadline_day}`}
+                      </span>
                       {isLate && penalty > 0 && (
                         <span className="pmt_commitPenalty2">-{penalty}pt</span>
                       )}
-                      <button type="button" className="pmt_commitDeleteBtn"
-                        onClick={() => onDeleteCommit(commit.id)} title="Delete commit">
-                        <Trash2 size={11} />
-                      </button>
+                      {canEdit && (
+                        <button type="button" className="pmt_commitDeleteBtn"
+                          onClick={() => onDeleteCommit(commit.id)} title="Eliminar meta">
+                          <Trash2 size={11} />
+                        </button>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
-              {!addCommitOpen ? (
+              {!addCommitOpen && canEdit && (
                 <button type="button" className="pmt_addCommitBtn"
                   onClick={() => setAddCommitOpen(true)}>
-                  <Plus size={12} /> Add commit
+                  <Plus size={12} /> Agregar meta
                 </button>
-              ) : (
+              )}
+              {addCommitOpen && (
                 <div className="pmt_addCommitForm">
                   <select value={commitDraft.element}
                     onChange={(e) => setCommitDraft((d) => ({ ...d, element: e.target.value }))}>
-                    {Object.entries(EL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    {areas.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
                   </select>
-                  <input placeholder="Commit label..." value={commitDraft.label}
-                    onChange={(e) => setCommitDraft((d) => ({ ...d, label: e.target.value }))} />
-                  <input type="number" min={1} max={totalDays} value={commitDraft.deadline_day}
-                    onChange={(e) => setCommitDraft((d) => ({ ...d, deadline_day: +e.target.value }))} />
+                  <input
+                    placeholder="Describe la meta..."
+                    value={commitDraft.label}
+                    autoFocus
+                    onChange={(e) => setCommitDraft((d) => ({ ...d, label: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && commitDraft.label.trim() && commitDraft.due_date) {
+                        onAddCommit(commitDraft);
+                        setAddCommitOpen(false);
+                        setCommitDraft({ label: "", element: areas[0]?.key ?? "robot", deadline_day: Math.ceil(totalDays / 2), start_date: "", due_date: "" });
+                      }
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Inicio
+                      </span>
+                      <input
+                        type="date"
+                        value={commitDraft.start_date ?? ""}
+                        onChange={(e) => setCommitDraft((d) => ({ ...d, start_date: e.target.value }))}
+                        style={{ fontSize: 12, padding: "4px 8px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Límite
+                      </span>
+                      <input
+                        type="date"
+                        value={commitDraft.due_date ?? ""}
+                        min={commitDraft.start_date ?? ""}
+                        onChange={(e) => setCommitDraft((d) => ({
+                          ...d,
+                          due_date: e.target.value,
+                          deadline_day: e.target.value ? dateToDay(e.target.value, projectStartDate) : d.deadline_day,
+                        }))}
+                        style={{ fontSize: 12, padding: "4px 8px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}
+                      />
+                    </div>
+                  </div>
                   <button type="button" onClick={() => {
+                    if (!commitDraft.label.trim() || !commitDraft.due_date) return;
                     onAddCommit(commitDraft);
                     setAddCommitOpen(false);
-                    setCommitDraft({ label: "", element: "robot", deadline_day: 5 });
-                  }}>Add</button>
-                  <button type="button" onClick={() => setAddCommitOpen(false)}>Cancel</button>
+                    setCommitDraft({ label: "", element: areas[0]?.key ?? "robot", deadline_day: Math.ceil(totalDays / 2), start_date: "", due_date: "" });
+                  }}>Agregar</button>
+                  <button type="button" onClick={() => setAddCommitOpen(false)}>Cancelar</button>
                 </div>
               )}
             </>
           )}
 
-          {/* Area */}
-          {tab === "area" && (
-            <div className="pmt_areaTab">
-              {Object.entries(EL_LABEL).map(([el, label]) => {
-                const elCommits = commits.filter((c) => elKey(c) === el);
-                if (elCommits.length === 0) return null;
-                return (
-                  <div key={el} className="pmt_areaGroup">
-                    <div className="pmt_areaGroupHead"
-                      style={{ borderLeft: `3px solid ${EL_COLOR[el] ?? "#64748b"}` }}>
-                      <span className="pmt_areaGroupLabel">{label}</span>
-                      <div className="pmt_areaBulkBtns">
-                        <button type="button"
-                          onClick={() => elCommits.forEach((c) => onStatusChange(c.id, "success"))}>
-                          Check Todo OK
-                        </button>
-                        <button type="button"
-                          onClick={() => elCommits.forEach((c) => onStatusChange(c.id, "pending"))}>
-                          Reset
-                        </button>
-                      </div>
-                    </div>
-                    {elCommits.map((c) => (
-                      <div key={c.id} className="pmt_areaCommitRow">
-                        <button type="button"
-                          className={`pmt_commitPip pmt_commitPip--${c.status}`}
-                          onClick={() => onStatusChange(c.id, STATUS_CYCLE[c.status])}
-                          title="Click to cycle status" />
-                        <span className="pmt_areaCommitLabel">{c.label}</span>
-                        <span className="pmt_areaCommitDay">Day {c.deadline_day}</span>
-                        <span className={`pmt_areaCommitStatus pmt_areaCommitStatus--${c.status}`}>
-                          {c.status.replace("_", " ")}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Gantt */}
-          {tab === "gantt" && (
-            <div className="pmt_drawerGantt">
-              <GanttChart entry={entry} commits={commits}
-                todayDay={todayDay} totalDays={totalDays}
-                onDeadlineChange={onDeadlineChange} />
-            </div>
-          )}
-
+          </div>{/* pmt_drawerInner */}
         </div>
       </div>
     </>
   );
 }
 
-// --- Team Card ---
+// ─── TeamCard ─────────────────────────────────────────────────────────────────
 
 function TeamCard({
-  entry, commits, isSelected, todayDay,
+  entry, commits, areas, isSelected, todayDay,
   penaltyPerDay, maxPenalty, zones, editingEntryId, editDraft,
-  onSelect, onOpenGantt, onOpenCommits,
+  onSelect, onOpenCommits,
   onStartEdit, onChangeEditDraft, onSaveEntry, onCancelEdit, onDeleteEntry,
+  isFirstPlace, canEdit,
 }: {
   entry: TraceTeamEntry;
   commits: TraceCommit[];
+  areas: AreaDef[];
   isSelected: boolean;
   todayDay: number;
   penaltyPerDay: number;
@@ -621,13 +740,14 @@ function TeamCard({
   editingEntryId: string | null;
   editDraft: { team_name: string; pm_name: string; color: string };
   onSelect: () => void;
-  onOpenGantt: () => void;
   onOpenCommits: () => void;
   onStartEdit: () => void;
   onChangeEditDraft: (d: { team_name: string; pm_name: string; color: string }) => void;
   onSaveEntry: (id: string) => void;
   onCancelEdit: () => void;
   onDeleteEntry: () => void;
+  isFirstPlace?: boolean;
+  canEdit: boolean;
 }) {
   const score     = calcEntryScore(commits, todayDay, penaltyPerDay, maxPenalty);
   const ok        = commits.filter((c) => c.status === "success").length;
@@ -635,18 +755,15 @@ function TeamCard({
   const pending   = commits.filter((c) => c.status === "pending" || c.status === "in_progress").length;
   const color     = entry.color || "#64748b";
   const grade     = gradeInfo(score, zones);
-  const st        = statusFromScore(score, zones);
   const isEditing = editingEntryId === entry.id;
 
   return (
     <div
-      className={`pmt_card${isSelected ? " pmt_card--selected" : ""}`}
-      style={{ "--stripe-color": ST_COLOR[st] } as React.CSSProperties}
-      onClick={onSelect}
-    >
-      {/* Card top */}
+      className={`pmt_card${isSelected ? " pmt_card--selected" : ""}${isFirstPlace ? " pmt_card--first" : ""}`}
+      onClick={onSelect}>
+      {/* Top */}
       <div className="pmt_cardTop">
-        <div className="pmt_pmAvatar" style={{ background: color }}>
+        <div className={`pmt_pmAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`} style={{ background: color }}>
           {entry.pm_name.charAt(0).toUpperCase()}
         </div>
         <div className="pmt_cardNames">
@@ -657,23 +774,25 @@ function TeamCard({
           <div className="pmt_scoreNum" style={{ color: grade.color }}>{score}</div>
           <div className="pmt_scoreGrade" style={{ color: grade.color }}>{grade.label}</div>
         </div>
-        <button type="button" className="pmt_cardEditBtn"
-          onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
-          title="Edit entry">
-          <Pencil size={11} />
-        </button>
+        {canEdit && (
+          <button type="button" className="pmt_cardEditBtn"
+            onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
+            title="Editar">
+            <Pencil size={11} />
+          </button>
+        )}
       </div>
 
       {/* Edit overlay */}
       {isEditing && (
         <div className="pmt_cardEditOverlay" onClick={(e) => e.stopPropagation()}>
           <div className="pmt_editField">
-            <label>Team name</label>
+            <label>Nombre del equipo</label>
             <input value={editDraft.team_name}
               onChange={(e) => onChangeEditDraft({ ...editDraft, team_name: e.target.value })} />
           </div>
           <div className="pmt_editField">
-            <label>PM name</label>
+            <label>PM</label>
             <input value={editDraft.pm_name}
               onChange={(e) => onChangeEditDraft({ ...editDraft, pm_name: e.target.value })} />
           </div>
@@ -683,76 +802,89 @@ function TeamCard({
               onChange={(e) => onChangeEditDraft({ ...editDraft, color: e.target.value })} />
           </div>
           <div className="pmt_editActions">
-            <button type="button" onClick={onCancelEdit}>Cancel</button>
-            <button type="button" onClick={onDeleteEntry} style={{ color: "var(--st-critical)" }}>Delete</button>
-            <button type="button" onClick={() => onSaveEntry(entry.id)}>Save</button>
+            <button type="button" className="pmt_editActions__delete" onClick={onDeleteEntry}>Eliminar</button>
+            <button type="button" className="pmt_editActions__cancel" onClick={onCancelEdit}>Cancelar</button>
+            <button type="button" className="pmt_editActions__save" onClick={() => onSaveEntry(entry.id)}>Guardar</button>
           </div>
         </div>
       )}
 
-      {/* Card body */}
+      {/* Body */}
       <div className="pmt_cardBody">
         <div className="pmt_cardScoreRow">
           <span className="pmt_cardScoreLabel">SCORE</span>
           <span className="pmt_cardScoreVal" style={{ color: grade.color }}>
-            {score}<span className="pmt_cardScoreMax">/100</span>
+            {commits.length === 0 ? "—" : score}
+            {commits.length > 0 && <span className="pmt_cardScoreMax">/100</span>}
           </span>
         </div>
         <div className="pmt_cardScoreTrack">
           <div className="pmt_cardScoreFill" style={{ width: `${score}%`, background: grade.color }} />
         </div>
 
-        <div className="pmt_cardCommitSummary">
-          <span className="pmt_cardCommitChip pmt_cardCommitChip--ok">Check {ok}</span>
-          <span className="pmt_cardCommitChip pmt_cardCommitChip--fail">X {failed}</span>
-          <span className="pmt_cardCommitChip pmt_cardCommitChip--pend">O {pending}</span>
-        </div>
+        {commits.length === 0 ? (
+          <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)", textAlign: "center", padding: "8px 0" }}>
+            Sin metas · click "Metas" para agregar
+          </div>
+        ) : (
+          <>
+            <div className="pmt_cardCommitSummary">
+              <span className="pmt_cardCommitChip pmt_cardCommitChip--ok">✓ {ok}</span>
+              <span className="pmt_cardCommitChip pmt_cardCommitChip--fail">✗ {failed}</span>
+              <span className="pmt_cardCommitChip pmt_cardCommitChip--pend">○ {pending}</span>
+            </div>
 
-        <div className="pmt_elementBars">
-          {Object.entries(EL_LABEL).map(([el, label]) => {
-            const elCommits = commits.filter((c) => elKey(c) === el);
-            const elTotal   = elCommits.length;
-            const elOk      = elCommits.filter((c) => c.status === "success").length;
-            const elFail    = elCommits.filter((c) => c.status === "failed").length;
-            const elPend    = elCommits.filter((c) => c.status === "pending" || c.status === "in_progress").length;
-            const pct       = elTotal > 0 ? Math.round((elOk / elTotal) * 100) : 0;
-            return (
-              <div key={el} className="pmt_elementRow">
-                <span className="pmt_elementLabel">{label}</span>
-                <div className="pmt_elementTrack">
-                  {elTotal > 0 && (
-                    <>
-                      <div className="pmt_elementFill pmt_elementFill--ok"   style={{ width: `${(elOk / elTotal) * 100}%` }} />
-                      <div className="pmt_elementFill pmt_elementFill--fail" style={{ width: `${(elFail / elTotal) * 100}%` }} />
-                      <div className="pmt_elementFill pmt_elementFill--pend" style={{ width: `${(elPend / elTotal) * 100}%` }} />
-                    </>
-                  )}
-                </div>
-                <span className="pmt_elementCount">{pct}%</span>
-                <div className="pmt_elementDots">
-                  <span className={`pmt_elementDot${elOk   > 0 ? " pmt_elementDot--ok"   : ""}`} />
-                  <span className={`pmt_elementDot${elFail > 0 ? " pmt_elementDot--fail" : ""}`} />
-                  <span className={`pmt_elementDot${elPend > 0 ? " pmt_elementDot--pend" : ""}`} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+            <div className="pmt_elementBars">
+              {areas.map((area) => {
+                const elCommits = commits.filter((c) => elKey(c) === area.key);
+                const elTotal   = elCommits.length;
+                const elOk      = elCommits.filter((c) => c.status === "success").length;
+                const elFail    = elCommits.filter((c) => c.status === "failed").length;
+                const elPend    = elCommits.filter((c) => c.status === "pending" || c.status === "in_progress").length;
+                const pct       = elTotal > 0 ? Math.round((elOk / elTotal) * 100) : 0;
+                return (
+                  <div key={area.key} className="pmt_elementRow">
+                    <span className="pmt_elementLabel">{area.label}</span>
+                    <div className="pmt_elementTrack">
+                      {elTotal > 0 && (
+                        <>
+                          <div className="pmt_elementFill pmt_elementFill--ok"
+                            style={{ width: `${(elOk / elTotal) * 100}%`, background: area.color }} />
+                          <div className="pmt_elementFill pmt_elementFill--fail"
+                            style={{ width: `${(elFail / elTotal) * 100}%` }} />
+                          <div className="pmt_elementFill pmt_elementFill--pend"
+                            style={{ width: `${(elPend / elTotal) * 100}%` }} />
+                        </>
+                      )}
+                    </div>
+                    <span className="pmt_elementCount">{elTotal > 0 ? `${pct}%` : "—"}</span>
+                    <div className="pmt_elementDots">
+                      <span className={`pmt_elementDot${elOk   > 0 ? " pmt_elementDot--ok"   : ""}`} />
+                      <span className={`pmt_elementDot${elFail > 0 ? " pmt_elementDot--fail" : ""}`} />
+                      <span className={`pmt_elementDot${elPend > 0 ? " pmt_elementDot--pend" : ""}`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer */}
       <div className="pmt_cardFooter" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="pmt_cardFooterBtn" onClick={onOpenGantt}>Gantt</button>
-        <button type="button" className="pmt_cardFooterBtn" onClick={onOpenCommits}>Commits</button>
+        <button type="button" className="pmt_cardFooterBtn" onClick={onOpenCommits}>
+          Metas{commits.length > 0 ? ` (${commits.length})` : " +"}
+        </button>
       </div>
     </div>
   );
 }
 
-// --- List row ---
+// ─── TeamListRow ──────────────────────────────────────────────────────────────
 
 function TeamListRow({
-  entry, commits, todayDay, penaltyPerDay, maxPenalty, zones, onSelect,
+  entry, commits, todayDay, penaltyPerDay, maxPenalty, zones, onSelect, isFirstPlace,
 }: {
   entry: TraceTeamEntry;
   commits: TraceCommit[];
@@ -761,6 +893,7 @@ function TeamListRow({
   maxPenalty: number;
   zones: ZoneThresholds;
   onSelect: () => void;
+  isFirstPlace?: boolean;
 }) {
   const score   = calcEntryScore(commits, todayDay, penaltyPerDay, maxPenalty);
   const ok      = commits.filter((c) => c.status === "success").length;
@@ -772,7 +905,7 @@ function TeamListRow({
 
   return (
     <div className="pmt_listRow" onClick={onSelect}>
-      <div className="pmt_listAvatar" style={{ background: entry.color || "#64748b" }}>
+      <div className={`pmt_listAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`} style={{ background: entry.color || "#64748b" }}>
         {entry.pm_name.charAt(0).toUpperCase()}
       </div>
       <div className="pmt_listNames">
@@ -782,33 +915,39 @@ function TeamListRow({
       <div className="pmt_listRowBar">
         <div className="pmt_listRowFill" style={{ width: `${score}%`, background: grade.color }} />
       </div>
-      <span className="pmt_listRowScore" style={{ color: grade.color }}>{score}</span>
-      <span className={`pmt_listStatus pmt_listStatus--${st}`}>{grade.label}</span>
+      <span className="pmt_listRowScore" style={{ color: grade.color }}>
+        {total > 0 ? score : "—"}
+      </span>
+      <span className={`pmt_listStatus pmt_listStatus--${total > 0 ? st : "info"}`}>
+        {total > 0 ? grade.label : "Sin metas"}
+      </span>
       <div className="pmt_listRowStats">
-        <span className="pmt_listRowStat pmt_listRowStat--ok">Check {ok}</span>
-        <span className="pmt_listRowStat pmt_listRowStat--fail">X {failed}</span>
-        <span className="pmt_listRowStat pmt_listRowStat--pend">O {pending}</span>
-        <span className="pmt_listRowStat">{total} total</span>
+        <span className="pmt_listRowStat pmt_listRowStat--ok">✓ {ok}</span>
+        <span className="pmt_listRowStat pmt_listRowStat--fail">✗ {failed}</span>
+        <span className="pmt_listRowStat pmt_listRowStat--pend">○ {pending}</span>
+        <span className="pmt_listRowStat">{total} metas</span>
       </div>
     </div>
   );
 }
 
-// --- Project Gantt (all teams) ---
+// ─── ProjectGantt ─────────────────────────────────────────────────────────────
 
 function ProjectGantt({
-  entries, commitsByEntry, todayDay, totalDays, onDeadlineChange,
+  entries, commitsByEntry, areas, todayDay, totalDays, projectStartDate, onDeadlineChange,
 }: {
   entries: TraceTeamEntry[];
   commitsByEntry: Record<string, TraceCommit[]>;
+  areas: AreaDef[];
   todayDay: number;
   totalDays: number;
-  onDeadlineChange: (id: string, day: number) => void;
+  projectStartDate: string;
+  onDeadlineChange: (id: string, newDate: string) => void;
 }) {
   return (
     <div className="pmt_projectGantt">
       <div className="pmt_pgHeader">
-        <div className="pmt_pgLabelCol">Team / Commit</div>
+        <div className="pmt_pgLabelCol">Equipo / Meta</div>
         <div className="pmt_ganttTrack pmt_pgDayTrack">
           {Array.from({ length: totalDays }, (_, i) => (
             <div key={i} className={`pmt_ganttDayTick${i + 1 === todayDay ? " pmt_ganttDayTick--today" : ""}`}>
@@ -838,11 +977,24 @@ function ProjectGantt({
               </div>
             </div>
 
+            {commits.length === 0 && (
+              <div className="pmt_pgRow">
+                <div className="pmt_pgLabelCol pmt_pgCommitLabel">
+                  <span style={{ color: "var(--pmt-text-subtle)", fontSize: 10 }}>Sin metas</span>
+                </div>
+                <div className="pmt_ganttTrack pmt_pgCommitTrack">
+                  <div className="pmt_ganttTodayLine"
+                    style={{ left: `${((todayDay - 1) / totalDays) * 100}%` }} />
+                </div>
+              </div>
+            )}
+
             {commits.map((commit) => {
-              const startDay  = getStartDay(commit.element, commit.commit_key);
+              const deadlineDay = effectiveDeadlineDay(commit, projectStartDate);
+              const startDay  = getStartDay(elKey(commit), commit.commit_key, commits, projectStartDate);
               const barLeft   = `${((startDay - 1) / totalDays) * 100}%`;
-              const barWidth  = `${((commit.deadline_day - startDay + 1) / totalDays) * 100}%`;
-              const isLate    = commit.status !== "success" && todayDay > commit.deadline_day;
+              const barWidth  = `${((deadlineDay - startDay + 1) / totalDays) * 100}%`;
+              const isLate    = isCommitLate(commit);
               const el        = elKey(commit);
               const baseColor =
                 commit.status === "failed"      ? "#dc2626" :
@@ -856,13 +1008,14 @@ function ProjectGantt({
                 <div key={commit.id} className="pmt_pgRow">
                   <div className="pmt_pgLabelCol pmt_pgCommitLabel">
                     <span className="pmt_pgCommitEl"
-                      style={{ background: (EL_COLOR[el] ?? "#64748b") + "22", color: EL_COLOR[el] ?? "#64748b" }}>
-                      {EL_LABEL[el] ?? el}
+                      style={{ background: areaColor(areas, el) + "22", color: areaColor(areas, el) }}>
+                      {areaLabel(areas, el)}
                     </span>
                     <span className="pmt_pgCommitText" title={commit.label}>{commit.label}</span>
                     <span className="pmt_deadlineEdit" onClick={(e) => e.stopPropagation()}>
-                      <input type="number" min={1} max={totalDays} value={commit.deadline_day}
-                        onChange={(e) => onDeadlineChange(commit.id, Number(e.target.value))}
+                      <input type="date"
+                        value={commit.due_date ?? dayToDate(commit.deadline_day, projectStartDate)}
+                        onChange={(e) => onDeadlineChange(commit.id, e.target.value)}
                         className="pmt_deadlineInput" />
                     </span>
                   </div>
@@ -871,7 +1024,7 @@ function ProjectGantt({
                       style={{ left: `${((todayDay - 1) / totalDays) * 100}%` }} />
                     <div className={`pmt_ganttBar${isLate ? " pmt_ganttBar--late" : ""}`}
                       style={{ left: barLeft, width: barWidth, background: barBg }}
-                      title={`${commit.label}: Day ${startDay}-${commit.deadline_day}`} />
+                      title={`${commit.label}: Día ${startDay}–${deadlineDay}`} />
                   </div>
                 </div>
               );
@@ -883,53 +1036,460 @@ function ProjectGantt({
   );
 }
 
-// --- Main component ---
+// ─── SharePanel ──────────────────────────────────────────────────────────────
 
-export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, config, onExpandSidebar }: PmTrackerPanelProps) {
-  // Template-level defaults (from analysis_templates.config)
+function SharePanel({
+  teamId,
+  sessionId,
+  projectName: _projectName,
+  onClose,
+}: {
+  teamId: string;
+  sessionId: string;
+  projectName: string;
+  onClose: () => void;
+}) {
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [joinCode, setJoinCode] = useState<string>("");
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [hoverCode, setHoverCode] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<"idle" | "success" | "error">("idle");
+  const [inviteError, setInviteError] = useState("");
+
+  const shareUrl = `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(sessionId)}&team=${encodeURIComponent(teamId)}`;
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from("team_memberships")
+        .select("auth_user_id, role, created_at")
+        .eq("team_id", teamId)
+        .order("created_at");
+
+      if (error) {
+        console.error("[SharePanel] Load members error:", error);
+        setLoading(false);
+        return;
+      }
+
+      const base = (data ?? []).map((m: any) => ({
+        user_id: m.auth_user_id,
+        role: m.role,
+        created_at: m.created_at,
+      }));
+
+      const ids = base.map((m) => m.user_id);
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("auth_user_id, email, full_name")
+        .in("auth_user_id", ids);
+
+      if (profileData && profileData.length > 0) {
+        const profileMap = Object.fromEntries(
+          profileData.map((p: any) => [p.auth_user_id, p])
+        );
+        setMembers(base.map((m) => ({
+          ...m,
+          full_name: profileMap[m.user_id]?.full_name ?? undefined,
+          email: profileMap[m.user_id]?.email ?? undefined,
+        })));
+      } else {
+        setMembers(base);
+      }
+
+      const { data: teamData } = await supabase
+        .from("teams")
+        .select("join_code, name")
+        .eq("id", teamId)
+        .single();
+      if (teamData?.join_code) setJoinCode(teamData.join_code);
+
+      setLoading(false);
+    };
+    load();
+  }, [teamId]);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim() || inviting) return;
+    setInviting(true);
+    setInviteStatus("idle");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-track`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ email: inviteEmail.trim(), team_id: teamId }),
+        }
+      );
+      const json = await res.json();
+      if (!res.ok) { setInviteStatus("error"); setInviteError(json.error ?? "Error"); }
+      else { setInviteStatus("success"); setInviteEmail(""); }
+    } catch {
+      setInviteStatus("error"); setInviteError("Error de conexión");
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const roleLabel = (role: string) => {
+    if (role === "owner" || role === "admin") return "Admin";
+    if (role === "lab_researcher" || role === "researcher") return "Researcher";
+    return role;
+  };
+
+  const initials = (m: TeamMember) => {
+    if (m.full_name) return m.full_name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    if (m.email) return m.email.slice(0, 2).toUpperCase();
+    return m.user_id.slice(0, 2).toUpperCase();
+  };
+
+  const displayName = (m: TeamMember) =>
+    m.full_name || m.email || `Usuario ${m.user_id.slice(0, 6).toUpperCase()}`;
+
+  return (
+    <>
+      <div className="pmt_drawerOverlay" onClick={onClose} />
+      <div className="pmt_orionPanel" style={{ width: 480 }}>
+        <div className="pmt_orionHead">
+          <span style={{ fontSize: 16 }}>🔗</span>
+          <span>Compartir Dashboard</span>
+          <button type="button" className="pmt_drawerClose" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="pmt_orionBody" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* Link section */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--pmt-text-subtle)" }}>
+              Link del dashboard
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{
+                flex: 1, padding: "8px 12px", fontSize: 12, fontFamily: "var(--pmt-font-mono)",
+                background: "var(--pmt-surface-2)", border: "1px solid var(--pmt-border)",
+                borderRadius: 6, color: "var(--pmt-text-muted)",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {shareUrl}
+              </div>
+              <button
+                type="button"
+                onClick={handleCopy}
+                style={{
+                  padding: "8px 16px", fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                  background: copied ? "var(--st-ok)" : "var(--pmt-accent)",
+                  color: copied ? "#fff" : "var(--pmt-accent-text)",
+                  border: "none", borderRadius: 6, cursor: "pointer",
+                  whiteSpace: "nowrap", transition: "background 0.2s",
+                  flexShrink: 0,
+                }}>
+                {copied ? "✓ Copiado" : "Copiar"}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)" }}>
+              Cualquier miembro del lab con acceso puede ver este dashboard en tiempo real.
+            </div>
+          </div>
+
+          {/* Invite section */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
+              textTransform: "uppercase", color: "var(--pmt-text-subtle)" }}>
+              Invitar por email
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="email"
+                placeholder="correo@ejemplo.com"
+                value={inviteEmail}
+                onChange={(e) => { setInviteEmail(e.target.value); setInviteStatus("idle"); }}
+                onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+                style={{
+                  flex: 1, padding: "8px 12px", fontSize: 13, fontFamily: "inherit",
+                  background: "var(--pmt-surface-2)", border: "1px solid var(--pmt-border)",
+                  borderRadius: 6, color: "var(--pmt-text)", outline: "none",
+                }}
+              />
+              <button type="button" onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}
+                style={{
+                  padding: "8px 16px", fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                  background: "var(--pmt-accent)", color: "var(--pmt-accent-text)",
+                  border: "none", borderRadius: 6, cursor: "pointer", whiteSpace: "nowrap",
+                  opacity: (inviting || !inviteEmail.trim()) ? 0.5 : 1,
+                }}>
+                {inviting ? "Enviando..." : "Invitar"}
+              </button>
+            </div>
+            {inviteStatus === "success" && (
+              <div style={{ fontSize: 12, color: "var(--st-ok)" }}>
+                ✓ Invitación enviada — recibirán un email para crear su cuenta.
+              </div>
+            )}
+            {inviteStatus === "error" && (
+              <div style={{ fontSize: 12, color: "var(--st-critical)" }}>✗ {inviteError}</div>
+            )}
+          </div>
+
+          {/* Join code section */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--pmt-text-subtle)" }}>
+              Join code del lab
+            </div>
+            <div
+              role="button"
+              tabIndex={joinCode ? 0 : -1}
+              onClick={() => {
+                if (!joinCode) return;
+                navigator.clipboard.writeText(joinCode).then(() => {
+                  setCopiedCode(true);
+                  setTimeout(() => setCopiedCode(false), 2000);
+                });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") e.currentTarget.click();
+              }}
+              onMouseEnter={() => setHoverCode(true)}
+              onMouseLeave={() => setHoverCode(false)}
+              style={{
+                padding: "12px 16px", cursor: joinCode ? "pointer" : "default",
+                background: copiedCode ? "var(--st-ok-soft, #dcfce7)" : hoverCode ? "var(--pmt-surface-3, var(--pmt-surface-2))" : "var(--pmt-surface-2)",
+                border: `1px solid ${copiedCode ? "var(--st-ok)" : "var(--pmt-border)"}`,
+                borderRadius: 8, transition: "background 0.15s, border-color 0.15s",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+              }}>
+              <span style={{
+                fontSize: 22, fontWeight: 700, letterSpacing: "0.15em",
+                fontFamily: "var(--pmt-font-mono)",
+                color: copiedCode ? "var(--st-ok)" : "var(--pmt-text)",
+                transition: "color 0.15s",
+              }}>
+                {joinCode || "—"}
+              </span>
+              <span style={{
+                fontSize: 10, fontWeight: 500, letterSpacing: "0.04em",
+                color: copiedCode ? "var(--st-ok)" : "var(--pmt-text-subtle)",
+                opacity: (hoverCode || copiedCode) ? 1 : 0,
+                transition: "opacity 0.15s",
+              }}>
+                {copiedCode ? "✓ Copiado" : "click to copy"}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)" }}>
+              Comparte este código con tu equipo. Al registrarse e ingresar el código, tendrán acceso automático al dashboard.
+            </div>
+          </div>
+
+          {/* Members section */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--pmt-text-subtle)" }}>
+                Miembros del lab
+              </div>
+              <span style={{ fontSize: 11, color: "var(--pmt-text-subtle)", fontFamily: "var(--pmt-font-mono)" }}>
+                {members.length} {members.length === 1 ? "miembro" : "miembros"}
+              </span>
+            </div>
+
+            {loading ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--pmt-text-subtle)", fontSize: 13 }}>
+                Cargando miembros...
+              </div>
+            ) : members.length === 0 ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--pmt-text-subtle)", fontSize: 13 }}>
+                No hay miembros en este lab todavía.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {members.map((member) => (
+                  <div key={member.user_id} className="pmt_orionRow" style={{ padding: "10px 0" }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 8,
+                      background: "var(--pmt-accent)", color: "var(--pmt-accent-text)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 600, flexShrink: 0,
+                    }}>
+                      {initials(member)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--pmt-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {displayName(member)}
+                      </div>
+                      {member.email && member.full_name && (
+                        <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)" }}>{member.email}</div>
+                      )}
+                    </div>
+                    <span style={{
+                      padding: "3px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600,
+                      background: member.role === "owner" || member.role === "admin"
+                        ? "var(--st-info-soft)" : "var(--pmt-border-soft)",
+                      color: member.role === "owner" || member.role === "admin"
+                        ? "var(--st-info)" : "var(--pmt-text-muted)",
+                    }}>
+                      {roleLabel(member.role)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── NoteKpiTile ─────────────────────────────────────────────────────────────
+// Editable free-text tile for the KPI strip corner.
+
+function NoteKpiTile({
+  value,
+  onSave,
+  onGenerate,
+  generating,
+}: {
+  value: string;
+  onSave: (v: string) => Promise<void>;
+  onGenerate?: () => void;
+  generating?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(value);
+  const [saving, setSaving]   = useState(false);
+
+  useEffect(() => { setDraft(value); }, [value]);
+
+  const commit = async () => {
+    if (draft === value) { setEditing(false); return; }
+    setSaving(true);
+    await onSave(draft);
+    setSaving(false);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="pmt_kpiNoteTile pmt_kpiNoteTile--editing">
+        <textarea
+          className="pmt_kpiNoteTextarea"
+          value={draft}
+          autoFocus
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commit(); }
+            if (e.key === "Escape") { setDraft(value); setEditing(false); }
+          }}
+          placeholder="Nota, palabra del día, instrucción..."
+          rows={3}
+        />
+        <div className="pmt_kpiNoteActions">
+          <button type="button" onClick={() => { setDraft(value); setEditing(false); }}
+            className="pmt_kpiNoteCancel">Cancelar</button>
+          <button type="button" onClick={commit} disabled={saving}
+            className="pmt_kpiNoteSave">{saving ? "..." : "Guardar"}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pmt_kpiNoteTile" onClick={() => setEditing(true)} title="Click para editar">
+      {value.trim() ? (
+        <div className="pmt_kpiNoteText">
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+            {value}
+          </ReactMarkdown>
+        </div>
+      ) : (
+        <p className="pmt_kpiNoteEmpty">+ Agregar nota o mensaje del día...</p>
+      )}
+      <div className="pmt_kpiNoteHint">
+        <span>click para editar</span>
+        {onGenerate && (
+          <span
+            className={`pmt_kpiNoteRefresh${generating ? " pmt_kpiNoteRefresh--loading" : ""}`}
+            onClick={(e) => { e.stopPropagation(); if (!generating) onGenerate(); }}
+          >
+            {generating ? "generando..." : "↻ refresh word"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function PmTrackerPanel({
+  sessionId, teamId, userId: _userId, config, onExpandSidebar,
+}: PmTrackerPanelProps) {
   const penaltyPerDay   = (config.penalty_per_day   as number | undefined) ?? 5;
   const maxPenalty      = (config.max_penalty        as number | undefined) ?? 20;
   const configTotalDays = (config.total_working_days as number | undefined) ?? 10;
 
-  // -- Core state --
-  const [project, setProject]                 = useState<TraceProject | null>(null);
-  const [entries, setEntries]                 = useState<TraceTeamEntry[]>([]);
-  const [commitsByEntry, setCommitsByEntry]   = useState<Record<string, TraceCommit[]>>({});
-  const [loading, setLoading]                 = useState(true);
+  // ── Core state ──────────────────────────────────────────────────────────────
+  const [project, setProject]               = useState<TraceProject | null>(null);
+  const [entries, setEntries]               = useState<TraceTeamEntry[]>([]);
+  const [commitsByEntry, setCommitsByEntry] = useState<Record<string, TraceCommit[]>>({});
+  const [loading, setLoading]               = useState(true);
   const [creatingProject, setCreatingProject] = useState(false);
 
-  // Project-level config (applies AFTER user saves; falls back to defaults)
-  const projectCfg = (project?.config ?? {}) as Record<string, unknown>;
-  const theme     = (projectCfg.theme as string | undefined) ?? "light";
-  const zones      = (projectCfg.zones as ZoneThresholds | undefined) ?? DEFAULT_ZONES;
+  // Derived from project config
+  const projectCfg  = (project?.config ?? {}) as Record<string, unknown>;
+  const theme        = (projectCfg.theme as string | undefined) ?? "light";
+  const zones        = (projectCfg.zones as ZoneThresholds | undefined) ?? DEFAULT_ZONES;
+  const areas: AreaDef[] = useMemo(
+    () => (projectCfg.areas as AreaDef[] | undefined) ?? DEFAULT_AREAS,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [project],
+  );
 
-  // -- Add tracker form --
+  // ── Add tracker form ────────────────────────────────────────────────────────
   const [showAddEntry, setShowAddEntry]   = useState(false);
   const [newEntryName, setNewEntryName]   = useState("");
   const [newPmName, setNewPmName]         = useState("");
   const [newEntryColor, setNewEntryColor] = useState("#2563eb");
-  const [newElement, setNewElement]       = useState<ElementKey>("robot");
 
-  // -- Edit project name --
+  // ── Edit project name ───────────────────────────────────────────────────────
   const [editingProjectName, setEditingProjectName] = useState(false);
   const [projectNameDraft, setProjectNameDraft]     = useState("");
 
-  // -- Edit entry --
+  // ── Edit entry ──────────────────────────────────────────────────────────────
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ team_name: "", pm_name: "", color: "#2563eb" });
 
-  // -- Drawer --
+  // ── Drawer ──────────────────────────────────────────────────────────────────
   const [drawerEntryId, setDrawerEntryId] = useState<string | null>(null);
-  const [drawerTab, setDrawerTab]         = useState<"overview" | "commits" | "gantt" | "area">("overview");
+  const [drawerTab, setDrawerTab]         = useState<"overview" | "commits">("overview");
 
-  // -- Filters / view --
+  // ── Filters / view ──────────────────────────────────────────────────────────
   const [filter, setFilter] = useState<"all" | "critical" | "warning" | "ontrack">("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"score" | "name" | "progress">("score");
   const [view, setView]     = useState<"grid" | "list" | "gantt">("grid");
 
-  // -- Settings (unified popup) --
+  // ── Settings ────────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings]   = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [settingsDraft, setSettingsDraft] = useState({
     start_date: "",
     end_date: "",
@@ -938,40 +1498,112 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
     total_working_days: configTotalDays,
     zones: DEFAULT_ZONES as ZoneThresholds,
     theme: "light",
+    areas: DEFAULT_AREAS as AreaDef[],
   });
 
-  // -- ORION Check panel --
-  const [showOrionCheck, setShowOrionCheck] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) =>
+      setCurrentUserId(data.user?.id ?? null)
+    );
+  }, []);
 
-  const totalDays = project?.total_working_days ?? configTotalDays;
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  useEffect(() => {
+    if (!teamId) return;
+    const loadMembers = async () => {
+      const { data } = await supabase
+        .from("team_memberships")
+        .select("auth_user_id, role")
+        .eq("team_id", teamId);
+      if (!data) return;
+      const ids = data.map((m: any) => m.auth_user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("auth_user_id, full_name, email")
+        .in("auth_user_id", ids);
+      const profileMap = Object.fromEntries(
+        (profiles ?? []).map((p: any) => [p.auth_user_id, p])
+      );
+      setTeamMembers(data.map((m: any) => ({
+        user_id: m.auth_user_id,
+        role: m.role,
+        full_name: profileMap[m.auth_user_id]?.full_name,
+        email: profileMap[m.auth_user_id]?.email,
+      })));
+    };
+    loadMembers();
+  }, [teamId]);
+
+  // ── ORION Check ─────────────────────────────────────────────────────────────
+  const [showOrionCheck, setShowOrionCheck] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [wordGenerating, setWordGenerating] = useState(false);
+
+  const totalDays = project?.start_date && project?.end_date
+    ? calendarDaysBetween(project.start_date, project.end_date) + 1
+    : project?.total_working_days ?? configTotalDays;
   const todayDay  = project ? getTodayDay(project) : 1;
 
-  // -- Load data --
+  // ── Note save (ref-based to avoid stale closure in onResponse) ───────────────
+  const handleSaveNoteRef = useRef<(note: string) => Promise<void>>(async () => {});
+  handleSaveNoteRef.current = async (note: string) => {
+    if (!project) return;
+    const newConfig = { ...(project.config ?? {}), note };
+    await supabase.from("trace_projects").update({ config: newConfig }).eq("id", project.id);
+    setProject((prev) => prev ? { ...prev, config: newConfig } : prev);
+  };
+
+  // ── Word of the Day agent ─────────────────────────────────────────────────────
+  const { sendMessage: _generateWord } = useAgentChat({
+    apiUrl: AGENT_API_URL,
+    userId: _userId || undefined,
+    userName: "PM Tracker",
+    sessionId: undefined,
+    interactionMode: "analysis",
+    onEvent: (_evt: AgentEvent) => {},
+    onResponse: async (text: string) => {
+      await handleSaveNoteRef.current(text);
+      setWordGenerating(false);
+    },
+    onError: () => setWordGenerating(false),
+    onStreamEnd: () => {},
+  });
+
+  // ── Load data ────────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const { data: projectData, error: projectError } = await supabase
         .from("trace_projects").select("*").eq("team_id", teamId).maybeSingle();
 
-      if (projectError) { console.error("[PmTracker] Load project error:", projectError); return; }
-
+      if (projectError) {
+        console.error("[PmTracker] Load project error:", projectError);
+        return;
+      }
       if (!projectData) {
-        setProject(null); setEntries([]); setCommitsByEntry({}); return;
+        setProject(null); setEntries([]); setCommitsByEntry({});
+        return;
       }
 
       setProject(projectData as TraceProject);
 
-      const { data: entriesData } = await supabase
+      const { data: entriesData, error: entriesError } = await supabase
         .from("trace_team_entries").select("*")
         .eq("project_id", projectData.id).order("created_at");
+
+      if (entriesError) console.error("[PmTracker] Load entries error:", entriesError);
 
       const loadedEntries = (entriesData ?? []) as TraceTeamEntry[];
       setEntries(loadedEntries);
 
       if (loadedEntries.length > 0) {
-        const { data: commitsData } = await supabase
+        const { data: commitsData, error: commitsError } = await supabase
           .from("trace_commits").select("*")
-          .in("entry_id", loadedEntries.map((e) => e.id)).order("deadline_day");
+          .in("entry_id", loadedEntries.map((e) => e.id))
+          .order("deadline_day");
+
+        if (commitsError) console.error("[PmTracker] Load commits error:", commitsError);
 
         const byEntry: Record<string, TraceCommit[]> = {};
         for (const c of (commitsData ?? []) as TraceCommit[]) {
@@ -991,7 +1623,7 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // -- Create project --
+  // ── Create project ───────────────────────────────────────────────────────────
   const handleCreateProject = async () => {
     setCreatingProject(true);
     try {
@@ -1001,12 +1633,10 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
           team_id: teamId,
           analysis_session_id: sessionId || null,
           name: "Flexible Manufacturing Challenge 2026",
-          course: "Automatización de Sistemas de Manufactura",
           start_date: new Date().toISOString().split("T")[0],
           end_date: new Date(Date.now() + 14 * 864e5).toISOString().split("T")[0],
           total_working_days: 10,
-          penalty_per_day: penaltyPerDay,
-          max_penalty: maxPenalty,
+          config: { areas: DEFAULT_AREAS, zones: DEFAULT_ZONES, theme: "light" },
         })
         .select().single();
       if (error) { console.error("[PmTracker] Create error:", error); return; }
@@ -1016,7 +1646,7 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
     }
   };
 
-  // -- Add team entry --
+  // ── Add team entry (no auto-commits — user adds goals manually) ──────────────
   const handleAddEntry = async () => {
     if (!project || !newEntryName.trim() || !newPmName.trim()) return;
     const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -1028,44 +1658,51 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
         team_slug: slugify(newEntryName),
         team_name: newEntryName.trim(),
         pm_name: newPmName.trim(),
-        pm_user_id: null,
+        pm_user_id: currentUserId ?? null,
         color: newEntryColor ?? "#2563eb",
         orion_validated: false,
+        editor_ids: [],
       })
       .select().single();
 
     if (error) { console.error("[PmTracker] Add entry error:", error); return; }
 
-    const entryId = (entry as TraceTeamEntry).id;
-    const defs    = COMMIT_DEFS[newElement];
-    const inserts = defs.map((d: { id: string; label: string; deadline: number }) => ({
-      id: crypto.randomUUID(), entry_id: entryId,
-      commit_key: d.id, element: newElement,
-      label: d.label, deadline_day: d.deadline,
-      status: "pending" as const, updated_at: new Date().toISOString(),
-    }));
-
-    const { data: commitsData } = await supabase.from("trace_commits").insert(inserts).select();
-
-    setEntries((prev) => [...prev, entry as TraceTeamEntry]);
-    setCommitsByEntry((prev) => ({ ...prev, [entryId]: (commitsData ?? inserts) as TraceCommit[] }));
+    const newEntry = entry as TraceTeamEntry;
+    setEntries((prev) => [...prev, newEntry]);
+    setCommitsByEntry((prev) => ({ ...prev, [newEntry.id]: [] }));
     setNewEntryName(""); setNewPmName(""); setNewEntryColor("#2563eb"); setShowAddEntry(false);
+
+    // Open drawer on commits tab so user can add their first goal
+    setDrawerEntryId(newEntry.id);
+    setDrawerTab("commits");
   };
 
-  // -- Status change (optimistic) --
+  const handleUpdateEditors = useCallback(async (entryId: string, editorIds: string[]) => {
+    const { error } = await supabase
+      .from("trace_team_entries")
+      .update({ editor_ids: editorIds })
+      .eq("id", entryId);
+    if (error) { console.error("[PmTracker] Update editors error:", error); return; }
+    setEntries((prev) => prev.map((e) =>
+      e.id === entryId ? { ...e, editor_ids: editorIds } : e
+    ));
+  }, []);
+
+  // ── Status change (optimistic) ───────────────────────────────────────────────
   const handleStatusChange = useCallback(async (commitId: string, newStatus: TraceCommit["status"]) => {
     const now = new Date().toISOString();
     setCommitsByEntry((prev) => {
       const updated: Record<string, TraceCommit[]> = {};
-      for (const [eid, cs] of Object.entries(prev)) {
+      for (const [eid, cs] of Object.entries(prev))
         updated[eid] = cs.map((c) => c.id === commitId ? { ...c, status: newStatus, updated_at: now } : c);
-      }
       return updated;
     });
-    await supabase.from("trace_commits").update({ status: newStatus, updated_at: now }).eq("id", commitId);
+    const { error } = await supabase.from("trace_commits")
+      .update({ status: newStatus, updated_at: now }).eq("id", commitId);
+    if (error) console.error("[PmTracker] Status change error:", error);
   }, []);
 
-  // -- Save unified settings (date range + appearance + penalties + zones) --
+  // ── Save settings ────────────────────────────────────────────────────────────
   const handleSaveSettings = async () => {
     if (!project) return;
     const patch = {
@@ -1079,9 +1716,11 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
         total_working_days: settingsDraft.total_working_days,
         zones:              settingsDraft.zones,
         theme:              settingsDraft.theme,
+        areas:              settingsDraft.areas,
       },
     };
-    await supabase.from("trace_projects").update(patch).eq("id", project.id);
+    const { error } = await supabase.from("trace_projects").update(patch).eq("id", project.id);
+    if (error) { console.error("[PmTracker] Save settings error:", error); return; }
     setProject((prev) => prev ? { ...prev, ...patch } : prev);
     setShowSettings(false);
   };
@@ -1094,62 +1733,66 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
     setEditingProjectName(false);
   };
 
-  // -- Delete entry (commits first, then entry; skip first delete if CASCADE is on) --
+  // ── Delete entry ─────────────────────────────────────────────────────────────
   const handleDeleteEntry = async (entryId: string) => {
     await supabase.from("trace_commits").delete().eq("entry_id", entryId);
     await supabase.from("trace_team_entries").delete().eq("id", entryId);
     setEntries((prev) => prev.filter((e) => e.id !== entryId));
     setCommitsByEntry((prev) => { const next = { ...prev }; delete next[entryId]; return next; });
     setEditingEntryId(null);
+    if (drawerEntryId === entryId) setDrawerEntryId(null);
   };
 
-  // -- Edit entry --
+  // ── Edit entry ───────────────────────────────────────────────────────────────
   const handleSaveEntry = async (entryId: string) => {
     const { error } = await supabase.from("trace_team_entries")
       .update({ team_name: editDraft.team_name, pm_name: editDraft.pm_name, color: editDraft.color })
       .eq("id", entryId);
-    if (!error) setEntries((prev) => prev.map((e) => e.id === entryId ? { ...e, ...editDraft } : e));
+    if (error) { console.error("[PmTracker] Save entry error:", error); return; }
+    setEntries((prev) => prev.map((e) => e.id === entryId ? { ...e, ...editDraft } : e));
     setEditingEntryId(null);
   };
 
-  // -- ORION validation toggle --
-  const handleToggleOrionValidated = useCallback(async (entryId: string, validated: boolean) => {
-    await supabase.from("trace_team_entries").update({ orion_validated: validated }).eq("id", entryId);
-    setEntries((prev) => prev.map((e) => e.id === entryId ? { ...e, orion_validated: validated } : e));
-  }, []);
 
-  // -- Add / delete / edit commit label --
+
+  // ── Add commit (goal) ────────────────────────────────────────────────────────
   const handleAddCommit = useCallback(async (
     entryId: string,
-    draft: { label: string; element: string; deadline_day: number },
+    draft: { label: string; element: string; deadline_day: number; due_date?: string },
   ) => {
     if (!draft.label.trim()) return;
-    const insert = {
+    const insert: Omit<TraceCommit, ""> = {
       id: crypto.randomUUID(),
       entry_id: entryId,
-      commit_key: `custom_${Date.now()}`,
-      element: draft.element,
+      commit_key: `goal_${Date.now()}`,
       element_key: draft.element,
       label: draft.label.trim(),
-      deadline_day: draft.deadline_day,
-      status: "pending" as const,
+      deadline_day: Math.max(1, draft.deadline_day),
+      ...(draft.due_date ? { due_date: draft.due_date } : {}),
+      status: "pending",
       updated_at: new Date().toISOString(),
     };
-    const { data } = await supabase.from("trace_commits").insert(insert).select().single();
+    const { data, error } = await supabase.from("trace_commits").insert(insert).select().single();
+    if (error) console.error("[PmTracker] Add commit error:", error);
     setCommitsByEntry((prev) => ({
       ...prev,
-      [entryId]: [...(prev[entryId] ?? []), (data ?? insert) as TraceCommit],
+      [entryId]: [...(prev[entryId] ?? []), (data ?? insert) as TraceCommit].sort(
+        (a, b) => a.deadline_day - b.deadline_day,
+      ),
     }));
   }, []);
 
+  // ── Delete commit ────────────────────────────────────────────────────────────
   const handleDeleteCommit = useCallback(async (entryId: string, commitId: string) => {
     setCommitsByEntry((prev) => ({
       ...prev,
       [entryId]: (prev[entryId] ?? []).filter((c) => c.id !== commitId),
     }));
-    await supabase.from("trace_commits").delete().eq("id", commitId);
+    const { error } = await supabase.from("trace_commits").delete().eq("id", commitId);
+    if (error) console.error("[PmTracker] Delete commit error:", error);
   }, []);
 
+  // ── Edit commit label ────────────────────────────────────────────────────────
   const handleEditCommitLabel = useCallback(async (commitId: string, label: string) => {
     setCommitsByEntry((prev) => {
       const updated: Record<string, TraceCommit[]> = {};
@@ -1157,30 +1800,44 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
         updated[eid] = cs.map((c) => c.id === commitId ? { ...c, label } : c);
       return updated;
     });
-    await supabase.from("trace_commits").update({ label }).eq("id", commitId);
+    const { error } = await supabase.from("trace_commits").update({ label }).eq("id", commitId);
+    if (error) console.error("[PmTracker] Edit label error:", error);
   }, []);
 
-  // -- Deadline change --
-  const handleDeadlineChange = useCallback(async (commitId: string, newDay: number) => {
+  // ── Deadline change ──────────────────────────────────────────────────────────
+  const handleDeadlineChange = useCallback(async (commitId: string, newDate: string) => {
+    if (!project) return;
+    const newDay = dateToDay(newDate, project.start_date);
     setCommitsByEntry((prev) => {
       const updated: Record<string, TraceCommit[]> = {};
-      for (const [eid, cs] of Object.entries(prev)) {
-        updated[eid] = cs.map((c) => c.id === commitId ? { ...c, deadline_day: newDay } : c);
-      }
+      for (const [eid, cs] of Object.entries(prev))
+        updated[eid] = cs.map((c) => c.id === commitId ? { ...c, deadline_day: newDay, due_date: newDate } : c);
       return updated;
     });
-    await supabase.from("trace_commits").update({ deadline_day: newDay }).eq("id", commitId);
-  }, []);
+    const { error } = await supabase.from("trace_commits")
+      .update({ deadline_day: newDay, due_date: newDate }).eq("id", commitId);
+    if (error) console.error("[PmTracker] Deadline change error:", error);
+  }, [project]);
 
-  // -- Computed --
-  const calcGlobalScore = (e: TraceTeamEntry) =>
-    calcEntryScore(commitsByEntry[e.id] ?? [], todayDay, penaltyPerDay, maxPenalty);
+  // ── Computed ─────────────────────────────────────────────────────────────────
+  const calcGlobalScore = useCallback((e: TraceTeamEntry) =>
+    calcEntryScore(commitsByEntry[e.id] ?? [], todayDay, penaltyPerDay, maxPenalty),
+  [commitsByEntry, todayDay, penaltyPerDay, maxPenalty]);
+
+  const firstPlaceEntryId = useMemo(() => {
+    if (entries.length === 0) return null;
+    const scored = entries.filter((e) => (commitsByEntry[e.id] ?? []).length > 0);
+    if (scored.length === 0) return null;
+    return [...scored].sort((a, b) => calcGlobalScore(b) - calcGlobalScore(a))[0]?.id ?? null;
+  }, [entries, commitsByEntry, calcGlobalScore]);
 
   const allCommits     = Object.values(commitsByEntry).flat();
   const successCommits = allCommits.filter((c) => c.status === "success").length;
   const failedCommits  = allCommits.filter((c) => c.status === "failed").length;
-  const lateCommits    = allCommits.filter((c) => c.status !== "success" && todayDay > c.deadline_day).length;
-  const daysRemaining  = Math.max(0, totalDays - todayDay);
+  const lateCommits    = allCommits.filter((c) => isCommitLate(c)).length;
+  const daysRemaining  = project?.end_date
+    ? Math.max(0, calendarDaysBetween(new Date().toISOString().split("T")[0], project.end_date))
+    : Math.max(0, totalDays - todayDay);
   const avgScore       = entries.length > 0
     ? Math.round(entries.reduce((s, e) => s + calcGlobalScore(e), 0) / entries.length)
     : 0;
@@ -1192,6 +1849,8 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
   // Filter + search + sort
   const filteredEntries = entries
     .filter((e) => {
+      const commits = commitsByEntry[e.id] ?? [];
+      if (commits.length === 0 && filter !== "all") return false;
       const st = statusFromScore(calcGlobalScore(e), zones);
       if (filter === "critical" && st !== "critical") return false;
       if (filter === "warning"  && st !== "warning")  return false;
@@ -1214,63 +1873,117 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
 
   const filterCounts = {
     all:      entries.length,
-    critical: entries.filter((e) => statusFromScore(calcGlobalScore(e), zones) === "critical").length,
-    warning:  entries.filter((e) => statusFromScore(calcGlobalScore(e), zones) === "warning").length,
+    critical: entries.filter((e) => {
+      const c = commitsByEntry[e.id] ?? [];
+      return c.length > 0 && statusFromScore(calcGlobalScore(e), zones) === "critical";
+    }).length,
+    warning:  entries.filter((e) => {
+      const c = commitsByEntry[e.id] ?? [];
+      return c.length > 0 && statusFromScore(calcGlobalScore(e), zones) === "warning";
+    }).length,
     ontrack:  entries.filter((e) => {
+      const c = commitsByEntry[e.id] ?? [];
+      if (c.length === 0) return false;
       const st = statusFromScore(calcGlobalScore(e), zones);
       return st === "ok" || st === "info";
     }).length,
   };
 
-  const sortLabel  = sortBy === "score" ? "Score" : sortBy === "name" ? "Name A-Z" : "Progress";
+  const sortLabel  = sortBy === "score" ? "Score" : sortBy === "name" ? "A–Z" : "Progreso";
   const drawerEntry = drawerEntryId ? entries.find((e) => e.id === drawerEntryId) : null;
 
-  // -- Render: loading --
+  // ── Word of the Day: generate ─────────────────────────────────────────────────
+  const handleGenerateWord = () => {
+    if (!project || wordGenerating) return;
+    const leader = firstPlaceEntryId ? entries.find((e) => e.id === firstPlaceEntryId) : null;
+    const snapshot = {
+      day:      { current: todayDay, total: totalDays, remaining: daysRemaining },
+      score:    { avg: avgScore, grade: globalGrade.label },
+      csr_global: globalCsr,
+      commits:  { total: allCommits.length, ok: successCommits, failed: failedCommits, late: lateCommits },
+      teams:    { total: entries.length, critical: filterCounts.critical, warning: filterCounts.warning, ontrack: filterCounts.ontrack },
+      areas:    areas.map((area) => {
+        const ac = entries.flatMap((e) => (commitsByEntry[e.id] ?? []).filter((c) => elKey(c) === area.key));
+        return { label: area.label, pct_ok: ac.length > 0 ? Math.round((ac.filter((c) => c.status === "success").length / ac.length) * 100) : 0 };
+      }),
+      leader: leader ? { name: leader.pm_name, team: leader.team_name, score: calcGlobalScore(leader) } : null,
+    };
+    const prompt = WORD_PROMPT_TEMPLATE.replace("{SNAPSHOT}", JSON.stringify(snapshot, null, 2));
+    setWordGenerating(true);
+    _generateWord(prompt);
+  };
+
+  // ── Settings: area helpers ───────────────────────────────────────────────────
+  const addArea = () => {
+    const newKey = `area_${Date.now()}`;
+    setSettingsDraft((d) => ({
+      ...d,
+      areas: [...d.areas, { key: newKey, label: "Nueva área", color: "#64748b" }],
+    }));
+  };
+  const removeArea = (i: number) => {
+    setSettingsDraft((d) => ({ ...d, areas: d.areas.filter((_, idx) => idx !== i) }));
+  };
+  const updateArea = (i: number, field: keyof AreaDef, value: string) => {
+    setSettingsDraft((d) => ({
+      ...d,
+      areas: d.areas.map((a, idx) => idx === i ? { ...a, [field]: value } : a),
+    }));
+  };
+
+  // ── Render: loading ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="pmt_loading">
         <div className="pmt_loadingSpinner" />
-        <p>Loading project data...</p>
+        <p>Cargando datos del proyecto...</p>
       </div>
     );
   }
 
-  // -- Render: no project --
+  // ── Render: no project ───────────────────────────────────────────────────────
   if (!project) {
     return (
       <div className="pmt_emptyProject">
         <Calendar size={48} strokeWidth={1} style={{ color: "rgba(16,17,19,0.2)" }} />
-        <h3>No project found</h3>
-        <p>Create a PM Tracker project to start monitoring your team's progress.</p>
+        <h3>Sin proyecto</h3>
+        <p>Crea un PM Tracker para empezar a monitorear el progreso de tu equipo.</p>
         <button type="button" className="pmt_createProjectBtn"
           onClick={handleCreateProject} disabled={creatingProject}>
-          {creatingProject ? "Creating..." : "Create Project"}
+          {creatingProject ? "Creando..." : "Crear Proyecto"}
         </button>
       </div>
     );
   }
 
-  // -- Render: dashboard --
+  // ── Render: dashboard ────────────────────────────────────────────────────────
   return (
     <div className="pmt_root" data-theme={theme}>
+
       {/* Slide-over drawer */}
       {drawerEntry && (
         <TeamDrawer
           entry={drawerEntry}
           commits={commitsByEntry[drawerEntry.id] ?? []}
           tab={drawerTab}
+          areas={areas}
           onTabChange={setDrawerTab}
           onClose={() => setDrawerEntryId(null)}
           todayDay={todayDay}
           totalDays={totalDays}
+          projectStartDate={project.start_date}
           penaltyPerDay={penaltyPerDay}
           maxPenalty={maxPenalty}
           zones={zones}
           onStatusChange={handleStatusChange}
-          onDeadlineChange={handleDeadlineChange}
           onAddCommit={(draft) => handleAddCommit(drawerEntry.id, draft)}
           onDeleteCommit={(cid) => handleDeleteCommit(drawerEntry.id, cid)}
           onEditCommitLabel={handleEditCommitLabel}
+          isFirstPlace={drawerEntry.id === firstPlaceEntryId}
+          canEdit={canEditEntry(drawerEntry, currentUserId)}
+          teamMembers={teamMembers}
+          currentUserId={currentUserId}
+          onUpdateEditors={handleUpdateEditors}
         />
       )}
 
@@ -1279,12 +1992,7 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
         <div className="pmt_toolbarLeft">
           <div className="pmt_titleRow">
             {onExpandSidebar && (
-              <button
-                type="button"
-                className="pmt_expandBtn"
-                onClick={onExpandSidebar}
-                aria-label="Expand sidebar"
-              >
+              <button type="button" className="pmt_expandBtn" onClick={onExpandSidebar} aria-label="Expand sidebar">
                 <ChevronLeft size={16} />
               </button>
             )}
@@ -1297,14 +2005,13 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
             ) : (
               <h1 className="pmt_h1"
                 onClick={() => { setProjectNameDraft(project.name); setEditingProjectName(true); }}
-                title="Click to rename">
+                title="Click para renombrar">
                 {project.name}
               </h1>
             )}
           </div>
         </div>
         <div className="pmt_toolbarRight">
-          {/* Single config button (replaces date range + gear) */}
           <button type="button" className="pmt_btnIcon" onClick={() => {
             setSettingsDraft({
               start_date: project.start_date,
@@ -1312,18 +2019,23 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
               penalty_per_day: penaltyPerDay,
               max_penalty: maxPenalty,
               total_working_days: totalDays,
-              zones: zones,
-              theme: theme,
+              zones,
+              theme,
+              areas,
             });
+            setThemeMenuOpen(false);
             setShowSettings(true);
-          }} title="Configuración del proyecto">
+          }} title="Configuración">
             <Settings size={14} />
           </button>
 
-          <span className="pmt_dayPill">DAY <strong>{todayDay}/{totalDays}</strong></span>
+          <button type="button" className="pmt_btnSecondary" onClick={() => setShowShare(true)} title="Compartir">
+            🔗 Share
+          </button>
 
-          <button type="button" className="pmt_btnOrion" onClick={() => setShowOrionCheck(true)}
-            title="Validación ORION">
+          <span className="pmt_dayPill">DÍA <strong>{todayDay}/{totalDays}</strong></span>
+
+          <button type="button" className="pmt_btnOrion" onClick={() => setShowOrionCheck(true)}>
             <ShieldCheck size={13} /> ORION Check
           </button>
 
@@ -1331,7 +2043,7 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
             <Plus size={13} /> Add Tracker
           </button>
 
-          <button type="button" className="pmt_btnIcon" onClick={loadData} title="Refresh">
+          <button type="button" className="pmt_btnIcon" onClick={loadData} title="Recargar">
             <RefreshCw size={14} />
           </button>
         </div>
@@ -1340,70 +2052,90 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
       {/* Add tracker form */}
       {showAddEntry && (
         <div className="pmt_addEntryForm">
-          <input type="text" className="pmt_addEntryInput" placeholder="Team name..."
+          <input type="text" className="pmt_addEntryInput" placeholder="Nombre del equipo..."
             value={newEntryName} onChange={(e) => setNewEntryName(e.target.value)} />
-          <input type="text" className="pmt_addEntryInput" placeholder="PM name..."
+          <input type="text" className="pmt_addEntryInput" placeholder="Nombre del PM..."
             value={newPmName} onChange={(e) => setNewPmName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleAddEntry(); }} />
-          <select className="pmt_addEntrySelect" value={newElement}
-            onChange={(e) => setNewElement(e.target.value as ElementKey)}>
-            {Object.entries(EL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
           <input type="color" className="pmt_addEntryColor" value={newEntryColor}
             onChange={(e) => setNewEntryColor(e.target.value)} />
-          <button type="button" className="pmt_addEntryConfirm" onClick={handleAddEntry}>Add</button>
-          <button type="button" className="pmt_addEntryCancel" onClick={() => setShowAddEntry(false)}>Cancel</button>
+          <button type="button" className="pmt_addEntryConfirm" onClick={handleAddEntry}>Agregar</button>
+          <button type="button" className="pmt_addEntryCancel" onClick={() => setShowAddEntry(false)}>Cancelar</button>
         </div>
       )}
 
       {/* KPI Strip */}
       <div className="pmt_kpiStrip">
-        <div className="pmt_kpiTile">
+        {/* Compact KPI tiles */}
+        <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">SCORE PROMEDIO</span>
-          <span className="pmt_kpiValue" style={{ color: "#7c3aed" }}>{avgScore}<span className="pmt_kpiUnit">/100</span></span>
+          <span className="pmt_kpiValue" style={{ color: globalGrade.color }}>
+            {entries.length > 0 ? avgScore : "—"}
+            {entries.length > 0 && <span className="pmt_kpiUnit">/100</span>}
+          </span>
           <span className="pmt_kpiSub">
-            {avgScore >= 75
-              ? <><span className="pmt_kpiArrow pmt_kpiArrow--up">up</span> Sobre objetivo (75)</>
-              : <><span className="pmt_kpiArrow pmt_kpiArrow--down">down</span> Bajo objetivo (75)</>}
+            {entries.length === 0
+              ? "Sin equipos"
+              : avgScore >= 75
+                ? <><span className="pmt_kpiArrow pmt_kpiArrow--up">↑</span> Sobre objetivo</>
+                : <><span className="pmt_kpiArrow pmt_kpiArrow--down">↓</span> Bajo objetivo</>}
           </span>
         </div>
-        <div className="pmt_kpiTile">
+        <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">CSR GLOBAL</span>
-          <span className="pmt_kpiValue" style={{ color: globalGrade.color }}>{globalCsr}%</span>
-          <span className="pmt_kpiSub">{globalGrade.label} · Intención vs ejecución</span>
+          <span className="pmt_kpiValue" style={{ color: globalGrade.color }}>
+            {allCommits.length > 0 ? `${globalCsr}%` : "—"}
+          </span>
+          <span className="pmt_kpiSub">
+            {allCommits.length > 0 ? globalGrade.label : "Sin metas"}
+          </span>
         </div>
-        <div className="pmt_kpiTile">
-          <span className="pmt_kpiLabel">COMMITS OK</span>
+        <div className="pmt_kpiTile pmt_kpiTile--sm">
+          <span className="pmt_kpiLabel">METAS OK</span>
           <span className="pmt_kpiValue" style={{ color: "var(--st-ok)" }}>{successCommits}</span>
           <span className="pmt_kpiSub">de {allCommits.length} totales</span>
         </div>
-        <div className="pmt_kpiTile">
-          <span className="pmt_kpiLabel">COMMITS FALLIDOS</span>
+        <div className="pmt_kpiTile pmt_kpiTile--sm">
+          <span className="pmt_kpiLabel">METAS FALLIDAS</span>
           <span className="pmt_kpiValue" style={{ color: "var(--st-critical)" }}>{failedCommits}</span>
           <span className="pmt_kpiSub">{allCommits.length - successCommits} sin completar</span>
         </div>
-        <div className="pmt_kpiTile">
+        <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">CON RETRASO</span>
-          <span className="pmt_kpiValue" style={{ color: "var(--st-warning)" }}>{lateCommits}</span>
-          <span className="pmt_kpiSub">{allCommits.length - successCommits} pendientes</span>
+          <span className="pmt_kpiValue" style={{ color: lateCommits > 0 ? "var(--st-warning)" : "var(--pmt-text)" }}>
+            {lateCommits}
+          </span>
+          <span className="pmt_kpiSub">
+            {lateCommits > 0 ? "pasaron su deadline" : "Sin retrasos"}
+          </span>
         </div>
-        <div className="pmt_kpiTile">
+        <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">DÍAS RESTANTES</span>
           <span className="pmt_kpiValue" style={{ color: "#2563eb" }}>{daysRemaining}</span>
           <span className="pmt_kpiSub">
             {project?.end_date
-              ? `Fin: ${new Date(project.end_date + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}`
-              : "--"}
+              ? `Fin: ${new Date(project.end_date + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}`
+              : "Sin fecha fin"}
           </span>
         </div>
+
+        {/* Editable note tile */}
+        <NoteKpiTile
+          value={(projectCfg.note as string | undefined) ?? ""}
+          onSave={handleSaveNoteRef.current}
+          onGenerate={handleGenerateWord}
+          generating={wordGenerating}
+        />
       </div>
 
       {/* Body */}
       <div className="pmt_body">
         <div className={`pmt_leftCol${view === "gantt" ? " pmt_leftCol--full" : ""}`}>
-        <div className="pmt_filterBar">
-          <h2 className="pmt_sectionTitle">Avances Generales</h2>
-          <div className="pmt_filterPills">
+
+          {/* Filter bar */}
+          <div className="pmt_filterBar">
+            <h2 className="pmt_sectionTitle">Avances Generales</h2>
+            <div className="pmt_filterPills">
               {(["all", "critical", "warning", "ontrack"] as const).map((k) => (
                 <button key={k} type="button"
                   className={`pmt_filterPill${filter === k ? " pmt_filterPill--active" : ""}`}
@@ -1411,14 +2143,14 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
                   {k !== "all" && (
                     <span className={`pmt_filterDot pmt_filterDot--${k === "ontrack" ? "ok" : k}`} />
                   )}
-                  {k === "ontrack" ? "On Track" : k.charAt(0).toUpperCase() + k.slice(1)}
+                  {k === "all" ? "Todos" : k === "ontrack" ? "En curso" : k.charAt(0).toUpperCase() + k.slice(1)}
                   <span className="pmt_filterCount">{filterCounts[k]}</span>
                 </button>
               ))}
             </div>
             <div className="pmt_filterSearch">
               <Search size={13} />
-              <input placeholder="Search teams or PMs..." value={search}
+              <input placeholder="Buscar equipos o PMs..." value={search}
                 onChange={(e) => setSearch(e.target.value)} />
             </div>
             <button type="button" className="pmt_filterSort"
@@ -1438,26 +2170,29 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
               </button>
               <button type="button"
                 className={`pmt_viewBtn${view === "gantt" ? " pmt_viewBtn--active" : ""}`}
-                onClick={() => setView("gantt")}
-                title="Vista Gantt">
+                onClick={() => setView("gantt")} title="Gantt">
                 <CalendarDays size={13} />
               </button>
             </div>
           </div>
 
-          {/* Team grid / list */}
+          {/* Grid / List / Gantt */}
           {view !== "gantt" && (
             entries.length === 0 ? (
               <div className="pmt_noEntries">
-                <p>No team members yet. Use "+ Add Tracker" to start tracking.</p>
+                <p>Agrega equipos con "+ Add Tracker" para empezar.</p>
+              </div>
+            ) : filteredEntries.length === 0 ? (
+              <div className="pmt_noEntries">
+                <p>No hay equipos que coincidan con el filtro.</p>
               </div>
             ) : view === "grid" ? (
               <div className="pmt_cardGrid">
                 {filteredEntries.map((entry) => (
-                  <TeamCard
-                    key={entry.id}
+                  <TeamCard key={entry.id}
                     entry={entry}
                     commits={commitsByEntry[entry.id] ?? []}
+                    areas={areas}
                     isSelected={drawerEntryId === entry.id}
                     todayDay={todayDay}
                     penaltyPerDay={penaltyPerDay}
@@ -1466,21 +2201,24 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
                     editingEntryId={editingEntryId}
                     editDraft={editDraft}
                     onSelect={() => { setDrawerEntryId(entry.id); setDrawerTab("overview"); }}
-                    onOpenGantt={() => { setDrawerEntryId(entry.id); setDrawerTab("gantt"); }}
                     onOpenCommits={() => { setDrawerEntryId(entry.id); setDrawerTab("commits"); }}
-                    onStartEdit={() => { setEditDraft({ team_name: entry.team_name, pm_name: entry.pm_name, color: entry.color }); setEditingEntryId(entry.id); }}
+                    onStartEdit={() => {
+                      setEditDraft({ team_name: entry.team_name, pm_name: entry.pm_name, color: entry.color });
+                      setEditingEntryId(entry.id);
+                    }}
                     onChangeEditDraft={setEditDraft}
                     onSaveEntry={handleSaveEntry}
                     onCancelEdit={() => setEditingEntryId(null)}
                     onDeleteEntry={() => handleDeleteEntry(entry.id)}
+                    isFirstPlace={entry.id === firstPlaceEntryId}
+                    canEdit={canEditEntry(entry, currentUserId)}
                   />
                 ))}
               </div>
             ) : (
               <div className="pmt_listWrap">
                 {filteredEntries.map((entry) => (
-                  <TeamListRow
-                    key={entry.id}
+                  <TeamListRow key={entry.id}
                     entry={entry}
                     commits={commitsByEntry[entry.id] ?? []}
                     todayDay={todayDay}
@@ -1488,19 +2226,21 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
                     maxPenalty={maxPenalty}
                     zones={zones}
                     onSelect={() => { setDrawerEntryId(entry.id); setDrawerTab("overview"); }}
+                    isFirstPlace={entry.id === firstPlaceEntryId}
                   />
                 ))}
               </div>
             )
           )}
 
-          {/* Project Gantt */}
           {view === "gantt" && (
             <ProjectGantt
               entries={filteredEntries}
               commitsByEntry={commitsByEntry}
+              areas={areas}
               todayDay={todayDay}
               totalDays={totalDays}
+              projectStartDate={project.start_date}
               onDeadlineChange={handleDeadlineChange}
             />
           )}
@@ -1512,29 +2252,34 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
             <div className="pmt_chartWidget">
               <div className="pmt_widgetHead">
                 <span className="pmt_widgetTitle">Avance por área</span>
-                <span className="pmt_widgetMeta">{entries.length} teams</span>
+                <span className="pmt_widgetMeta">{entries.length} equipos</span>
               </div>
-              {(Object.keys(EL_LABEL) as ElementKey[]).map((el) => (
-                <StackedRow key={el} label={EL_LABEL[el]}
-                  commits={entries.flatMap((e) => (commitsByEntry[e.id] ?? []).filter((c) => elKey(c) === el))} />
+              {areas.map((area) => (
+                <StackedRow key={area.key} label={area.label}
+                  color={area.color}
+                  commits={entries.flatMap((e) => (commitsByEntry[e.id] ?? []).filter((c) => elKey(c) === area.key))} />
               ))}
             </div>
 
             <div className="pmt_rankingWidget">
               <div className="pmt_widgetHead">
                 <span className="pmt_widgetTitle">PM Ranking</span>
+                <span className="pmt_widgetMeta">top {Math.min(5, entries.length)}</span>
               </div>
               {[...entries]
+                .filter((e) => (commitsByEntry[e.id] ?? []).length > 0)
                 .sort((a, b) => calcGlobalScore(b) - calcGlobalScore(a))
                 .slice(0, 5)
                 .map((entry, i) => {
                   const score = calcGlobalScore(entry);
                   const st    = statusFromScore(score, zones);
                   return (
-                    <div key={entry.id} className="pmt_rankRow"
+                    <div key={entry.id}
+                      className={`pmt_rankRow${i === 0 ? " pmt_rankRow--first" : ""}`}
                       onClick={() => { setDrawerEntryId(entry.id); setDrawerTab("overview"); }}>
                       <span className="pmt_rankNum">#{i + 1}</span>
-                      <div className="pmt_rankInitial" style={{ background: entry.color || "#64748b" }}>
+                      <div className={`pmt_rankInitial${i === 0 ? " pmt_avatar--first" : ""}`}
+                        style={{ background: entry.color || "#64748b" }}>
                         {entry.pm_name.charAt(0).toUpperCase()}
                       </div>
                       <div className="pmt_rankInfo">
@@ -1543,24 +2288,28 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
                       </div>
                       <div className="pmt_rankScoreBar">
                         <div className="pmt_rankBarTrack">
-                          <div className="pmt_rankBarFill"
-                            style={{ width: `${score}%`, background: ST_COLOR[st] }} />
+                          <div className="pmt_rankBarFill" style={{ width: `${score}%`, background: ST_COLOR[st] }} />
                         </div>
                         <span className="pmt_rankScore">{score}</span>
                       </div>
                     </div>
                   );
                 })}
+              {entries.every((e) => (commitsByEntry[e.id] ?? []).length === 0) && (
+                <div style={{ padding: "20px", textAlign: "center", fontSize: 12, color: "var(--pmt-text-subtle)" }}>
+                  Agrega metas a los equipos para ver el ranking
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Settings panel (unified: dates + appearance + penalties + zones) */}
+      {/* Settings panel */}
       {showSettings && (
         <>
           <div className="pmt_drawerOverlay" onClick={() => setShowSettings(false)} />
-          <div className="pmt_orionPanel">
+          <div className="pmt_orionPanel" style={{ maxHeight: "82%", width: 560 }}>
             <div className="pmt_orionHead">
               <Settings size={18} /><span>Configuración del Proyecto</span>
               <button type="button" className="pmt_drawerClose" onClick={() => setShowSettings(false)}>
@@ -1569,7 +2318,7 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
             </div>
             <div className="pmt_orionBody" style={{ display: "flex", flexDirection: "column", gap: 20, padding: 20 }}>
 
-              {/* Rango del proyecto */}
+              {/* Rango */}
               <div className="pmt_settingsSection">
                 <div className="pmt_settingsSectionTitle">Rango del proyecto</div>
                 <div className="pmt_settingsRow">
@@ -1584,34 +2333,89 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
                 </div>
               </div>
 
-              {/* Apariencia */}
+              {/* Áreas configurables */}
               <div className="pmt_settingsSection">
-                <div className="pmt_settingsSectionTitle">Apariencia</div>
-                <div className="pmt_themeGrid">
-                  {THEMES.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={`pmt_themeBtn${settingsDraft.theme === t.id ? " pmt_themeBtn--active" : ""}`}
-                      onClick={() => setSettingsDraft((d) => ({ ...d, theme: t.id }))}
-                      title={t.name}
-                    >
-                      <div className="pmt_themeSwatch" style={{ background: t.bg }}>
-                        <span style={{ color: t.fg }}>Aa</span>
-                      </div>
-                      <span className="pmt_themeName">{t.name}</span>
-                    </button>
+                <div className="pmt_settingsSectionTitle">Áreas de seguimiento</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {settingsDraft.areas.map((area, i) => (
+                    <div key={area.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="color"
+                        value={area.color}
+                        onChange={(e) => updateArea(i, "color", e.target.value)}
+                        style={{ width: 32, height: 28, padding: 2, border: "1px solid var(--pmt-border)", borderRadius: 5, cursor: "pointer", background: "transparent", flexShrink: 0 }}
+                      />
+                      <input
+                        type="text"
+                        value={area.label}
+                        onChange={(e) => updateArea(i, "label", e.target.value)}
+                        placeholder="Nombre del área..."
+                        style={{ flex: 1, padding: "5px 8px", fontSize: 13, fontFamily: "inherit", background: "var(--pmt-surface)", border: "1px solid var(--pmt-border)", borderRadius: 5, color: "var(--pmt-text)", outline: "none" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeArea(i)}
+                        style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "1px solid var(--pmt-border)", borderRadius: 5, cursor: "pointer", color: "var(--pmt-text-subtle)", flexShrink: 0 }}
+                        title="Eliminar área">
+                        <X size={12} />
+                      </button>
+                    </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={addArea}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "6px 12px", border: "1px dashed var(--pmt-border)", borderRadius: 6, background: "transparent", color: "var(--pmt-text-muted)", fontSize: 12, cursor: "pointer", marginTop: 2 }}>
+                    <Plus size={12} /> Agregar área
+                  </button>
                 </div>
               </div>
 
-              {/* Días y Penalizaciones */}
+              {/* Apariencia */}
+              <div className="pmt_settingsSection">
+                <div className="pmt_settingsSectionTitle">Apariencia</div>
+                {(() => {
+                  const currentTheme = THEMES.find((t) => t.id === settingsDraft.theme) ?? THEMES[0];
+                  return (
+                    <div className="pmt_themeDropdown">
+                      <button type="button" className="pmt_themeDropdownTrigger"
+                        onClick={() => setThemeMenuOpen((o) => !o)}>
+                        <div className="pmt_themeDropdownSwatches">
+                          <span style={{ background: currentTheme.bg }} />
+                          <span style={{ background: currentTheme.fg }} />
+                          <span style={{ background: currentTheme.accent }} />
+                        </div>
+                        <span className="pmt_themeDropdownName">{currentTheme.name}</span>
+                        <ChevronDown size={14}
+                          className={`pmt_themeDropdownChevron${themeMenuOpen ? " pmt_themeDropdownChevron--open" : ""}`} />
+                      </button>
+                      {themeMenuOpen && (
+                        <div className="pmt_themeDropdownMenu">
+                          {THEMES.map((t) => (
+                            <button key={t.id} type="button"
+                              className={`pmt_themeDropdownItem${settingsDraft.theme === t.id ? " pmt_themeDropdownItem--active" : ""}`}
+                              onClick={() => { setSettingsDraft((d) => ({ ...d, theme: t.id })); setThemeMenuOpen(false); }}>
+                              <div className="pmt_themeDropdownSwatches">
+                                <span style={{ background: t.bg }} />
+                                <span style={{ background: t.fg }} />
+                                <span style={{ background: t.accent }} />
+                              </div>
+                              <span className="pmt_themeDropdownName">{t.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Días y penalizaciones */}
               <div className="pmt_settingsSection">
                 <div className="pmt_settingsSectionTitle">Días y Penalizaciones</div>
                 {([
                   ["Días laborales totales",          "total_working_days", 1,  60],
                   ["Penalización por día de retraso", "penalty_per_day",    0,  20],
-                  ["Penalización máxima por commit",  "max_penalty",        0, 100],
+                  ["Penalización máxima por meta",    "max_penalty",        0, 100],
                 ] as [string, "total_working_days" | "penalty_per_day" | "max_penalty", number, number][]).map(([lbl, key, mn, mx]) => (
                   <div key={key} className="pmt_settingsRow">
                     <label>{lbl}</label>
@@ -1621,13 +2425,12 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
                 ))}
               </div>
 
-              {/* Umbrales — ZoneSlider */}
+              {/* Umbrales */}
               <div className="pmt_settingsSection">
                 <div className="pmt_settingsSectionTitle">Umbrales de Calificación</div>
                 <ZoneSlider
                   values={settingsDraft.zones}
-                  onChange={(zonesNext) => setSettingsDraft((d) => ({ ...d, zones: zonesNext }))}
-                />
+                  onChange={(zonesNext) => setSettingsDraft((d) => ({ ...d, zones: zonesNext }))} />
               </div>
 
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -1637,6 +2440,16 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
             </div>
           </div>
         </>
+      )}
+
+      {/* Share panel */}
+      {showShare && project && (
+        <SharePanel
+          teamId={teamId}
+          sessionId={sessionId}
+          projectName={project.name}
+          onClose={() => setShowShare(false)}
+        />
       )}
 
       {/* ORION Check panel */}
@@ -1652,31 +2465,15 @@ export default function PmTrackerPanel({ sessionId, teamId, userId: _userId, con
               </button>
             </div>
             <div className="pmt_orionBody">
-              {entries.map((entry) => {
-                const score = calcGlobalScore(entry);
-                const grade = gradeInfo(score, zones);
-                return (
-                  <div key={entry.id}
-                    className={`pmt_orionRow${entry.orion_validated ? " pmt_orionRow--validated" : ""}`}>
-                    <div className="pmt_orionAvatar" style={{ background: entry.color || "#64748b" }}>
-                      {entry.pm_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="pmt_orionInfo">
-                      <span className="pmt_orionTeam">{entry.team_name}</span>
-                      <span className="pmt_orionPm">{entry.pm_name}</span>
-                    </div>
-                    <div className="pmt_orionScore" style={{ color: grade.color }}>
-                      {score}
-                      <span className="pmt_orionGrade">{grade.label}</span>
-                    </div>
-                    <button type="button"
-                      className={`pmt_orionToggle${entry.orion_validated ? " pmt_orionToggle--on" : ""}`}
-                      onClick={() => handleToggleOrionValidated(entry.id, !entry.orion_validated)}>
-                      {entry.orion_validated ? "Validado" : "Validar"}
-                    </button>
-                  </div>
-                );
-              })}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "48px 32px", textAlign: "center" }}>
+                <ShieldCheck size={36} strokeWidth={1.2} style={{ color: "var(--pmt-text-subtle)", opacity: 0.5 }} />
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--pmt-text)", margin: 0 }}>
+                  Preparing active validation…
+                </p>
+                <p style={{ fontSize: 13, color: "var(--pmt-text-subtle)", margin: 0, maxWidth: 280 }}>
+                  ORION Check will be available soon. Come back later!
+                </p>
+              </div>
             </div>
           </div>
         </>

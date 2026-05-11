@@ -17,6 +17,8 @@ import Projects from "./pages/Studio";
 import Config from "./pages/Analyze";
 import ProfilePage from "./pages/Profile";
 import LivingLabPage from "./pages/Lab_Overview";
+import ResetPassword from "./pages/ResetPassword";
+import AuthCallback from "./pages/AuthCallback";
 
 // Apply saved theme immediately so all routes inherit it
 const savedTheme = localStorage.getItem("cora.theme") || "light";
@@ -39,6 +41,8 @@ function AppRoutes() {
           {/* Public */}
           <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* Protected onboarding (no layout) */}
           <Route

@@ -443,7 +443,7 @@ export default function ProfilePage() {
               <div className="prof_settingRow">
                 <div className="prof_settingInfo">
                   <span className="prof_settingName">Orion Buddy</span>
-                  <span className="prof_settingDesc">Show the animated companion in the sidebar</span>
+                  <span className="prof_settingDesc">Show ORION Buddy in the sidebar</span>
                 </div>
                 <button
                   type="button"
