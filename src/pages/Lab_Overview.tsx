@@ -616,6 +616,7 @@ export function LivingLabPage() {
       </header>
 
       {/* Content */}
+      <div className="ll_scrollWrap">
       <div className="ll_content">
         {/* Top Row — Team Description + Members + Output Connection */}
         <div className="ll_topRow">
@@ -678,27 +679,29 @@ export function LivingLabPage() {
             </div>
           </div>
 
-          {/* ORION Edu Connect */}
+          {/* ORION Bridge Install */}
           <div className="ll_outputConnection">
-            <h2 className="ll_sectionTitle">ORION Edu Connect</h2>
+            <h2 className="ll_sectionTitle">ORION Bridge</h2>
             <div className="ll_connectionBox">
               <p className="ll_cardDesc">
-                Desktop bridge for real-time equipment communication. Connects your lab devices to the ORION Edu platform.
+                Python package for real-time equipment communication. Install it to connect your lab devices to the platform.
               </p>
-              <div className="ll_downloadSection">
-                <a
-                  href="https://qjizoecptopfeuzveyzu.supabase.co/storage/v1/object/public/downloads/Orion.exe"
-                  download
-                  className="ll_downloadBtn"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  Download for Windows
-                </a>
-                <span className="ll_downloadMeta">v1.0.0 · Windows 10+</span>
+              <div className="ll_installSection">
+                <span className="ll_installLabel">Install via pip</span>
+                <div className="ll_installCmd">
+                  <code className="ll_installCode">pip install orion-bridge[all]</code>
+                  <button
+                    type="button"
+                    className="ll_copyBtn"
+                    onClick={() => navigator.clipboard.writeText("pip install orion-bridge[all]")}
+                    title="Copy to clipboard"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -781,6 +784,7 @@ export function LivingLabPage() {
             )}
           </div>
         </div>
+      </div>
       </div>
 
       {/* Modals */}

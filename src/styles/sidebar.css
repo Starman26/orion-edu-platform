@@ -841,6 +841,11 @@
   color: var(--sidebar-ink-70);
 }
 
+.sidebar__footerItem--active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-ink);
+}
+
 .sidebar__footerItem:focus-visible {
   outline: 2px solid var(--sidebar-ink);
   outline-offset: -2px;

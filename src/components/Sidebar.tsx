@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   LayoutGrid,
+  Monitor,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -802,6 +803,16 @@ export function Sidebar({
 
       {/* ── Footer ── */}
       <div className="sidebar__footer no-drag">
+        <button
+          type="button"
+          onClick={() => onNavigate("mgmt")}
+          className={`sidebar__footerItem${current === "mgmt" ? " sidebar__footerItem--active" : ""}`}
+          title={collapsed ? "Console" : undefined}
+          aria-label="Management Console"
+        >
+          <Monitor className="sidebar__footerIcon" />
+          <span className="sidebar__footerLabel">Console</span>
+        </button>
         <button
           type="button"
           onClick={handleProfile}

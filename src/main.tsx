@@ -18,6 +18,7 @@ import Projects from "./pages/Studio";
 import Config from "./pages/Analyze";
 import ProfilePage from "./pages/Profile";
 import LivingLabPage from "./pages/Lab_Overview";
+import ManagementConsolePage from "./pages/ManagementConsole";
 import ResetPassword from "./pages/ResetPassword";
 import AuthCallback from "./pages/AuthCallback";
 
@@ -76,6 +77,7 @@ function AppRoutes() {
             <Route path="/analysis" element={<Config />} />
             <Route path="/living-lab" element={<LivingLabPage />} />
             <Route path="/my-profile" element={<ProfilePage />} />
+            <Route path="/management" element={<ManagementConsolePage />} />
           </Route>
 
           {/* Legacy redirects */}

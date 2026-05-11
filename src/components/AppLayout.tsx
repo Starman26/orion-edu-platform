@@ -23,6 +23,7 @@ export function AppLayout() {
     path.startsWith("analysis") ? "widget" :
     path.startsWith("living-lab") ? "living" :
     path.startsWith("my-profile") ? "perfil" :
+    path.startsWith("management") ? "mgmt" :
     "inicio";
 
   const isChat = path.startsWith("history");
@@ -34,6 +35,7 @@ export function AppLayout() {
     path.startsWith("analysis") ||
     path.startsWith("living-lab") ||
     path.startsWith("my-profile") ||
+    path.startsWith("management") ||
     path === "" ||
     path === "/";
 
@@ -54,6 +56,7 @@ export function AppLayout() {
           else if (k === "chat") navigate("/history");
           else if (k === "widget") navigate("/analysis");
           else if (k === "perfil") navigate("/my-profile");
+          else if (k === "mgmt") navigate("/management");
         }}
       />
 

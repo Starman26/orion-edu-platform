@@ -50,16 +50,20 @@
 }
 
 /* ─── Content ─── */
+.ll_scrollWrap {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+}
+
 .ll_content {
   max-width: 1100px;
   width: 88%;
   margin: 0 auto;
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 24px;
   padding: 90px 0 48px;
-  overflow-y: auto;
 }
 
 .ll_topRow {
@@ -232,41 +236,60 @@
   margin: 0;
 }
 
-.ll_downloadSection {
+.ll_installSection {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   margin-top: 4px;
+  width: 100%;
 }
 
-.ll_downloadBtn {
-  display: inline-flex;
+.ll_installLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ll_installCmd {
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffffff;
   background: #101113;
-  border: none;
   border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ll_installCode {
+  flex: 1;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 12px;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ll_copyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
-  text-decoration: none;
-  transition: background 0.15s ease;
-}
-
-.ll_downloadBtn:hover {
-  background: #2a2b2e;
-}
-
-.ll_downloadBtn svg {
+  color: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.ll_downloadMeta {
-  font-size: 11px;
-  color: rgba(16, 17, 19, 0.4);
+.ll_copyBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* ============================================================================
