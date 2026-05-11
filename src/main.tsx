@@ -1,5 +1,6 @@
 // src/main.tsx
 import ReactDOM from "react-dom/client";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate} from "react-router-dom";
 import "./styles.css";
 
@@ -33,6 +34,13 @@ function PublicRoute({ children }: { children: JSX.Element }) {
 }
 
 function AppRoutes() {
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      window.location.replace("/auth/callback" + hash);
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <ThinkingProvider>
