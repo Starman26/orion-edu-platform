@@ -2262,7 +2262,7 @@
 .pmt_kpiNoteTile {
   flex: 0 0 33%;
   min-width: 200px;
-  height: 110px;
+  height: 155px;
   background: transparent;
   border: none;
   border-radius: var(--pmt-r-md);
