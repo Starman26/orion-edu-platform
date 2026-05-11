@@ -2403,3 +2403,129 @@
 .pmt_root[data-theme="midnight"] .pmt_kpiNoteTile--editing {
   border-color: rgba(230, 230, 230, 0.6);
 }
+
+/* ─── Drawer area filter (Metas tab) ────────────────────────────────────── */
+
+.pmt_drawerAreaFilter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 20px 4px;
+  border-bottom: 1px solid var(--pmt-border-soft);
+}
+
+/* ─── Track select (Add Tracker form) ───────────────────────────────────── */
+
+.pmt_addEntryTrack {
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--pmt-text);
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-sm);
+  cursor: pointer;
+  outline: none;
+}
+.pmt_addEntryTrack:focus { border-color: var(--pmt-accent); }
+
+/* ─── Track filter pills ─────────────────────────────────────────────────── */
+
+.pmt_trackPills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+  flex-wrap: wrap;
+}
+
+.pmt_trackPill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--pmt-text-muted);
+  background: transparent;
+  border: 1px solid var(--pmt-border);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.pmt_trackPill:hover {
+  background: var(--pmt-border-soft);
+  color: var(--pmt-text);
+}
+.pmt_trackPill--active {
+  background: var(--pmt-accent);
+  color: var(--pmt-accent-text);
+  border-color: var(--pmt-accent);
+}
+
+/* ─── Custom KPI Tile ────────────────────────────────────────────────────── */
+
+.pmt_kpiTile--custom {
+  cursor: default;
+}
+
+.pmt_kpiLabel--editable {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 4px;
+  transition: background 0.12s;
+}
+.pmt_kpiLabel--editable:hover {
+  background: var(--pmt-border-soft);
+}
+
+.pmt_kpiCustomNameInput {
+  width: 100%;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--pmt-text);
+  background: var(--pmt-border-soft);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-xs);
+  padding: 2px 6px;
+  outline: none;
+  font-family: inherit;
+}
+.pmt_kpiCustomNameInput:focus {
+  border-color: var(--pmt-accent);
+}
+
+.pmt_kpiCustomScore {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.pmt_kpiCustomBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 400;
+  color: var(--pmt-text-muted);
+  background: var(--pmt-border-soft);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-xs);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.pmt_kpiCustomBtn:hover {
+  background: var(--pmt-border);
+  color: var(--pmt-text);
+}

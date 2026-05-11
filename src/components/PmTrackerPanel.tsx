@@ -481,6 +481,10 @@ function TeamDrawer({
     due_date: "",
   });
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [areaFilter, setAreaFilter]         = useState<string | null>(null);
+
+  const usedAreas     = areas.filter((a) => commits.some((c) => elKey(c) === a.key));
+  const visibleCommits = areaFilter ? commits.filter((c) => elKey(c) === areaFilter) : commits;
   const [labelDraft, setLabelDraft]         = useState("");
 
   const score   = calcEntryScore(commits, todayDay, penaltyPerDay, maxPenalty);
@@ -587,6 +591,26 @@ function TeamDrawer({
           {/* Commits (Metas) */}
           {tab === "commits" && (
             <>
+              {usedAreas.length > 1 && (
+                <div className="pmt_drawerAreaFilter">
+                  <button
+                    type="button"
+                    className={`pmt_trackPill${areaFilter === null ? " pmt_trackPill--active" : ""}`}
+                    onClick={() => setAreaFilter(null)}>
+                    Todas
+                  </button>
+                  {usedAreas.map((area) => (
+                    <button
+                      key={area.key}
+                      type="button"
+                      className={`pmt_trackPill${areaFilter === area.key ? " pmt_trackPill--active" : ""}`}
+                      style={areaFilter === area.key ? {} : { borderColor: area.color + "55", color: area.color }}
+                      onClick={() => setAreaFilter((f) => f === area.key ? null : area.key)}>
+                      {area.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="pmt_drawerCommits">
                 {commits.length === 0 && !addCommitOpen && (
                   <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--pmt-text-subtle)", fontSize: 13 }}>
@@ -594,7 +618,12 @@ function TeamDrawer({
                     <span style={{ fontSize: 12 }}>Escribe una meta abajo y asígnale un día límite.</span>
                   </div>
                 )}
-                {commits.map((commit) => {
+                {visibleCommits.length === 0 && commits.length > 0 && (
+                  <div style={{ padding: "24px 20px", textAlign: "center", color: "var(--pmt-text-subtle)", fontSize: 12 }}>
+                    Sin metas para esta área.
+                  </div>
+                )}
+                {visibleCommits.map((commit) => {
                   const isLate  = isCommitLate(commit);
                   const penalty = commit.due_date
                     ? commitDaysLate(commit, penaltyPerDay, maxPenalty)
@@ -1043,11 +1072,17 @@ function SharePanel({
   sessionId,
   projectName: _projectName,
   onClose,
+  auditorIds,
+  onToggleAuditor,
+  isProjectAdmin,
 }: {
   teamId: string;
   sessionId: string;
   projectName: string;
   onClose: () => void;
+  auditorIds: string[];
+  onToggleAuditor: (userId: string) => Promise<void>;
+  isProjectAdmin: boolean;
 }) {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1347,6 +1382,32 @@ function SharePanel({
                     }}>
                       {roleLabel(member.role)}
                     </span>
+                    {isProjectAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => onToggleAuditor(member.user_id)}
+                        style={{
+                          padding: "3px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600,
+                          fontFamily: "inherit", cursor: "pointer",
+                          background: auditorIds.includes(member.user_id)
+                            ? "rgba(217,119,6,0.12)" : "transparent",
+                          color: auditorIds.includes(member.user_id)
+                            ? "#d97706" : "var(--pmt-text-subtle)",
+                          border: auditorIds.includes(member.user_id)
+                            ? "1px solid #d97706" : "1px solid var(--pmt-border)",
+                          transition: "all 0.12s",
+                        }}>
+                        {auditorIds.includes(member.user_id) ? "✓ Auditor" : "Auditor"}
+                      </button>
+                    ) : auditorIds.includes(member.user_id) ? (
+                      <span style={{
+                        padding: "3px 8px", borderRadius: 4, fontSize: 10, fontWeight: 600,
+                        background: "rgba(217,119,6,0.12)", color: "#d97706",
+                        border: "1px solid #d97706",
+                      }}>
+                        Auditor
+                      </span>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -1437,6 +1498,76 @@ function NoteKpiTile({
   );
 }
 
+// ─── CustomKpiTile ────────────────────────────────────────────────────────────
+
+function CustomKpiTile({
+  name,
+  score,
+  onSave,
+  canEdit,
+}: {
+  name: string;
+  score: number;
+  onSave: (name: string, score: number) => Promise<void>;
+  canEdit: boolean;
+}) {
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName]     = useState(name);
+  const [localScore, setLocalScore]   = useState(score);
+
+  useEffect(() => { setDraftName(name); }, [name]);
+  useEffect(() => { setLocalScore(score); }, [score]);
+
+  const commitName = async () => {
+    setEditingName(false);
+    const trimmed = draftName.trim() || "Personalizado";
+    if (trimmed !== name) await onSave(trimmed, localScore);
+  };
+
+  const adjustScore = async (delta: number) => {
+    const next = Math.max(0, Math.min(100, localScore + delta));
+    setLocalScore(next);
+    await onSave(name, next);
+  };
+
+  return (
+    <div className="pmt_kpiTile pmt_kpiTile--sm pmt_kpiTile--custom">
+      {editingName && canEdit ? (
+        <input
+          className="pmt_kpiCustomNameInput"
+          value={draftName}
+          autoFocus
+          onChange={(e) => setDraftName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commitName(); }
+            if (e.key === "Escape") { setDraftName(name); setEditingName(false); }
+          }}
+          maxLength={24}
+        />
+      ) : (
+        <span
+          className={`pmt_kpiLabel${canEdit ? " pmt_kpiLabel--editable" : ""}`}
+          onClick={canEdit ? () => setEditingName(true) : undefined}
+          title={canEdit ? "Click para editar nombre" : undefined}
+        >
+          {(name.trim() || "PERSONALIZADO").toUpperCase()}
+        </span>
+      )}
+      {canEdit ? (
+        <div className="pmt_kpiCustomScore">
+          <button type="button" className="pmt_kpiCustomBtn" onClick={() => adjustScore(-1)}>−</button>
+          <span className="pmt_kpiValue">{localScore}<span className="pmt_kpiUnit">/100</span></span>
+          <button type="button" className="pmt_kpiCustomBtn" onClick={() => adjustScore(1)}>+</button>
+        </div>
+      ) : (
+        <span className="pmt_kpiValue">{localScore}<span className="pmt_kpiUnit">/100</span></span>
+      )}
+      <span className="pmt_kpiSub">{canEdit ? "click nombre para editar" : "solo auditor"}</span>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PmTrackerPanel({
@@ -1462,12 +1593,16 @@ export default function PmTrackerPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [project],
   );
+  const entryTracks  = (projectCfg.entry_tracks as Record<string, string> | undefined) ?? {};
+  const configTracks = (projectCfg.tracks as string[] | undefined) ?? ["Track 1", "Track 2"];
 
   // ── Add tracker form ────────────────────────────────────────────────────────
   const [showAddEntry, setShowAddEntry]   = useState(false);
   const [newEntryName, setNewEntryName]   = useState("");
   const [newPmName, setNewPmName]         = useState("");
   const [newEntryColor, setNewEntryColor] = useState("#2563eb");
+  const [newEntryTrack, setNewEntryTrack] = useState("");
+  const [newTrackInput, setNewTrackInput] = useState("");
 
   // ── Edit project name ───────────────────────────────────────────────────────
   const [editingProjectName, setEditingProjectName] = useState(false);
@@ -1482,10 +1617,11 @@ export default function PmTrackerPanel({
   const [drawerTab, setDrawerTab]         = useState<"overview" | "commits">("overview");
 
   // ── Filters / view ──────────────────────────────────────────────────────────
-  const [filter, setFilter] = useState<"all" | "critical" | "warning" | "ontrack">("all");
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"score" | "name" | "progress">("score");
-  const [view, setView]     = useState<"grid" | "list" | "gantt">("grid");
+  const [filter, setFilter]           = useState<"all" | "critical" | "warning" | "ontrack">("all");
+  const [search, setSearch]           = useState("");
+  const [sortBy, setSortBy]           = useState<"score" | "name" | "progress">("score");
+  const [view, setView]               = useState<"grid" | "list" | "gantt">("grid");
+  const [trackFilter, setTrackFilter] = useState<string | null>(null);
 
   // ── Settings ────────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings]   = useState(false);
@@ -1544,6 +1680,32 @@ export default function PmTrackerPanel({
     ? calendarDaysBetween(project.start_date, project.end_date) + 1
     : project?.total_working_days ?? configTotalDays;
   const todayDay  = project ? getTodayDay(project) : 1;
+
+  // ── Auditor role ─────────────────────────────────────────────────────────────
+  const auditorIds = (projectCfg.auditor_ids as string[] | undefined) ?? [];
+  const isProjectAdmin = teamMembers.some(
+    (m) => m.user_id === currentUserId && (m.role === "owner" || m.role === "admin"),
+  );
+  const canEditCustomKpi = isProjectAdmin || (currentUserId !== null && auditorIds.includes(currentUserId));
+
+  const handleToggleAuditor = useCallback(async (userId: string) => {
+    if (!project) return;
+    const current = (project.config?.auditor_ids as string[] | undefined) ?? [];
+    const next = current.includes(userId)
+      ? current.filter((id) => id !== userId)
+      : [...current, userId];
+    const newConfig = { ...(project.config ?? {}), auditor_ids: next };
+    await supabase.from("trace_projects").update({ config: newConfig }).eq("id", project.id);
+    setProject((prev) => prev ? { ...prev, config: newConfig } : prev);
+  }, [project]);
+
+  // ── Custom KPI save ──────────────────────────────────────────────────────────
+  const handleSaveCustomKpi = useCallback(async (kpiName: string, kpiScore: number) => {
+    if (!project) return;
+    const newConfig = { ...(project.config ?? {}), customKpi: { name: kpiName, score: kpiScore } };
+    await supabase.from("trace_projects").update({ config: newConfig }).eq("id", project.id);
+    setProject((prev) => prev ? { ...prev, config: newConfig } : prev);
+  }, [project]);
 
   // ── Note save (ref-based to avoid stale closure in onResponse) ───────────────
   const handleSaveNoteRef = useRef<(note: string) => Promise<void>>(async () => {});
@@ -1670,7 +1832,21 @@ export default function PmTrackerPanel({
     const newEntry = entry as TraceTeamEntry;
     setEntries((prev) => [...prev, newEntry]);
     setCommitsByEntry((prev) => ({ ...prev, [newEntry.id]: [] }));
-    setNewEntryName(""); setNewPmName(""); setNewEntryColor("#2563eb"); setShowAddEntry(false);
+
+    // Save track to project config if one was chosen
+    const effectiveTrack = newEntryTrack === "__new__" ? newTrackInput.trim() : newEntryTrack;
+    if (effectiveTrack) {
+      const newEntryTracksMap = { ...entryTracks, [newEntry.id]: effectiveTrack };
+      const newTracksList = (newEntryTrack === "__new__" && !configTracks.includes(effectiveTrack))
+        ? [...configTracks, effectiveTrack]
+        : configTracks;
+      const newConfig = { ...(project.config ?? {}), entry_tracks: newEntryTracksMap, tracks: newTracksList };
+      await supabase.from("trace_projects").update({ config: newConfig }).eq("id", project.id);
+      setProject((prev) => prev ? { ...prev, config: newConfig } : prev);
+    }
+
+    setNewEntryName(""); setNewPmName(""); setNewEntryColor("#2563eb");
+    setNewEntryTrack(""); setNewTrackInput(""); setShowAddEntry(false);
 
     // Open drawer on commits tab so user can add their first goal
     setDrawerEntryId(newEntry.id);
@@ -1855,6 +2031,7 @@ export default function PmTrackerPanel({
       if (filter === "critical" && st !== "critical") return false;
       if (filter === "warning"  && st !== "warning")  return false;
       if (filter === "ontrack"  && st !== "ok" && st !== "info") return false;
+      if (trackFilter !== null && (entryTracks[e.id] ?? "") !== trackFilter) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!e.team_name.toLowerCase().includes(q) && !e.pm_name.toLowerCase().includes(q)) return false;
@@ -2057,6 +2234,23 @@ export default function PmTrackerPanel({
           <input type="text" className="pmt_addEntryInput" placeholder="Nombre del PM..."
             value={newPmName} onChange={(e) => setNewPmName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleAddEntry(); }} />
+          <select
+            className="pmt_addEntryTrack"
+            value={newEntryTrack}
+            onChange={(e) => { setNewEntryTrack(e.target.value); setNewTrackInput(""); }}>
+            <option value="">Sin track</option>
+            {configTracks.map((t) => <option key={t} value={t}>{t}</option>)}
+            <option value="__new__">+ Nuevo track</option>
+          </select>
+          {newEntryTrack === "__new__" && (
+            <input
+              className="pmt_addEntryInput"
+              placeholder="Nombre del track..."
+              value={newTrackInput}
+              autoFocus
+              onChange={(e) => setNewTrackInput(e.target.value)}
+            />
+          )}
           <input type="color" className="pmt_addEntryColor" value={newEntryColor}
             onChange={(e) => setNewEntryColor(e.target.value)} />
           <button type="button" className="pmt_addEntryConfirm" onClick={handleAddEntry}>Agregar</button>
@@ -2066,6 +2260,14 @@ export default function PmTrackerPanel({
 
       {/* KPI Strip */}
       <div className="pmt_kpiStrip">
+        {/* Custom KPI tile — first so it's always visible */}
+        <CustomKpiTile
+          name={(projectCfg.customKpi as { name: string; score: number } | undefined)?.name ?? ""}
+          score={(projectCfg.customKpi as { name: string; score: number } | undefined)?.score ?? 0}
+          onSave={handleSaveCustomKpi}
+          canEdit={canEditCustomKpi}
+        />
+
         {/* Compact KPI tiles */}
         <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">SCORE PROMEDIO</span>
@@ -2148,6 +2350,25 @@ export default function PmTrackerPanel({
                 </button>
               ))}
             </div>
+            {Object.keys(entryTracks).length > 0 && (
+              <div className="pmt_trackPills">
+                <button
+                  type="button"
+                  className={`pmt_trackPill${trackFilter === null ? " pmt_trackPill--active" : ""}`}
+                  onClick={() => setTrackFilter(null)}>
+                  Todos
+                </button>
+                {Array.from(new Set(Object.values(entryTracks).filter(Boolean))).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`pmt_trackPill${trackFilter === t ? " pmt_trackPill--active" : ""}`}
+                    onClick={() => setTrackFilter((prev) => prev === t ? null : t)}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="pmt_filterSearch">
               <Search size={13} />
               <input placeholder="Buscar equipos o PMs..." value={search}
@@ -2449,6 +2670,9 @@ export default function PmTrackerPanel({
           sessionId={sessionId}
           projectName={project.name}
           onClose={() => setShowShare(false)}
+          auditorIds={auditorIds}
+          onToggleAuditor={handleToggleAuditor}
+          isProjectAdmin={isProjectAdmin}
         />
       )}
 
