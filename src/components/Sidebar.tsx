@@ -20,6 +20,7 @@ import { useThinking } from "../context/Thinkingcontext";
 import { supabase } from "../lib/supabaseClient";
 
 import "../styles/sidebar.css";
+import "../styles/livinglab.css";
 
 type NavItem = {
   key: string;
@@ -616,50 +617,28 @@ export function Sidebar({
 
         {showTeamPopup && (
           <div
-            style={{
-              position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
-              zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center",
-            }}
+            className="ll_modalOverlay"
             onClick={() => setShowTeamPopup(false)}>
             <div
-              style={{
-                background: "var(--bg-surface, #1a1a1a)",
-                border: "1px solid var(--border, #2a2a2a)",
-                borderRadius: 12, padding: 24, width: 400, maxWidth: "90vw",
-                maxHeight: "70vh", overflow: "hidden",
-                display: "flex", flexDirection: "column", gap: 16,
-              }}
+              className="ll_modal"
+              style={{ maxHeight: "70vh", display: "flex", flexDirection: "column" }}
               onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 600, fontSize: 15 }}>Team Members ({members.length})</span>
-                <button
-                  type="button"
-                  onClick={() => setShowTeamPopup(false)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "inherit" }}>
-                  ×
-                </button>
+              <div className="ll_modalHeader">
+                <h2 className="ll_modalTitle">Team Members ({members.length})</h2>
+                <button type="button" className="ll_modalClose" onClick={() => setShowTeamPopup(false)}>×</button>
               </div>
-              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="ll_modalContent" style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
                 {members.map((member) => (
                   <div key={member.id} style={{
-                    display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
-                    borderBottom: "1px solid var(--border, #2a2a2a)",
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "8px 0", borderBottom: "1px solid rgba(13,13,13,0.08)",
                   }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                      background: "var(--accent, #3b82f6)", color: "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, fontWeight: 600,
-                    }}>
-                      {getInitials(member.full_name || member.auth_user_id || "?")}
+                    <div className="ll_memberAvatar">
+                      <span>{getInitials(member.full_name || member.auth_user_id || "?")}</span>
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {member.full_name || "Sin nombre"}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted, #6b7280)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {shortId(member.auth_user_id)}
-                      </div>
+                    <div className="ll_memberInfo">
+                      <span className="ll_memberName">{member.full_name || "Sin nombre"}</span>
+                      <span className="ll_memberRole">{shortId(member.auth_user_id)}</span>
                     </div>
                   </div>
                 ))}

@@ -361,6 +361,8 @@ export function LivingLabPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
 
+  const [showMembersPopup, setShowMembersPopup] = useState(false);
+
   // Modals
   const [showDescModal, setShowDescModal] = useState(false);
   const [descSaving, setDescSaving] = useState(false);
@@ -664,17 +666,32 @@ export function LivingLabPage() {
               ) : members.length === 0 ? (
                 <p className="ll_muted">No members found.</p>
               ) : (
-                members.map((member, idx) => (
-                  <div key={idx} className="ll_memberRow">
-                    <div className="ll_memberAvatar">
-                      <span>{member.fullName.charAt(0).toUpperCase()}</span>
+                <>
+                  {members.slice(0, 4).map((member, idx) => (
+                    <div key={idx} className="ll_memberRow">
+                      <div className="ll_memberAvatar">
+                        <span>{member.fullName.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="ll_memberInfo">
+                        <span className="ll_memberName">{member.fullName}</span>
+                        <span className="ll_memberRole">{member.role}</span>
+                      </div>
                     </div>
-                    <div className="ll_memberInfo">
-                      <span className="ll_memberName">{member.fullName}</span>
-                      <span className="ll_memberRole">{member.role}</span>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                  {members.length > 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMembersPopup(true)}
+                      style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        fontSize: 11, color: "rgba(16,17,19,0.5)",
+                        padding: "4px 0", width: "100%", textAlign: "left",
+                        fontFamily: "inherit", whiteSpace: "nowrap",
+                      }}>
+                      + {members.length - 4} more teammates
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -803,6 +820,38 @@ export function LivingLabPage() {
           onClose={() => setShowAddTableModal(false)}
           existingTables={existingTableKeys}
         />
+      )}
+
+      {showMembersPopup && (
+        <div
+          className="ll_modalOverlay"
+          onClick={() => setShowMembersPopup(false)}>
+          <div
+            className="ll_modal"
+            style={{ maxHeight: "70vh", display: "flex", flexDirection: "column" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="ll_modalHeader">
+              <h2 className="ll_modalTitle">Team Members ({members.length})</h2>
+              <button type="button" className="ll_modalClose" onClick={() => setShowMembersPopup(false)}>×</button>
+            </div>
+            <div className="ll_modalContent" style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+              {members.map((member, idx) => (
+                <div key={idx} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "8px 0", borderBottom: "1px solid rgba(13,13,13,0.08)",
+                }}>
+                  <div className="ll_memberAvatar">
+                    <span>{member.fullName.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="ll_memberInfo">
+                    <span className="ll_memberName">{member.fullName}</span>
+                    <span className="ll_memberRole">{member.role}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

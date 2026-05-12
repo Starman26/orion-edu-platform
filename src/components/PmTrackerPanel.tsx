@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Pencil, Search, Grid3X3, List, RefreshCw, Plus, X,
   Calendar, CalendarDays, ShieldCheck, Settings, Trash2, ChevronLeft, ChevronDown,
-  Copy, Clipboard,
+  Copy, Clipboard, Share2, Filter,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -168,12 +168,13 @@ function calendarDaysBetween(from: Date | string, to: Date | string): number {
   return Math.max(0, Math.round((toMs - fromMs) / 86_400_000));
 }
 
-function isCommitLate(commit: TraceCommit): boolean {
+function isCommitLate(commit: TraceCommit, todayDay?: number): boolean {
   if (commit.status === "success") return false;
   if (commit.due_date) {
     const due = new Date(commit.due_date + "T23:59:59");
     return new Date() > due;
   }
+  if (todayDay !== undefined) return todayDay > commit.deadline_day;
   return false;
 }
 
@@ -628,7 +629,7 @@ function TeamDrawer({
                   </div>
                 )}
                 {visibleCommits.map((commit) => {
-                  const isLate  = isCommitLate(commit);
+                  const isLate  = isCommitLate(commit, todayDay);
                   const penalty = commit.due_date
                     ? commitDaysLate(commit, penaltyPerDay, maxPenalty)
                     : calcPenalty(commit.deadline_day, commit.status, todayDay, penaltyPerDay, maxPenalty);
@@ -1018,6 +1019,7 @@ function ProjectGantt({
   const todayStr = new Date().toISOString().split("T")[0];
   const todayOff = calendarDaysBetween(projectStartDate, todayStr);
   const todayPct = (todayOff / totalCalDays) * 100;
+  const todayDay = Math.max(1, todayOff + 1);
 
   const wkBg = weekendBg(dates, totalCalDays);
 
@@ -1096,7 +1098,7 @@ function ProjectGantt({
               const endOff   = Math.min(totalCalDays - 1, calendarDaysBetween(projectStartDate, deadlineDate));
               const barLeft  = (startOff / totalCalDays) * 100;
               const barWidth = Math.max(0.5, ((endOff - startOff + 1) / totalCalDays) * 100);
-              const isLate   = isCommitLate(commit);
+              const isLate   = isCommitLate(commit, todayDay);
               const el       = elKey(commit);
               const baseColor =
                 commit.status === "failed"      ? "#dc2626" :
@@ -1276,7 +1278,7 @@ function SharePanel({
       <div className="pmt_drawerOverlay" onClick={onClose} />
       <div className="pmt_orionPanel" style={{ width: 480 }}>
         <div className="pmt_orionHead">
-          <span style={{ fontSize: 16 }}>🔗</span>
+          <Share2 size={16} />
           <span>Compartir Dashboard</span>
           <button type="button" className="pmt_drawerClose" onClick={onClose}>
             <X size={16} />
@@ -1694,6 +1696,8 @@ export default function PmTrackerPanel({
   const [sortBy, setSortBy]           = useState<"score" | "name" | "progress">("score");
   const [view, setView]               = useState<"grid" | "list" | "gantt">("grid");
   const [trackFilter, setTrackFilter] = useState<string | null>(null);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Settings ────────────────────────────────────────────────────────────────
   const [showSettings, setShowSettings]   = useState(false);
@@ -1883,6 +1887,16 @@ export default function PmTrackerPanel({
   }, [sessionId, teamId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!showFilterMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target as Node))
+        setShowFilterMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showFilterMenu]);
 
   // ── Create project ───────────────────────────────────────────────────────────
   const handleCreateProject = async () => {
@@ -2109,7 +2123,7 @@ export default function PmTrackerPanel({
   const allCommits     = Object.values(commitsByEntry).flat();
   const successCommits = allCommits.filter((c) => c.status === "success").length;
   const failedCommits  = allCommits.filter((c) => c.status === "failed").length;
-  const lateCommits    = allCommits.filter((c) => isCommitLate(c)).length;
+  const lateCommits    = allCommits.filter((c) => isCommitLate(c, todayDay)).length;
   const daysRemaining  = project?.end_date
     ? Math.max(0, calendarDaysBetween(new Date().toISOString().split("T")[0], project.end_date))
     : Math.max(0, totalDays - todayDay);
@@ -2165,7 +2179,6 @@ export default function PmTrackerPanel({
     }).length,
   };
 
-  const sortLabel  = sortBy === "score" ? "Score" : sortBy === "name" ? "A–Z" : "Progreso";
   const drawerEntry = drawerEntryId ? entries.find((e) => e.id === drawerEntryId) : null;
 
   // ── Word of the Day: generate ─────────────────────────────────────────────────
@@ -2309,7 +2322,7 @@ export default function PmTrackerPanel({
           </button>
 
           <button type="button" className="pmt_btnSecondary" onClick={() => setShowShare(true)} title="Compartir">
-            🔗 Share
+            <Share2 size={14} /> Share
           </button>
 
           <span className="pmt_dayPill">DÍA <strong>{todayDay}/{totalDays}</strong></span>
@@ -2439,47 +2452,76 @@ export default function PmTrackerPanel({
           {/* Filter bar */}
           <div className="pmt_filterBar">
             <h2 className="pmt_sectionTitle">Avances Generales</h2>
-            <div className="pmt_filterPills">
-              {(["all", "critical", "warning", "ontrack"] as const).map((k) => (
-                <button key={k} type="button"
-                  className={`pmt_filterPill${filter === k ? " pmt_filterPill--active" : ""}`}
-                  onClick={() => setFilter(k)}>
-                  {k !== "all" && (
-                    <span className={`pmt_filterDot pmt_filterDot--${k === "ontrack" ? "ok" : k}`} />
-                  )}
-                  {k === "all" ? "Todos" : k === "ontrack" ? "En curso" : k.charAt(0).toUpperCase() + k.slice(1)}
-                  <span className="pmt_filterCount">{filterCounts[k]}</span>
-                </button>
-              ))}
-            </div>
-            {Object.keys(entryTracks).length > 0 && (
-              <div className="pmt_trackPills">
-                <button
-                  type="button"
-                  className={`pmt_trackPill${trackFilter === null ? " pmt_trackPill--active" : ""}`}
-                  onClick={() => setTrackFilter(null)}>
-                  Todos
-                </button>
-                {Array.from(new Set(Object.values(entryTracks).filter(Boolean))).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    className={`pmt_trackPill${trackFilter === t ? " pmt_trackPill--active" : ""}`}
-                    onClick={() => setTrackFilter((prev) => prev === t ? null : t)}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-            )}
+
             <div className="pmt_filterSearch">
               <Search size={13} />
               <input placeholder="Buscar equipos o PMs..." value={search}
                 onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <button type="button" className="pmt_filterSort"
-              onClick={() => setSortBy((s) => s === "score" ? "name" : s === "name" ? "progress" : "score")}>
-              {sortLabel}
-            </button>
+
+            {/* Filter dropdown */}
+            <div className="pmt_filterDropWrap" ref={filterMenuRef}>
+              <button
+                type="button"
+                className={`pmt_filterBtn${(filter !== "all" || trackFilter !== null || sortBy !== "score") ? " pmt_filterBtn--active" : ""}`}
+                onClick={() => setShowFilterMenu((v) => !v)}>
+                <Filter size={13} />
+                Filtrar
+                {(filter !== "all" || trackFilter !== null || sortBy !== "score") && (
+                  <span className="pmt_filterBadge" />
+                )}
+              </button>
+
+              {showFilterMenu && (
+                <div className="pmt_filterMenu">
+                  {/* Status */}
+                  <div className="pmt_filterMenuSection">
+                    <span className="pmt_filterMenuLabel">Estado</span>
+                    {(["all", "ontrack", "warning", "critical"] as const).map((k) => (
+                      <button key={k} type="button"
+                        className={`pmt_filterMenuOpt${filter === k ? " pmt_filterMenuOpt--active" : ""}`}
+                        onClick={() => { setFilter(k); setShowFilterMenu(false); }}>
+                        {k !== "all" && <span className={`pmt_filterDot pmt_filterDot--${k === "ontrack" ? "ok" : k}`} />}
+                        <span>{k === "all" ? "Todos" : k === "ontrack" ? "En curso" : k.charAt(0).toUpperCase() + k.slice(1)}</span>
+                        <span className="pmt_filterMenuCount">{filterCounts[k]}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Track */}
+                  {Object.keys(entryTracks).length > 0 && (
+                    <div className="pmt_filterMenuSection">
+                      <span className="pmt_filterMenuLabel">Track</span>
+                      <button type="button"
+                        className={`pmt_filterMenuOpt${trackFilter === null ? " pmt_filterMenuOpt--active" : ""}`}
+                        onClick={() => { setTrackFilter(null); setShowFilterMenu(false); }}>
+                        <span>Todos</span>
+                      </button>
+                      {Array.from(new Set(Object.values(entryTracks).filter(Boolean))).map((t) => (
+                        <button key={t} type="button"
+                          className={`pmt_filterMenuOpt${trackFilter === t ? " pmt_filterMenuOpt--active" : ""}`}
+                          onClick={() => { setTrackFilter((prev) => prev === t ? null : t); setShowFilterMenu(false); }}>
+                          <span>{t}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sort */}
+                  <div className="pmt_filterMenuSection">
+                    <span className="pmt_filterMenuLabel">Ordenar por</span>
+                    {(["score", "name", "progress"] as const).map((s) => (
+                      <button key={s} type="button"
+                        className={`pmt_filterMenuOpt${sortBy === s ? " pmt_filterMenuOpt--active" : ""}`}
+                        onClick={() => { setSortBy(s); setShowFilterMenu(false); }}>
+                        <span>{s === "score" ? "Score" : s === "name" ? "A – Z" : "Progreso"}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="pmt_viewToggle">
               <button type="button"
                 className={`pmt_viewBtn${view === "grid" ? " pmt_viewBtn--active" : ""}`}
