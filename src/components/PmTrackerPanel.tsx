@@ -116,6 +116,7 @@ interface TraceCommit {
   commit_key: string;
   element_key: string;
   label: string;
+  description?: string;
   deadline_day: number;
   start_date?: string;
   due_date?: string;
@@ -364,6 +365,21 @@ function ManageAccessSection({
   onUpdateEditors: (entryId: string, editorIds: string[]) => Promise<void>;
 }) {
   const editors = entry.editor_ids ?? [];
+  const [memberSearch, setMemberSearch]         = useState("");
+  const [roleFilter, setRoleFilter]             = useState<"all" | "lab_researcher" | "admin">("all");
+  const [accessFilter, setAccessFilter]         = useState<"all" | "editor" | "reader">("all");
+  const [showMemberFilter, setShowMemberFilter] = useState(false);
+  const memberFilterRef                         = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMemberFilter) return;
+    const h = (e: MouseEvent) => {
+      if (memberFilterRef.current && !memberFilterRef.current.contains(e.target as Node))
+        setShowMemberFilter(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [showMemberFilter]);
 
   const toggle = async (userId: string) => {
     const next = editors.includes(userId)
@@ -372,10 +388,76 @@ function ManageAccessSection({
     await onUpdateEditors(entry.id, next);
   };
 
+  const filteredMembers = teamMembers
+    .filter((m) => m.user_id !== entry.pm_user_id)
+    .filter((m) => {
+      if (memberSearch.trim()) {
+        const q = memberSearch.toLowerCase();
+        if (!(m.full_name || "").toLowerCase().includes(q) &&
+            !(m.email || "").toLowerCase().includes(q)) return false;
+      }
+      if (roleFilter !== "all" && m.role !== roleFilter) return false;
+      if (accessFilter === "editor" && !editors.includes(m.user_id)) return false;
+      if (accessFilter === "reader" &&  editors.includes(m.user_id)) return false;
+      return true;
+    });
+
+  const hasActiveFilter = roleFilter !== "all" || accessFilter !== "all";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {teamMembers
-        .filter((m) => m.user_id !== entry.pm_user_id)
+      <div style={{ display: "flex", gap: 6, marginBottom: 4, width: "100%" }}>
+        <div className="pmt_filterSearch" style={{ flex: 1 }}>
+          <Search size={13} />
+          <input
+            placeholder="Buscar miembro..."
+            value={memberSearch}
+            onChange={(e) => setMemberSearch(e.target.value)} />
+        </div>
+        <div className="pmt_filterDropWrap" ref={memberFilterRef}>
+          <button
+            type="button"
+            className={`pmt_filterBtn${hasActiveFilter ? " pmt_filterBtn--active" : ""}`}
+            onClick={() => setShowMemberFilter((v) => !v)}>
+            <Filter size={13} />
+            Filtrar
+            {hasActiveFilter && <span className="pmt_filterBadge" />}
+          </button>
+          {showMemberFilter && (
+            <div className="pmt_filterMenu" style={{ right: 0, left: "auto" }}>
+              <div className="pmt_filterMenuSection">
+                <span className="pmt_filterMenuLabel">Rol</span>
+                {([
+                  { k: "all",            label: "Todos" },
+                  { k: "lab_researcher", label: "Lab Researcher" },
+                  { k: "admin",          label: "Admin" },
+                ] as { k: "all"|"lab_researcher"|"admin"; label: string }[]).map(({ k, label }) => (
+                  <button key={k} type="button"
+                    className={`pmt_filterMenuOpt${roleFilter === k ? " pmt_filterMenuOpt--active" : ""}`}
+                    onClick={() => { setRoleFilter(k); setShowMemberFilter(false); }}>
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="pmt_filterMenuSection">
+                <span className="pmt_filterMenuLabel">Acceso</span>
+                {([
+                  { k: "all",    label: "Todos" },
+                  { k: "editor", label: "Edición" },
+                  { k: "reader", label: "Lectura" },
+                ] as { k: "all"|"editor"|"reader"; label: string }[]).map(({ k, label }) => (
+                  <button key={k} type="button"
+                    className={`pmt_filterMenuOpt${accessFilter === k ? " pmt_filterMenuOpt--active" : ""}`}
+                    onClick={() => { setAccessFilter(k); setShowMemberFilter(false); }}>
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      {filteredMembers
         .map((member) => {
           const isEditor = editors.includes(member.user_id);
           return (
@@ -424,13 +506,77 @@ function ManageAccessSection({
   );
 }
 
+// ─── CommitPieChart ───────────────────────────────────────────────────────────
+
+function CommitPieChart({ ok, failed, pending, total }: {
+  ok: number; failed: number; pending: number; total: number;
+}) {
+  const R = 54; const cx = 70; const cy = 70;
+  const circ = 2 * Math.PI * R;
+
+  const allSlices = [
+    { value: ok,      color: "var(--st-ok)",      label: "Completadas", key: "ok" },
+    { value: pending, color: "var(--st-progress)", label: "En progreso", key: "prog" },
+    { value: failed,  color: "var(--st-critical)", label: "Fallidas",    key: "fail" },
+  ];
+
+  const activeSlices = allSlices.filter((s) => s.value > 0);
+
+  let offset = 0;
+  const paths = activeSlices.map((s) => {
+    const frac = s.value / total;
+    const dash = frac * circ;
+    const gap  = circ - dash;
+    const rotation = (offset / total) * 360 - 90;
+    offset += s.value;
+    return { ...s, dash, gap, rotation };
+  });
+
+  return (
+    <div className="pmt_pieWrap">
+      <svg width={140} height={140} viewBox="0 0 140 140">
+        {total === 0 ? (
+          <circle cx={cx} cy={cy} r={R} fill="none"
+            stroke="var(--pmt-border)" strokeWidth={18} />
+        ) : (
+          paths.map((p) => (
+            <circle key={p.key} cx={cx} cy={cy} r={R}
+              fill="none" stroke={p.color} strokeWidth={18}
+              strokeDasharray={`${p.dash} ${p.gap}`}
+              strokeDashoffset={0}
+              transform={`rotate(${p.rotation} ${cx} ${cy})`} />
+          ))
+        )}
+        <text x={cx} y={cy - 6} textAnchor="middle" className="pmt_pieCenter" dominantBaseline="middle">
+          {total}
+        </text>
+        <text x={cx} y={cy + 14} textAnchor="middle" className="pmt_pieCenterSub" dominantBaseline="middle">
+          metas
+        </text>
+      </svg>
+      <div className="pmt_pieLegend">
+        {allSlices.map((s) => (
+          <div key={s.key} className="pmt_pieLegItem">
+            <span className="pmt_pieLegDot" style={{ background: s.color }} />
+            <span className="pmt_pieLegLabel">{s.label}</span>
+            <span className="pmt_pieLegVal">{s.value}</span>
+            <span className="pmt_pieLegPct">
+              {total > 0 ? `${Math.round((s.value / total) * 100)}%` : "0%"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── TeamDrawer ───────────────────────────────────────────────────────────────
 
 function TeamDrawer({
   entry, commits, tab, areas, onTabChange, onClose,
   todayDay, totalDays, projectStartDate, penaltyPerDay, maxPenalty, zones,
   onStatusChange,
-  onAddCommit, onDeleteCommit, onEditCommitLabel,
+  onAddCommit, onDeleteCommit, onEditCommitLabel, onEditCommitDescription,
   isFirstPlace, canEdit, teamMembers, currentUserId, onUpdateEditors,
   copiedCommits, onCopyCommits, onPasteCommits,
 }: {
@@ -455,6 +601,7 @@ function TeamDrawer({
   onAddCommit: (draft: { label: string; element: string; deadline_day: number; due_date?: string }) => void;
   onDeleteCommit: (commitId: string) => void;
   onEditCommitLabel: (commitId: string, label: string) => void;
+  onEditCommitDescription: (commitId: string, description: string) => void;
   copiedCommits: TraceCommit[];
   onCopyCommits: (commits: TraceCommit[]) => void;
   onPasteCommits: () => Promise<void>;
@@ -467,12 +614,57 @@ function TeamDrawer({
     start_date: "",
     due_date: "",
   });
-  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
-  const [areaFilter, setAreaFilter]         = useState<string | null>(null);
+  const [editingLabelId, setEditingLabelId]   = useState<string | null>(null);
+  const [areaFilter, setAreaFilter]           = useState<string | null>(null);
+  const [statusFilter, setStatusFilter]       = useState<"all" | "success" | "in_progress" | "failed">("all");
+  const [commitSort, setCommitSort]           = useState<"default" | "deadline" | "status">("default");
+  const [showCommitFilter, setShowCommitFilter] = useState(false);
+  const commitFilterRef                       = useRef<HTMLDivElement>(null);
+  const [commitSearch, setCommitSearch]       = useState("");
+  const [selectedIds, setSelectedIds]         = useState<Set<string>>(new Set());
+  const [labelDraft, setLabelDraft]           = useState("");
+  const [descPopupCommit, setDescPopupCommit] = useState<TraceCommit | null>(null);
+  const [descDraft, setDescDraft]             = useState("");
 
-  const usedAreas     = areas.filter((a) => commits.some((c) => elKey(c) === a.key));
-  const visibleCommits = areaFilter ? commits.filter((c) => elKey(c) === areaFilter) : commits;
-  const [labelDraft, setLabelDraft]         = useState("");
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const usedAreas = areas.filter((a) => commits.some((c) => elKey(c) === a.key));
+
+  const visibleCommits = (() => {
+    let list = areaFilter ? commits.filter((c) => elKey(c) === areaFilter) : commits;
+    if (statusFilter !== "all") list = list.filter((c) => c.status === statusFilter);
+    if (commitSearch.trim()) {
+      const q = commitSearch.toLowerCase();
+      list = list.filter((c) => c.label.toLowerCase().includes(q));
+    }
+    if (commitSort === "deadline") list = [...list].sort((a, b) => {
+      const da = a.due_date ?? String(a.deadline_day).padStart(6, "0");
+      const db = b.due_date ?? String(b.deadline_day).padStart(6, "0");
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+    if (commitSort === "status") {
+      const order = { success: 0, in_progress: 1, pending: 2, failed: 3 };
+      list = [...list].sort((a, b) => (order[a.status] ?? 2) - (order[b.status] ?? 2));
+    }
+    return list;
+  })();
+
+  useEffect(() => {
+    if (!showCommitFilter) return;
+    const h = (e: MouseEvent) => {
+      if (commitFilterRef.current && !commitFilterRef.current.contains(e.target as Node))
+        setShowCommitFilter(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [showCommitFilter]);
 
   const score   = calcEntryScore(commits, todayDay, penaltyPerDay, maxPenalty);
   const grade   = gradeInfo(score, zones);
@@ -522,24 +714,8 @@ function TeamDrawer({
           {/* Overview */}
           {tab === "overview" && (
             <div className="pmt_drawerOverview">
-              <div className="pmt_drawerKpis">
-                <div className="pmt_drawerKpi">
-                  <span className="pmt_drawerKpiVal">{total}</span>
-                  <span className="pmt_drawerKpiLbl">Total</span>
-                </div>
-                <div className="pmt_drawerKpi pmt_drawerKpi--ok">
-                  <span className="pmt_drawerKpiVal">{ok}</span>
-                  <span className="pmt_drawerKpiLbl">OK</span>
-                </div>
-                <div className="pmt_drawerKpi pmt_drawerKpi--fail">
-                  <span className="pmt_drawerKpiVal">{failed}</span>
-                  <span className="pmt_drawerKpiLbl">Fallidos</span>
-                </div>
-                <div className="pmt_drawerKpi pmt_drawerKpi--warn">
-                  <span className="pmt_drawerKpiVal">{pending}</span>
-                  <span className="pmt_drawerKpiLbl">Pendientes</span>
-                </div>
-              </div>
+              <CommitPieChart ok={ok} failed={failed} pending={pending} total={total} />
+
               {total === 0 ? (
                 <div className="pmt_noEntries" style={{ flexDirection: "column", gap: 8 }}>
                   <span style={{ fontSize: 13 }}>Sin metas registradas.</span>
@@ -578,42 +754,123 @@ function TeamDrawer({
           {/* Commits (Metas) */}
           {tab === "commits" && (
             <>
-              {usedAreas.length > 1 && (
-                <div className="pmt_drawerAreaFilter">
+              {/* Filter + copy toolbar */}
+              <div className="pmt_commitClipbar">
+                {/* Filter dropdown */}
+                <div className="pmt_filterDropWrap" ref={commitFilterRef}>
                   <button
                     type="button"
-                    className={`pmt_trackPill${areaFilter === null ? " pmt_trackPill--active" : ""}`}
-                    onClick={() => setAreaFilter(null)}>
-                    Todas
+                    className={`pmt_filterBtn${(areaFilter !== null || statusFilter !== "all" || commitSort !== "default") ? " pmt_filterBtn--active" : ""}`}
+                    onClick={() => setShowCommitFilter((v) => !v)}>
+                    <Filter size={13} />
+                    Filtrar
+                    {(areaFilter !== null || statusFilter !== "all" || commitSort !== "default") && (
+                      <span className="pmt_filterBadge" />
+                    )}
                   </button>
-                  {usedAreas.map((area) => (
-                    <button
-                      key={area.key}
-                      type="button"
-                      className={`pmt_trackPill${areaFilter === area.key ? " pmt_trackPill--active" : ""}`}
-                      style={areaFilter === area.key ? {} : { borderColor: area.color + "55", color: area.color }}
-                      onClick={() => setAreaFilter((f) => f === area.key ? null : area.key)}>
-                      {area.label}
-                    </button>
-                  ))}
+                  {showCommitFilter && (
+                    <div className="pmt_filterMenu">
+                      {/* Área */}
+                      {usedAreas.length > 1 && (
+                        <div className="pmt_filterMenuSection">
+                          <span className="pmt_filterMenuLabel">Área</span>
+                          <button type="button"
+                            className={`pmt_filterMenuOpt${areaFilter === null ? " pmt_filterMenuOpt--active" : ""}`}
+                            onClick={() => { setAreaFilter(null); setShowCommitFilter(false); }}>
+                            <span>Todas</span>
+                          </button>
+                          {usedAreas.map((area) => (
+                            <button key={area.key} type="button"
+                              className={`pmt_filterMenuOpt${areaFilter === area.key ? " pmt_filterMenuOpt--active" : ""}`}
+                              onClick={() => { setAreaFilter((f) => f === area.key ? null : area.key); setShowCommitFilter(false); }}>
+                              <span className="pmt_filterDot" style={{ background: area.color }} />
+                              <span>{area.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {/* Estado */}
+                      <div className="pmt_filterMenuSection">
+                        <span className="pmt_filterMenuLabel">Estado</span>
+                        {([
+                          { k: "all",         label: "Todos",        dot: undefined },
+                          { k: "success",     label: "Completadas",  dot: "var(--st-ok)" },
+                          { k: "in_progress", label: "En progreso",  dot: "var(--st-progress)" },
+                          { k: "failed",      label: "Fallidas",     dot: "var(--st-critical)" },
+                        ] as { k: "all"|"success"|"in_progress"|"failed"; label: string; dot?: string }[]).map(({ k, label, dot }) => (
+                          <button key={k} type="button"
+                            className={`pmt_filterMenuOpt${statusFilter === k ? " pmt_filterMenuOpt--active" : ""}`}
+                            onClick={() => { setStatusFilter(k); setShowCommitFilter(false); }}>
+                            {dot && <span className="pmt_filterDot" style={{ background: dot }} />}
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {/* Ordenar */}
+                      <div className="pmt_filterMenuSection">
+                        <span className="pmt_filterMenuLabel">Ordenar por</span>
+                        {([
+                          { k: "default",  label: "Por defecto" },
+                          { k: "deadline", label: "Cercanía de fecha" },
+                          { k: "status",   label: "Estado" },
+                        ] as const).map(({ k, label }) => (
+                          <button key={k} type="button"
+                            className={`pmt_filterMenuOpt${commitSort === k ? " pmt_filterMenuOpt--active" : ""}`}
+                            onClick={() => { setCommitSort(k); setShowCommitFilter(false); }}>
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-              {/* Copy / Paste toolbar */}
-              <div className="pmt_commitClipbar">
-                {commits.length > 0 && (
-                  <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--copy"
-                    onClick={() => onCopyCommits(commits)}>
-                    <Copy size={11} />
-                    Copiar metas ({commits.length})
-                  </button>
-                )}
-                {copiedCommits.length > 0 && canEdit && (
-                  <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--paste"
-                    onClick={onPasteCommits}>
-                    <Clipboard size={11} />
-                    Pegar {copiedCommits.length} meta{copiedCommits.length !== 1 ? "s" : ""}
-                  </button>
-                )}
+
+                {/* Search */}
+                <div className="pmt_filterSearch">
+                  <Search size={13} />
+                  <input
+                    placeholder="Buscar meta..."
+                    value={commitSearch}
+                    onChange={(e) => setCommitSearch(e.target.value)} />
+                </div>
+
+                {/* Copy / Paste */}
+                <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
+                  {selectedIds.size > 0 && (
+                    <>
+                      <span style={{ fontSize: 11, color: "var(--pmt-text-muted)" }}>
+                        {selectedIds.size} seleccionada{selectedIds.size !== 1 ? "s" : ""}
+                      </span>
+                      <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--copy pmt_commitClipBtn--icon"
+                        title="Copiar selección"
+                        onClick={() => {
+                          onCopyCommits(commits.filter((c) => selectedIds.has(c.id)));
+                          clearSelection();
+                        }}>
+                        <Copy size={13} />
+                      </button>
+                      <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--icon"
+                        title="Deseleccionar"
+                        onClick={clearSelection}>
+                        <X size={13} />
+                      </button>
+                    </>
+                  )}
+                  {selectedIds.size === 0 && commits.length > 0 && (
+                    <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--copy"
+                      onClick={() => onCopyCommits(commits)}>
+                      <Copy size={11} />
+                      Copiar todas ({commits.length})
+                    </button>
+                  )}
+                  {copiedCommits.length > 0 && canEdit && (
+                    <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--paste"
+                      onClick={onPasteCommits}>
+                      <Clipboard size={11} />
+                      Pegar {copiedCommits.length} meta{copiedCommits.length !== 1 ? "s" : ""}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="pmt_drawerCommits">
@@ -634,8 +891,14 @@ function TeamDrawer({
                     ? commitDaysLate(commit, penaltyPerDay, maxPenalty)
                     : calcPenalty(commit.deadline_day, commit.status, todayDay, penaltyPerDay, maxPenalty);
                   const el      = elKey(commit);
+                  const isSelected = selectedIds.has(commit.id);
                   return (
-                    <div key={commit.id} className={`pmt_commitRow2${isLate ? " pmt_commitRow2--late" : ""}`}>
+                    <div key={commit.id} className={`pmt_commitRow2${isLate ? " pmt_commitRow2--late" : ""}${isSelected ? " pmt_commitRow2--selected" : ""}`}>
+                      <input
+                        type="checkbox"
+                        className="pmt_commitCheckbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(commit.id)} />
                       <button type="button"
                         className={`pmt_commitPip pmt_commitPip--${commit.status}`}
                         onClick={canEdit ? () => onStatusChange(commit.id, STATUS_CYCLE[commit.status]) : undefined}
@@ -670,6 +933,12 @@ function TeamDrawer({
                       {isLate && penalty > 0 && (
                         <span className="pmt_commitPenalty2">-{penalty}pt</span>
                       )}
+                      <button type="button" className="pmt_commitDescBtn"
+                        title={commit.description ? "Ver/editar descripción" : "Agregar descripción"}
+                        onClick={() => { setDescPopupCommit(commit); setDescDraft(commit.description ?? ""); }}>
+                        <Pencil size={11} />
+                        {commit.description && <span className="pmt_commitDescDot" />}
+                      </button>
                       {canEdit && (
                         <button type="button" className="pmt_commitDeleteBtn"
                           onClick={() => onDeleteCommit(commit.id)} title="Eliminar meta">
@@ -744,6 +1013,46 @@ function TeamDrawer({
                   <button type="button" onClick={() => setAddCommitOpen(false)}>Cancelar</button>
                 </div>
               )}
+
+              {/* Description popup */}
+              {descPopupCommit && (
+                <>
+                  <div className="pmt_descOverlay" onClick={() => setDescPopupCommit(null)} />
+                  <div className="pmt_descPopup">
+                    <div className="pmt_descPopupHead">
+                      <span className="pmt_descPopupTitle">Descripción de meta</span>
+                      <button type="button" className="pmt_drawerClose"
+                        onClick={() => setDescPopupCommit(null)}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="pmt_descPopupLabel">{descPopupCommit.label}</div>
+                    <textarea
+                      className="pmt_descTextarea"
+                      value={descDraft}
+                      placeholder="Añade una descripción, notas o detalles sobre esta meta..."
+                      onChange={(e) => setDescDraft(e.target.value)}
+                      rows={5}
+                      autoFocus
+                    />
+                    <div className="pmt_descPopupActions">
+                      <button type="button" className="pmt_addEntryConfirm"
+                        style={{ fontSize: 12, padding: "5px 14px" }}
+                        onClick={() => {
+                          onEditCommitDescription(descPopupCommit.id, descDraft);
+                          setDescPopupCommit(null);
+                        }}>
+                        Guardar
+                      </button>
+                      <button type="button" className="pmt_commitClipBtn"
+                        style={{ fontSize: 12, padding: "5px 12px" }}
+                        onClick={() => setDescPopupCommit(null)}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -784,9 +1093,6 @@ function TeamCard({
   canEdit: boolean;
 }) {
   const score     = calcEntryScore(commits, todayDay, penaltyPerDay, maxPenalty);
-  const ok        = commits.filter((c) => c.status === "success").length;
-  const failed    = commits.filter((c) => c.status === "failed").length;
-  const pending   = commits.filter((c) => c.status === "pending" || c.status === "in_progress").length;
   const color     = entry.color || "#64748b";
   const grade     = gradeInfo(score, zones);
   const isEditing = editingEntryId === entry.id;
@@ -862,12 +1168,6 @@ function TeamCard({
           </div>
         ) : (
           <>
-            <div className="pmt_cardCommitSummary">
-              <span className="pmt_cardCommitChip pmt_cardCommitChip--ok">✓ {ok}</span>
-              <span className="pmt_cardCommitChip pmt_cardCommitChip--fail">✗ {failed}</span>
-              <span className="pmt_cardCommitChip pmt_cardCommitChip--pend">○ {pending}</span>
-            </div>
-
             <div className="pmt_elementBars">
               {areas.map((area) => {
                 const elCommits = commits.filter((c) => elKey(c) === area.key);
@@ -930,9 +1230,6 @@ function TeamListRow({
   isFirstPlace?: boolean;
 }) {
   const score   = calcEntryScore(commits, todayDay, penaltyPerDay, maxPenalty);
-  const ok      = commits.filter((c) => c.status === "success").length;
-  const failed  = commits.filter((c) => c.status === "failed").length;
-  const pending = commits.filter((c) => c.status === "pending" || c.status === "in_progress").length;
   const total   = commits.length;
   const grade   = gradeInfo(score, zones);
   const st      = statusFromScore(score, zones);
@@ -956,9 +1253,6 @@ function TeamListRow({
         {total > 0 ? grade.label : "Sin metas"}
       </span>
       <div className="pmt_listRowStats">
-        <span className="pmt_listRowStat pmt_listRowStat--ok">✓ {ok}</span>
-        <span className="pmt_listRowStat pmt_listRowStat--fail">✗ {failed}</span>
-        <span className="pmt_listRowStat pmt_listRowStat--pend">○ {pending}</span>
         <span className="pmt_listRowStat">{total} metas</span>
       </div>
     </div>
@@ -2093,6 +2387,18 @@ export default function PmTrackerPanel({
     if (error) console.error("[PmTracker] Edit label error:", error);
   }, []);
 
+  // ── Edit commit description ──────────────────────────────────────────────────
+  const handleEditCommitDescription = useCallback(async (commitId: string, description: string) => {
+    setCommitsByEntry((prev) => {
+      const updated: Record<string, TraceCommit[]> = {};
+      for (const [eid, cs] of Object.entries(prev))
+        updated[eid] = cs.map((c) => c.id === commitId ? { ...c, description } : c);
+      return updated;
+    });
+    const { error } = await supabase.from("trace_commits").update({ description }).eq("id", commitId);
+    if (error) console.error("[PmTracker] Edit description error:", error);
+  }, []);
+
   // ── Deadline change ──────────────────────────────────────────────────────────
   const handleDeadlineChange = useCallback(async (commitId: string, newDate: string) => {
     if (!project) return;
@@ -2268,6 +2574,7 @@ export default function PmTrackerPanel({
           onAddCommit={(draft) => handleAddCommit(drawerEntry.id, draft)}
           onDeleteCommit={(cid) => handleDeleteCommit(drawerEntry.id, cid)}
           onEditCommitLabel={handleEditCommitLabel}
+          onEditCommitDescription={handleEditCommitDescription}
           isFirstPlace={drawerEntry.id === firstPlaceEntryId}
           canEdit={canEditEntry(drawerEntry, currentUserId)}
           teamMembers={teamMembers}

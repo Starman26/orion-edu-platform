@@ -17,6 +17,8 @@
   --pmt-accent-text:  #ffffff;
   --pmt-header-bg:    #111827;
   --pmt-header-text:  #f9fafb;
+  --st-progress:      #6b7280;
+  --st-progress-soft: #f3f4f6;
 }
 
 .pmt_root[data-theme="slate"] {
@@ -32,6 +34,8 @@
   --pmt-accent-text: #f8fafc;
   --pmt-header-bg:   #1e293b;
   --pmt-header-text: #f8fafc;
+  --st-progress:      #64748b;
+  --st-progress-soft: #f1f5f9;
 }
 
 .pmt_root[data-theme="forest"] {
@@ -55,6 +59,8 @@
   --pmt-accent-text: #e8f4fb;
   --pmt-header-bg:   #0a2d4a;
   --pmt-header-text: #e8f4fb;
+  --st-progress:      #4a6a8a;
+  --st-progress-soft: #daeaf5;
 }
 
 .pmt_root[data-theme="sunset"] {
@@ -111,14 +117,17 @@
   --pmt-r-lg: 6px;
 
   /* status tokens — these stay constant across all themes (semantic) */
-  --st-ok:       #16a34a;
-  --st-ok-soft:  #dcfce7;
-  --st-critical: #dc2626;
-  --st-crit-soft:#fee2e2;
-  --st-warning:  #d97706;
-  --st-warn-soft:#fef3c7;
-  --st-info:     #2563eb;
-  --st-info-soft:#eff6ff;
+  --st-ok:           #16a34a;
+  --st-ok-soft:      #dcfce7;
+  --st-critical:     #dc2626;
+  --st-crit-soft:    #fee2e2;
+  --st-warning:      #d97706;
+  --st-warn-soft:    #fef3c7;
+  --st-info:         #2563eb;
+  --st-info-soft:    #eff6ff;
+  /* progress = in_progress state; overridden per theme */
+  --st-progress:     var(--st-warning);
+  --st-progress-soft:var(--st-warn-soft);
 }
 
 /* ─── Loading / Empty ─────────────────────────────────────────────────────── */
@@ -443,12 +452,17 @@
 
 .pmt_filterSearch {
   display: flex; align-items: center; gap: 6px;
-  flex: 1; max-width: 220px;
+  flex: 1;
   padding: 4px 8px;
   border: 1px solid var(--pmt-border);
   border-radius: var(--pmt-r-sm);
   background: var(--pmt-surface-2);
   color: var(--pmt-text-subtle);
+}
+
+/* Constrain the search only inside the main filter bar */
+.pmt_filterBar .pmt_filterSearch {
+  max-width: 600px;
 }
 .pmt_filterSearch input {
   border: none; background: transparent;
@@ -644,9 +658,9 @@
 }
 
 .pmt_scoreGrade {
-  font-size: 10px; font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: 10px; font-weight: 600;
+  font-style: italic;
+  letter-spacing: 0;
 }
 
 .pmt_cardEditBtn {
@@ -966,7 +980,7 @@
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 10px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.04em;
+  font-style: italic;
   white-space: nowrap;
 }
 .pmt_listStatus--ok       { background: var(--st-ok-soft);   color: var(--st-ok); }
@@ -1457,12 +1471,76 @@
 .pmt_drawerKpi--fail .pmt_drawerKpiVal { color: var(--st-critical); }
 .pmt_drawerKpi--warn .pmt_drawerKpiVal { color: var(--st-warning); }
 
+/* ─── Commit Pie Chart ───────────────────────────────────────────────────── */
+
+.pmt_pieWrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 32px;
+  padding: 8px 0;
+}
+
+.pmt_pieCenter {
+  font-size: 22px;
+  font-weight: 600;
+  font-family: var(--pmt-font-mono);
+  fill: var(--pmt-text);
+  letter-spacing: -0.02em;
+}
+
+.pmt_pieCenterSub {
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--pmt-text-subtle);
+}
+
+.pmt_pieLegend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pmt_pieLegItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pmt_pieLegDot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pmt_pieLegLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pmt-text);
+  flex: 1;
+}
+
+.pmt_pieLegVal {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--pmt-font-mono);
+  color: var(--pmt-text);
+}
+
+.pmt_pieLegPct {
+  font-size: 11px;
+  color: var(--pmt-text-subtle);
+  font-family: var(--pmt-font-mono);
+  min-width: 36px;
+}
+
 .pmt_drawerSection { display: flex; flex-direction: column; gap: 2px; }
 
 .pmt_drawerSectionTitle {
-  font-size: 10px; font-weight: 700;
-  letter-spacing: 0.09em; text-transform: uppercase;
-  color: var(--pmt-text-subtle);
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--pmt-text);
   margin-bottom: 8px;
 }
 
@@ -1474,12 +1552,23 @@
 
 .pmt_commitRow2 {
   display: flex; align-items: center; gap: 8px;
-  padding: 7px 0;
+  padding: 7px 4px;
   border-bottom: 1px solid var(--pmt-border-soft);
   font-size: 12px;
+  border-radius: var(--pmt-r-sm);
+  transition: background 0.1s;
 }
 .pmt_commitRow2:last-child { border-bottom: none; }
 .pmt_commitRow2--late .pmt_commitLabel2 { color: var(--st-warning); }
+.pmt_commitRow2--selected { background: var(--pmt-border-soft); }
+
+.pmt_commitCheckbox {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--pmt-accent);
+  margin: 0;
+}
 
 .pmt_commitPip {
   width: 14px; height: 14px;
@@ -1668,6 +1757,23 @@
   background: var(--pmt-surface);
   color: var(--pmt-text);
 }
+.pmt_commitDescBtn {
+  position: relative;
+  padding: 2px 4px; border: none;
+  background: transparent;
+  color: var(--pmt-text-subtle);
+  cursor: pointer; border-radius: 4px; line-height: 1;
+  display: flex; align-items: center;
+}
+.pmt_commitDescBtn:hover { color: var(--pmt-accent); background: var(--pmt-border-soft); }
+.pmt_commitDescDot {
+  position: absolute;
+  top: 2px; right: 1px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--pmt-accent);
+}
+
 .pmt_commitDeleteBtn {
   padding: 2px 4px; border: none;
   background: transparent;
@@ -1675,6 +1781,60 @@
   cursor: pointer; border-radius: 4px; line-height: 1;
 }
 .pmt_commitDeleteBtn:hover { color: var(--st-critical); background: var(--st-crit-soft); }
+
+/* ─── Description popup ───────────────────────────────────────────────────── */
+
+.pmt_descOverlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1100;
+}
+.pmt_descPopup {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1101;
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-md);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  width: min(480px, 90vw);
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px;
+}
+.pmt_descPopupHead {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.pmt_descPopupTitle {
+  font-size: 13px; font-weight: 600;
+  color: var(--pmt-text);
+  letter-spacing: 0.02em;
+}
+.pmt_descPopupLabel {
+  font-size: 12px;
+  color: var(--pmt-text-muted);
+  padding: 6px 10px;
+  background: var(--pmt-surface-2);
+  border-radius: var(--pmt-r-sm);
+  border: 1px solid var(--pmt-border-soft);
+}
+.pmt_descTextarea {
+  width: 100%; box-sizing: border-box;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--pmt-text);
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border);
+  border-radius: var(--pmt-r-sm);
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+}
+.pmt_descTextarea:focus { border-color: var(--pmt-accent); }
+.pmt_descPopupActions {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
 
 /* ─── Settings rows ───────────────────────────────────────────────────────── */
 
@@ -2470,6 +2630,8 @@
   padding: 8px 20px;
   border-bottom: 1px solid var(--pmt-border-soft);
   min-height: 38px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .pmt_commitClipBtn {
@@ -2503,6 +2665,10 @@
 .pmt_commitClipBtn--paste:hover {
   background: var(--st-info, #2563eb);
   color: #fff;
+}
+.pmt_commitClipBtn--icon {
+  padding: 4px 6px;
+  gap: 0;
 }
 
 /* ─── Drawer area filter (Metas tab) ────────────────────────────────────── */
