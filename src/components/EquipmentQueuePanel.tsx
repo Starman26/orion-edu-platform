@@ -1122,11 +1122,11 @@ export default function EquipmentQueuePanel({
                     onChange={(e) => setSDraftTitle(e.target.value)}
                     style={{ width: "auto", minWidth: 180 }} />
                 </div>
-                <div className="pmt_settingsRow">
+                <div className="pmt_settingsRow pmt_settingsRow--col">
                   <label>Descripción</label>
-                  <input type="text" value={sDraftSub}
+                  <textarea value={sDraftSub} rows={3}
                     onChange={(e) => setSDraftSub(e.target.value)}
-                    style={{ width: "auto", minWidth: 180 }} />
+                    style={{ width: "100%", resize: "vertical", fontFamily: "inherit", fontSize: 13, padding: "6px 8px", borderRadius: 4, border: "1px solid var(--pmt-border)", background: "var(--pmt-surface-2)", color: "var(--pmt-text)", outline: "none" }} />
                 </div>
               </div>
 
