@@ -21,6 +21,21 @@
   --st-progress-soft: #f3f4f6;
 }
 
+.pmt_root[data-theme="light"] .pmt_toolbar {
+  background: #ffffff;
+  border-bottom: 1px solid #111111;
+}
+.pmt_root[data-theme="light"] .pmt_h1 {
+  color: #111111;
+}
+.pmt_root[data-theme="light"] .pmt_expandBtn {
+  color: #111111;
+  opacity: 0.7;
+}
+.pmt_root[data-theme="light"] .pmt_expandBtn:hover {
+  opacity: 1;
+}
+
 .pmt_root[data-theme="slate"] {
   --pmt-bg:          #eef2f7;
   --pmt-surface:     #ffffff;

@@ -826,6 +826,22 @@
    THEMES — exact same tokens as PM Tracker
    ============================================================================ */
 
+.equeue_root[data-theme="light"] .equeue_toolbar {
+  background: #ffffff;
+  border-bottom: 1px solid #111111;
+}
+.equeue_root[data-theme="light"] .equeue_h1,
+.equeue_root[data-theme="light"] .equeue_toolbarSub {
+  color: #111111;
+}
+.equeue_root[data-theme="light"] .equeue_expandBtn {
+  color: #111111;
+  opacity: 0.7;
+}
+.equeue_root[data-theme="light"] .equeue_expandBtn:hover {
+  opacity: 1;
+}
+
 .equeue_root[data-theme="slate"] {
   --pmt-bg: #eef2f7; --pmt-surface: #ffffff; --pmt-surface-2: #f1f5f9;
   --pmt-text: #0f172a; --pmt-text-muted: #334155; --pmt-text-subtle: #94a3b8;
