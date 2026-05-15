@@ -15,6 +15,7 @@ import "../styles/analysis-ui.css";
 import "../styles/dashboard-ui.css";
 
 const PmTrackerPanel = lazy(() => import("../components/PmTrackerPanel"));
+const EquipmentQueuePanel = lazy(() => import("../components/EquipmentQueuePanel"));
 
 const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
 const LS_KEY = "cora.sidebarCollapsed";
@@ -935,15 +936,15 @@ export default function Analysis() {
       />
 
       <main
-        className={`analysis_content${leftCollapsed && selectedSession?.templateType === "pm_tracker" ? " analysis_content--full" : ""}`}
+        className={`analysis_content${leftCollapsed && (selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue") ? " analysis_content--full" : ""}`}
         style={{
           gridTemplateColumns: leftCollapsed
-            ? (selectedSession?.templateType === "pm_tracker" ? "1fr" : "0px 1fr")
+            ? ((selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue") ? "1fr" : "0px 1fr")
             : undefined,
         }}
       >
-        {/* Left Panel — Session Cards (hidden entirely in pm_tracker collapsed state) */}
-        {!(leftCollapsed && selectedSession?.templateType === "pm_tracker") && (
+        {/* Left Panel — Session Cards (hidden entirely for full-screen templates) */}
+        {!(leftCollapsed && (selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue")) && (
           <div className={`analysis_left${leftCollapsed ? " analysis_left--collapsed" : ""}`}>
             <div className="analysis_leftHeader">
               <div className="analysis_leftHeaderTop">
@@ -1010,7 +1011,7 @@ export default function Analysis() {
 
         {/* Right Panel — Create Form / Edit Form / Results / Empty */}
         <div className={`analysis_right ${selectedSessionId || showCreateForm || showEditForm ? "analysis_right--active" : ""}${leftCollapsed ? " analysis_right--collapsed" : ""}`}>
-          {leftCollapsed && selectedSession?.templateType !== "pm_tracker" && (
+          {leftCollapsed && selectedSession?.templateType !== "pm_tracker" && selectedSession?.templateType !== "equipment_queue" && (
             <button
               type="button"
               className="analysis_expandTab"
@@ -1179,8 +1180,8 @@ export default function Analysis() {
           ) : (
             /* ── Results view ── */
             <>
-              {/* Results header: hidden for pm_tracker */}
-              {selectedSession?.templateType !== "pm_tracker" && (
+              {/* Results header: hidden for full-screen templates */}
+              {selectedSession?.templateType !== "pm_tracker" && selectedSession?.templateType !== "equipment_queue" && (
                 <div className="analysis_resultsHeader">
                   <div className="analysis_resultsHeaderLeft">
                     <div className="analysis_resultsIcon">
@@ -1213,7 +1214,7 @@ export default function Analysis() {
                 </div>
               )}
 
-              {/* Results body — PM Tracker or AI chat */}
+              {/* Results body — PM Tracker, Equipment Queue, or AI chat */}
               {selectedSession?.templateType === "pm_tracker" ? (
                 <div className="analysis_resultsBody analysis_resultsBody--full">
                   <Suspense fallback={<div className="analysis_previewEmpty"><p>Loading tracker...</p></div>}>
@@ -1222,6 +1223,18 @@ export default function Analysis() {
                       teamId={teamId ?? ""}
                       userId={userId ?? ""}
                       config={selectedSession.templateConfig ?? {}}
+                      onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
+                    />
+                  </Suspense>
+                </div>
+              ) : selectedSession?.templateType === "equipment_queue" ? (
+                <div className="analysis_resultsBody analysis_resultsBody--full">
+                  <Suspense fallback={<div className="analysis_previewEmpty"><p>Cargando fila...</p></div>}>
+                    <EquipmentQueuePanel
+                      sessionId={selectedSessionId!}
+                      teamId={teamId ?? ""}
+                      userId={userId ?? ""}
+                      userName={userName || "User"}
                       onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
                     />
                   </Suspense>
