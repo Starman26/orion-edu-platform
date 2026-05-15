@@ -1,6 +1,6 @@
 // src/pages/Config.tsx — Analysis page with real Supabase data + embedded chat
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { Menu, Plus, Search, BarChart2, PieChart, TrendingUp, Activity, Clock, Target, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Menu, Plus, Search, BarChart2, PieChart, TrendingUp, Activity, Clock, Target, Pencil, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useThinking } from "../context/Thinkingcontext";
 import { useAgentChat } from "../components/useAgentChat";
@@ -16,6 +16,9 @@ import "../styles/dashboard-ui.css";
 
 const PmTrackerPanel = lazy(() => import("../components/PmTrackerPanel"));
 const EquipmentQueuePanel = lazy(() => import("../components/EquipmentQueuePanel"));
+
+// ── Set to false to permanently disable the 3D Queue announcement ──
+const SHOW_3DQUEUE_NOTIF = true;
 
 const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
 const LS_KEY = "cora.sidebarCollapsed";
@@ -297,6 +300,21 @@ export default function Analysis() {
   const [analysisPrompt, setAnalysisPrompt] = useState<string | null>(null);
   const [latestResponse, setLatestResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // One-time notification per user
+  const [showQueueNotif, setShowQueueNotif] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    const key = `orion_notif_3dqueue_${userId}`;
+    if (SHOW_3DQUEUE_NOTIF && !localStorage.getItem(key)) {
+      const t = setTimeout(() => setShowQueueNotif(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [userId]);
+  const dismissQueueNotif = () => {
+    setShowQueueNotif(false);
+    if (userId) localStorage.setItem(`orion_notif_3dqueue_${userId}`, "1");
+  };
 
   // Event runs (same pattern as Dashboard)
   const [eventRuns, setEventRuns] = useState<Record<string, EventRun>>({});
@@ -1268,6 +1286,23 @@ export default function Analysis() {
           )}
         </div>
       </main>
+
+      {/* One-time feature notification */}
+      {showQueueNotif && (
+        <div className="analysis_notif" role="status">
+          <div className="analysis_notifIcon"><Printer size={20} /></div>
+          <div className="analysis_notifBody">
+            <span className="analysis_notifTitle">Nuevo: 3D Printer Queue</span>
+            <span className="analysis_notifDesc">
+              Ya puedes reservar impresoras 3D directamente desde Análisis.
+            </span>
+            <span className="analysis_notifBy">Designed by Liz, Adrian &amp; Dr Erick</span>
+          </div>
+          <button type="button" className="analysis_notifClose" onClick={dismissQueueNotif} aria-label="Cerrar">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

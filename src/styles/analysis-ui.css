@@ -430,10 +430,10 @@
 .analysis_cardList {
   flex: 1;
   overflow-y: auto;
-  padding: 0 18px;
+  padding: 0 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .analysis_cardList::-webkit-scrollbar {
@@ -457,7 +457,7 @@
   padding: 11px 12px;
   background: #ffffff;
   border: 1px solid rgba(16, 17, 19, 0.1);
-  border-radius: 10px;
+  border-radius: 4px;
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
@@ -1405,4 +1405,73 @@
   border-left: none !important;
   padding-left: 0 !important;
   margin-left: 0 !important;
+}
+
+/* ── One-time feature notification toast ── */
+.analysis_notif {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 320px;
+  padding: 14px 14px 14px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.06);
+  animation: analysis_notifIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+@keyframes analysis_notifIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+.analysis_notifIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #101113;
+  margin-top: 2px;
+}
+.analysis_notifBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.analysis_notifTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #101113;
+}
+.analysis_notifDesc {
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.55);
+  line-height: 1.45;
+}
+.analysis_notifBy {
+  font-size: 10px;
+  color: rgba(16, 17, 19, 0.3);
+  margin-top: 4px;
+  font-style: italic;
+}
+.analysis_notifClose {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.35);
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color 0.12s, background 0.12s;
+}
+.analysis_notifClose:hover {
+  color: #101113;
+  background: rgba(16, 17, 19, 0.06);
 }
