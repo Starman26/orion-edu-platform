@@ -884,6 +884,48 @@ export default function EquipmentQueuePanel({
           {/* Kanban view */}
           {midView === "kanban" && (
             <>
+            {/* KPI bar */}
+            {(() => {
+              const total = midEntries.length;
+              const waiting = midEntries.filter((e) => e.status === "waiting").length;
+              const inUse = midEntries.filter((e) => e.status === "in_use").length;
+              const done = midEntries.filter((e) => e.status === "done").length;
+              const cancelled = midEntries.filter((e) => e.status === "cancelled").length;
+              const avgDur = total === 0 ? 0 : midEntries.reduce((a, e) => a + e.duration_hours, 0) / total;
+              const failRate = total === 0 ? 0 : Math.round((cancelled / total) * 100);
+              return (
+                <div className="equeue_kpiBar">
+                  <div className="equeue_kpiCard">
+                    <span className="equeue_kpiLabel">Total</span>
+                    <span className="equeue_kpiValue">{total}</span>
+                  </div>
+                  <div className="equeue_kpiCard">
+                    <span className="equeue_kpiLabel">En espera</span>
+                    <span className="equeue_kpiValue" style={{ color: "var(--pmt-text-muted)" }}>{waiting}</span>
+                  </div>
+                  <div className="equeue_kpiCard">
+                    <span className="equeue_kpiLabel">En uso</span>
+                    <span className="equeue_kpiValue" style={{ color: "var(--st-warning)" }}>{inUse}</span>
+                  </div>
+                  <div className="equeue_kpiCard">
+                    <span className="equeue_kpiLabel">Completados</span>
+                    <span className="equeue_kpiValue" style={{ color: "var(--st-ok)" }}>{done}</span>
+                  </div>
+                  <div className="equeue_kpiCard">
+                    <span className="equeue_kpiLabel">Fallidos</span>
+                    <span className="equeue_kpiValue" style={{ color: "var(--st-critical)" }}>{cancelled}</span>
+                  </div>
+                  <div className="equeue_kpiCard">
+                    <span className="equeue_kpiLabel">Duración prom.</span>
+                    <span className="equeue_kpiValue" style={{ color: "var(--st-info)" }}>{fmtDurHM(avgDur)}</span>
+                  </div>
+                  <div className="equeue_kpiCard">
+                    <span className="equeue_kpiLabel">Tasa de fallo</span>
+                    <span className="equeue_kpiValue" style={{ color: cancelled > 0 ? "var(--st-critical)" : "var(--pmt-text)" }}>{failRate}%</span>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="equeue_kanban">
               {KANBAN_COLS.map(({ status, label, dot }) => {
                 const colEntries = midEntries.filter((e) => e.status === status);

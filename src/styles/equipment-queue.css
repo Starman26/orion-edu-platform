@@ -374,6 +374,52 @@
 /* ── Kanban ── */
 .equeue_body--kanban .equeue_rightPanel { display: none; }
 
+/* KPI bar — shown above kanban columns */
+.equeue_kpiBar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 12px 0;
+  flex-shrink: 0;
+}
+.equeue_kpiCard {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px;
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border-soft);
+  border-radius: var(--pmt-r-lg);
+  min-width: 0;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    0 6px 16px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.equeue_kpiCard:hover {
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.07),
+    0 10px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+.equeue_kpiLabel {
+  font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--pmt-text-subtle);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.equeue_kpiValue {
+  font-family: var(--pmt-font-display);
+  font-size: 22px; font-weight: 600;
+  color: var(--pmt-text);
+  line-height: 1.1;
+}
+
+@media (max-width: 1400px) {
+  .equeue_kpiBar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .equeue_kpiBar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 .equeue_kanban {
   flex: 1; display: flex; gap: 12px;
   padding: 14px 12px;
@@ -473,15 +519,6 @@
 .equeue_kanbanCardMeta {
   font-size: 11px; color: var(--pmt-text-subtle);
 }
-.equeue_kanbanDisclaimer {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 14px 18px;
-  font-size: 13px; color: var(--pmt-text-muted);
-  border-top: 1px solid var(--pmt-border-soft);
-  background: var(--pmt-surface);
-  flex-shrink: 0; line-height: 1.6;
-}
-
 .equeue_rulesEmpty {
   flex: 1; display: flex; align-items: center; justify-content: center;
   font-size: 13px; color: var(--pmt-text-subtle);
