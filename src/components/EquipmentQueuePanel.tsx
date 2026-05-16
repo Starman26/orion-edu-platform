@@ -65,6 +65,13 @@ const STATUS_DOT: Record<string, string> = {
 
 const SECTION_ORDER: QueueEntry["status"][] = ["in_use", "waiting", "done"];
 
+const KANBAN_COLS: { status: QueueEntry["status"]; label: string; dot: string }[] = [
+  { status: "waiting",   label: "En espera",  dot: "var(--pmt-text-subtle)" },
+  { status: "in_use",    label: "En uso",     dot: "var(--st-warning)" },
+  { status: "done",      label: "Completado", dot: "var(--st-ok)" },
+  { status: "cancelled", label: "Fallido",    dot: "var(--st-critical)" },
+];
+
 const SECTION_LABEL: Record<string, string> = {
   in_use:  "EN CURSO",
   waiting: "En cola",
@@ -302,7 +309,9 @@ export default function EquipmentQueuePanel({
   const [tableError, setTableError] = useState(false);
   const [selectedEqId, setSelectedEqId] = useState<string | null>(null);
   const [showForm, setShowForm]     = useState(false);
-  const [midView, setMidView]       = useState<"list" | "rules">("list");
+  const [midView, setMidView]       = useState<"list" | "rules" | "kanban">("list");
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOver,   setDragOver]   = useState<string | null>(null);
   const [calDate, setCalDate]       = useState(() => new Date());
 
   const [leftSearch, setLeftSearch]   = useState("");
@@ -482,6 +491,17 @@ export default function EquipmentQueuePanel({
     setEntries((prev) => prev.filter((e) => e.id !== entryId));
   };
 
+  const handleKanbanDrop = async (targetStatus: QueueEntry["status"]) => {
+    setDragOver(null);
+    if (!draggingId) return;
+    const entry = entries.find((e) => e.id === draggingId);
+    if (!entry || entry.status === targetStatus) { setDraggingId(null); return; }
+    await supabase.schema("lab").from("equipment_queue_entries")
+      .update({ status: targetStatus }).eq("id", draggingId);
+    setEntries((prev) => prev.map((e) => e.id === draggingId ? { ...e, status: targetStatus } : e));
+    setDraggingId(null);
+  };
+
   const getEq   = (id: string) => equipment.find((e) => e.id === id);
   const getEqName = (id: string) => getEq(id)?.name ?? "Equipment";
   const isPrinter = (id: string) => /printer|3d|impresora/i.test(getEq(id)?.name ?? "");
@@ -575,10 +595,6 @@ export default function EquipmentQueuePanel({
             )}
           </div>
 
-          <button type="button" className="equeue_addBtn" onClick={() => openForm()}>
-            <Plus size={13} />
-            Agregar a la fila
-          </button>
           <button type="button" className="equeue_btnIcon" onClick={fetchEntries} title="Recargar">
             <RefreshCw size={14} />
           </button>
@@ -589,7 +605,7 @@ export default function EquipmentQueuePanel({
       </div>
 
       {/* ── 3-panel body ── */}
-      <div className="equeue_body">
+      <div className={`equeue_body${midView === "kanban" ? " equeue_body--kanban" : ""}`}>
 
         {/* ── LEFT: Equipment list ── */}
         <div className="equeue_leftPanel">
@@ -687,6 +703,20 @@ export default function EquipmentQueuePanel({
           )}
         </div>
 
+        {/* ── MIDDLE + RIGHT wrapper (for spanning disclaimer) ── */}
+        <div className="equeue_midRightWrap">
+          {/* Disclaimer — arriba, span mid + right */}
+          <div className="equeue_disclaimer">
+            <Info size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              Usa <strong>Añadir Reserva</strong> para crear nuevas reservas · En{" "}
+              <strong>Kanban</strong> arrastra tarjetas entre columnas para cambiar su
+              estado · Arrastrar a <strong>Fallido</strong> cancela la entrada · El
+              estado se actualiza automáticamente según el horario
+            </span>
+          </div>
+          <div className="equeue_midRightTop">
+
         {/* ── MIDDLE: Queue entries ── */}
         <div className="equeue_midPanel">
           {/* Equipment context bar (single-equipment view) */}
@@ -715,7 +745,17 @@ export default function EquipmentQueuePanel({
                 onClick={() => setMidView("rules")}>
                 Vista de reglas
               </button>
+              <button type="button"
+                className={`equeue_midTab${midView === "kanban" ? " is-active" : ""}`}
+                onClick={() => setMidView("kanban")}>
+                Kanban
+              </button>
             </div>
+            {(midView === "list" || midView === "kanban") && (
+              <button type="button" className="equeue_addBtn" onClick={() => openForm()}>
+                <Plus size={13} /> Añadir Reserva
+              </button>
+            )}
           </div>
 
           {/* Rules view */}
@@ -841,78 +881,68 @@ export default function EquipmentQueuePanel({
             </div>
           )}
 
-          {/* Add form (inline) */}
-          {midView === "list" && showForm && (
-            <div className="equeue_formCard">
-              <div className="equeue_formHeader">
-                <span className="equeue_formTitle">Nueva reserva</span>
-                <button type="button" className="equeue_formClose" onClick={() => setShowForm(false)}>
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="equeue_formBody">
-                <div className="equeue_formField">
-                  <label>Equipo</label>
-                  <select value={fEquipmentId} onChange={(e) => { setFEquipmentId(e.target.value); setConflictError(false); }}>
-                    <option value="">Selecciona un equipo...</option>
-                    {equipment.map((eq) => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.name}{eq.brand ? ` · ${eq.brand}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="equeue_formRow">
-                  <div className="equeue_formField">
-                    <label>¿Cuándo lo necesitas?</label>
-                    <input type="datetime-local" value={fScheduledAt}
-                      onChange={(e) => { setFScheduledAt(e.target.value); setConflictError(false); }} />
-                  </div>
-                  <div className="equeue_formField">
-                    <label>Duración</label>
-                    <div className="equeue_durRow">
-                      <input type="number" min="0" max="23" value={fDurH}
-                        onChange={(e) => setFDurH(Math.max(0, Math.min(23, Number(e.target.value))))} />
-                      <span>h</span>
-                      <input type="number" min="0" max="59" value={fDurM}
-                        onChange={(e) => setFDurM(Math.max(0, Math.min(59, Number(e.target.value))))} />
-                      <span>min</span>
+          {/* Kanban view */}
+          {midView === "kanban" && (
+            <>
+            <div className="equeue_kanban">
+              {KANBAN_COLS.map(({ status, label, dot }) => {
+                const colEntries = midEntries.filter((e) => e.status === status);
+                const isOver = dragOver === status;
+                return (
+                  <div key={status}
+                    className={`equeue_kanbanCol${isOver ? " is-over" : ""}`}
+                    onDragOver={(ev) => { ev.preventDefault(); setDragOver(status); }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={() => handleKanbanDrop(status)}>
+                    <div className="equeue_kanbanColHead">
+                      <span className="equeue_kanbanDot" style={{ background: dot }} />
+                      <span className="equeue_kanbanColLabel">{label}</span>
+                      <span className="equeue_kanbanCount">{colEntries.length}</span>
+                    </div>
+                    <div className="equeue_kanbanCards">
+                      {colEntries.length === 0 ? (
+                        <div className="equeue_kanbanEmpty">Arrastra aquí</div>
+                      ) : (
+                        colEntries.map((entry) => {
+                          const eq = getEq(entry.equipment_id);
+                          const color = getEqColor(entry.equipment_id);
+                          return (
+                            <div key={entry.id}
+                              className="equeue_kanbanCard"
+                              draggable
+                              onDragStart={() => setDraggingId(entry.id)}
+                              onDragEnd={() => { setDraggingId(null); setDragOver(null); }}>
+                              <div className="equeue_kanbanCardHead">
+                                <span className="equeue_kanbanCardName">{entry.requested_by_name}</span>
+                                <button type="button" className="equeue_kanbanCardX"
+                                  onClick={() => handleCancel(entry.id)} title="Eliminar">
+                                  <X size={11} />
+                                </button>
+                              </div>
+                              <div className="equeue_kanbanCardBadges">
+                                {eq && (
+                                  <span className="equeue_kanbanBadge"
+                                    style={{ background: color.bg, color: color.text, borderColor: color.border }}>
+                                    {eq.name}
+                                  </span>
+                                )}
+                                <span className="equeue_kanbanBadge">{fmtDurHM(entry.duration_hours)}</span>
+                                {entry.material && <span className="equeue_kanbanBadge">{entry.material}</span>}
+                              </div>
+                              <div className="equeue_kanbanCardMeta">
+                                ▸ {fmtShortDate(entry.scheduled_at)}, {fmtTime(entry.scheduled_at)}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
-                </div>
-                {isPrinter(fEquipmentId) && (
-                  <div className="equeue_formField">
-                    <label>Material</label>
-                    <select value={fMaterial} onChange={(e) => setFMaterial(e.target.value)}>
-                      <option value="">— Selecciona material —</option>
-                      {["PLA","PETG","ABS","TPU","ASA","Nylon","Resina","Fibra de carbono"].map((m) => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="equeue_formField">
-                  <label>Notas (opcional)</label>
-                  <input type="text" placeholder="¿En qué vas a trabajar?"
-                    value={fNotes} onChange={(e) => setFNotes(e.target.value)} />
-                </div>
-              </div>
-              {conflictError && (
-                <div className="equeue_conflictBanner">
-                  ⚠ Este equipo ya tiene una reserva activa en ese horario.
-                </div>
-              )}
-              <div className="equeue_formFooter">
-                <span className="equeue_formUser"><User size={12} />{userName}</span>
-                <div className="equeue_formActions">
-                  <button type="button" className="equeue_btnCancel" onClick={() => { setShowForm(false); setConflictError(false); }}>Cancelar</button>
-                  <button type="button" className="equeue_btnSave" onClick={handleAdd}
-                    disabled={submitting || !fEquipmentId || !fScheduledAt}>
-                    {submitting ? "Agregando..." : "Agregar"}
-                  </button>
-                </div>
-              </div>
+                );
+              })}
             </div>
+            
+            </>
           )}
 
           {/* Sections */}
@@ -1039,6 +1069,7 @@ export default function EquipmentQueuePanel({
               })
             )}
           </div>}
+
         </div>
 
         {/* ── RIGHT: Day calendar ── */}
@@ -1097,7 +1128,88 @@ export default function EquipmentQueuePanel({
           </div>
         </div>
 
+        </div>{/* equeue_midRightTop */}
+
+        </div>{/* equeue_midRightWrap */}
+
       </div>{/* equeue_body */}
+
+      {/* ── Add entry modal ── */}
+      {showForm && (
+        <>
+          <div className="equeue_modalOverlay" onClick={() => { setShowForm(false); setConflictError(false); }} />
+          <div className="equeue_modal">
+            <div className="equeue_formHeader">
+              <span className="equeue_formTitle">Nueva reserva</span>
+              <button type="button" className="equeue_formClose" onClick={() => { setShowForm(false); setConflictError(false); }}>
+                <X size={14} />
+              </button>
+            </div>
+            <div className="equeue_formBody">
+              <div className="equeue_formField">
+                <label>Equipo</label>
+                <select value={fEquipmentId} onChange={(e) => { setFEquipmentId(e.target.value); setConflictError(false); }}>
+                  <option value="">Selecciona un equipo...</option>
+                  {equipment.filter((eq) => pinnedIds.includes(eq.id)).map((eq) => (
+                    <option key={eq.id} value={eq.id}>
+                      {eq.name}{eq.brand ? ` · ${eq.brand}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="equeue_formRow">
+                <div className="equeue_formField">
+                  <label>¿Cuándo lo necesitas?</label>
+                  <input type="datetime-local" value={fScheduledAt}
+                    onChange={(e) => { setFScheduledAt(e.target.value); setConflictError(false); }} />
+                </div>
+                <div className="equeue_formField">
+                  <label>Duración</label>
+                  <div className="equeue_durRow">
+                    <input type="number" min="0" max="23" value={fDurH}
+                      onChange={(e) => setFDurH(Math.max(0, Math.min(23, Number(e.target.value))))} />
+                    <span>h</span>
+                    <input type="number" min="0" max="59" value={fDurM}
+                      onChange={(e) => setFDurM(Math.max(0, Math.min(59, Number(e.target.value))))} />
+                    <span>min</span>
+                  </div>
+                </div>
+              </div>
+              {isPrinter(fEquipmentId) && (
+                <div className="equeue_formField">
+                  <label>Material</label>
+                  <select value={fMaterial} onChange={(e) => setFMaterial(e.target.value)}>
+                    <option value="">— Selecciona material —</option>
+                    {["PLA","PETG","ABS","TPU","ASA","Nylon","Resina","Fibra de carbono"].map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="equeue_formField">
+                <label>Notas (opcional)</label>
+                <input type="text" placeholder="¿En qué vas a trabajar?"
+                  value={fNotes} onChange={(e) => setFNotes(e.target.value)} />
+              </div>
+            </div>
+            {conflictError && (
+              <div className="equeue_conflictBanner">
+                ⚠ Este equipo ya tiene una reserva activa en ese horario.
+              </div>
+            )}
+            <div className="equeue_formFooter">
+              <span className="equeue_formUser"><User size={12} />{userName}</span>
+              <div className="equeue_formActions">
+                <button type="button" className="equeue_btnCancel" onClick={() => { setShowForm(false); setConflictError(false); }}>Cancelar</button>
+                <button type="button" className="equeue_btnSave" onClick={handleAdd}
+                  disabled={submitting || !fEquipmentId || !fScheduledAt}>
+                  {submitting ? "Agregando..." : "Agregar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Settings drawer (same pattern as PM Tracker) ── */}
       {showSettings && (
