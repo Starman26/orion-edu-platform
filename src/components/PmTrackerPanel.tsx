@@ -53,13 +53,15 @@ interface AreaDef {
   color: string;
 }
 
+// Area colors — OKLCH unified family. Same lightness (0.62) and chroma (0.155);
+// only the hue varies so all 6 categories look harmonized.
 const DEFAULT_AREAS: AreaDef[] = [
-  { key: "robot",  label: "Robot",    color: "#e11d48" },
-  { key: "plc",    label: "PLC",      color: "#2563eb" },
-  { key: "sensor", label: "Sensores", color: "#16a34a" },
-  { key: "hmi",    label: "HMI",      color: "#d97706" },
-  { key: "mes",    label: "MES",      color: "#7c3aed" },
-  { key: "erp",    label: "ERP",      color: "#0891b2" },
+  { key: "robot",  label: "Robot",    color: "oklch(0.62 0.155 25)" },
+  { key: "plc",    label: "PLC",      color: "oklch(0.62 0.155 250)" },
+  { key: "sensor", label: "Sensores", color: "oklch(0.62 0.155 145)" },
+  { key: "hmi",    label: "HMI",      color: "oklch(0.62 0.155 75)" },
+  { key: "mes",    label: "MES",      color: "oklch(0.62 0.155 305)" },
+  { key: "erp",    label: "ERP",      color: "oklch(0.62 0.155 195)" },
 ];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -144,6 +146,17 @@ interface PmTrackerPanelProps {
 
 type ZoneThresholds = [number, number, number];
 const DEFAULT_ZONES: ZoneThresholds = [40, 65, 85];
+
+// Matte avatar palette — same lightness (62%), low-mid saturation, varied hues.
+function matteAvatar(name: string): { bg: string; text: string } {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return {
+    bg:   `hsl(${hue}, 45%, 62%)`,
+    text: `hsl(${hue}, 55%, 22%)`,
+  };
+}
 
 function getTodayDay(project: TraceProject): number {
   const today = new Date();
@@ -314,6 +327,127 @@ function ZoneSlider({
             <div className="pmt_zoneBubble">{values[i]}</div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Sparkline + delta for KPI tiles ─────────────────────────────────────────
+
+function Sparkline({ values, color = "var(--pmt-text-subtle)", width = 60, height = 18 }: {
+  values: number[]; color?: string; width?: number; height?: number;
+}) {
+  if (values.length < 2) {
+    return <svg width={width} height={height} className="pmt_kpiSpark" />;
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const stepX = width / (values.length - 1);
+  const points = values.map((v, i) => {
+    const x = i * stepX;
+    const y = height - ((v - min) / range) * (height - 2) - 1;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return (
+    <svg width={width} height={height} className="pmt_kpiSpark">
+      <polyline
+        fill="none" stroke={color} strokeWidth="1.5"
+        strokeLinecap="round" strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  );
+}
+
+function useKpiHistory(key: string, value: number): { history: number[]; delta: number | null } {
+  const [history, setHistory] = useState<number[]>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(`pmt_kpi_hist_${key}`) ?? "[]");
+      return Array.isArray(stored) ? stored : [];
+    } catch { return []; }
+  });
+
+  useEffect(() => {
+    if (!Number.isFinite(value)) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const dateKey = `pmt_kpi_date_${key}`;
+    const lastDate = localStorage.getItem(dateKey);
+    if (lastDate === today) return;
+    const next = [...history, value].slice(-8);
+    setHistory(next);
+    try {
+      localStorage.setItem(`pmt_kpi_hist_${key}`, JSON.stringify(next));
+      localStorage.setItem(dateKey, today);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, key]);
+
+  const series = history.length > 0 && history[history.length - 1] !== value
+    ? [...history, value].slice(-8)
+    : history;
+  const delta = series.length >= 2 ? series[series.length - 1] - series[series.length - 2] : null;
+  return { history: series, delta };
+}
+
+function KpiSparkBlock({ kpiKey, value, color }: { kpiKey: string; value: number; color?: string }) {
+  const { history, delta } = useKpiHistory(kpiKey, value);
+  if (history.length < 2) return null;
+  const deltaSign = delta === null ? null : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+  return (
+    <div className="pmt_kpiSparkRow">
+      <Sparkline values={history} color={color ?? "var(--pmt-text-subtle)"} />
+      {delta !== null && delta !== 0 && (
+        <span className={`pmt_kpiDelta pmt_kpiDelta--${deltaSign}`}>
+          {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(0)} vs ayer
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Donut (ok/fail/pend ratio) ──────────────────────────────────────────────
+
+function Donut({ ok, fail, pend, size = 56 }: { ok: number; fail: number; pend: number; size?: number }) {
+  const total = ok + fail + pend;
+  const stroke = 7;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const okPct   = total > 0 ? ok   / total : 0;
+  const failPct = total > 0 ? fail / total : 0;
+  const pendPct = total > 0 ? pend / total : 0;
+  let offset = 0;
+  const seg = (pct: number, color: string) => {
+    if (pct <= 0) return null;
+    const dash = c * pct;
+    const el = (
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={`${dash} ${c - dash}`}
+        strokeDashoffset={-offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    );
+    offset += dash;
+    return el;
+  };
+  return (
+    <div className="pmt_donutBlock">
+      <div className="pmt_donutWrap" style={{ width: size, height: size }}>
+        <svg width={size} height={size}>
+          <circle
+            cx={size / 2} cy={size / 2} r={r}
+            fill="none" stroke="var(--pmt-border-soft)" strokeWidth={stroke}
+          />
+          {seg(okPct,   "var(--st-ok)")}
+          {seg(failPct, "var(--st-critical)")}
+          {seg(pendPct, "var(--st-warning)")}
+        </svg>
+        <div className="pmt_donutCenter">
+          <span className="pmt_donutOk">{ok}</span>
+          <span className="pmt_donutTotal">/{total}</span>
+        </div>
       </div>
     </div>
   );
@@ -679,11 +813,16 @@ function TeamDrawer({
       <div className="pmt_drawer">
         {/* Head */}
         <div className="pmt_drawerHead">
-          <div
-            className={`pmt_drawerAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`}
-            style={{ background: entry.color || "#64748b" }}>
-            {entry.pm_name.charAt(0).toUpperCase()}
-          </div>
+          {(() => {
+            const a = matteAvatar(entry.pm_name);
+            return (
+              <div
+                className={`pmt_drawerAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`}
+                style={{ background: a.bg, color: a.text }}>
+                {entry.pm_name.charAt(0).toUpperCase()}
+              </div>
+            );
+          })()}
           <div className="pmt_drawerInfo">
             <div className="pmt_drawerTitle">{entry.team_name}</div>
             <div className="pmt_drawerSub">
@@ -1093,7 +1232,6 @@ function TeamCard({
   canEdit: boolean;
 }) {
   const score     = calcEntryScore(commits, todayDay, penaltyPerDay, maxPenalty);
-  const color     = entry.color || "#64748b";
   const grade     = gradeInfo(score, zones);
   const isEditing = editingEntryId === entry.id;
 
@@ -1103,9 +1241,15 @@ function TeamCard({
       onClick={onSelect}>
       {/* Top */}
       <div className="pmt_cardTop">
-        <div className={`pmt_pmAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`} style={{ background: color }}>
-          {entry.pm_name.charAt(0).toUpperCase()}
-        </div>
+        {(() => {
+          const a = matteAvatar(entry.pm_name);
+          return (
+            <div className={`pmt_pmAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`}
+              style={{ background: a.bg, color: a.text }}>
+              {entry.pm_name.charAt(0).toUpperCase()}
+            </div>
+          );
+        })()}
         <div className="pmt_cardNames">
           <div className="pmt_pmNameText">{entry.pm_name}</div>
           <div className="pmt_teamNameText">{entry.team_name}</div>
@@ -1167,8 +1311,13 @@ function TeamCard({
             Sin metas · click "Metas" para agregar
           </div>
         ) : (
-          <>
-            <div className="pmt_elementBars">
+          <div className="pmt_cardBodyRow">
+            <Donut
+              ok={commits.filter((c) => c.status === "success").length}
+              fail={commits.filter((c) => c.status === "failed").length}
+              pend={commits.filter((c) => c.status === "pending" || c.status === "in_progress").length}
+            />
+            <div className="pmt_elementBars" style={{ flex: 1, minWidth: 0 }}>
               {areas.map((area) => {
                 const elCommits = commits.filter((c) => elKey(c) === area.key);
                 const elTotal   = elCommits.length;
@@ -1192,16 +1341,11 @@ function TeamCard({
                       )}
                     </div>
                     <span className="pmt_elementCount">{elTotal > 0 ? `${pct}%` : "—"}</span>
-                    <div className="pmt_elementDots">
-                      <span className={`pmt_elementDot${elOk   > 0 ? " pmt_elementDot--ok"   : ""}`} />
-                      <span className={`pmt_elementDot${elFail > 0 ? " pmt_elementDot--fail" : ""}`} />
-                      <span className={`pmt_elementDot${elPend > 0 ? " pmt_elementDot--pend" : ""}`} />
-                    </div>
                   </div>
                 );
               })}
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -1236,7 +1380,8 @@ function TeamListRow({
 
   return (
     <div className="pmt_listRow" onClick={onSelect}>
-      <div className={`pmt_listAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`} style={{ background: entry.color || "#64748b" }}>
+      <div className={`pmt_listAvatar${isFirstPlace ? " pmt_avatar--first" : ""}`}
+        style={{ background: matteAvatar(entry.pm_name).bg, color: matteAvatar(entry.pm_name).text }}>
         {entry.pm_name.charAt(0).toUpperCase()}
       </div>
       <div className="pmt_listNames">
@@ -2704,6 +2849,7 @@ export default function PmTrackerPanel({
                 ? <><span className="pmt_kpiArrow pmt_kpiArrow--up">↑</span> Sobre objetivo</>
                 : <><span className="pmt_kpiArrow pmt_kpiArrow--down">↓</span> Bajo objetivo</>}
           </span>
+          <KpiSparkBlock kpiKey="avg_score" value={avgScore} color={globalGrade.color} />
         </div>
         <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">CSR GLOBAL</span>
@@ -2713,16 +2859,19 @@ export default function PmTrackerPanel({
           <span className="pmt_kpiSub">
             {allCommits.length > 0 ? globalGrade.label : "Sin metas"}
           </span>
+          <KpiSparkBlock kpiKey="csr_global" value={globalCsr} color={globalGrade.color} />
         </div>
         <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">METAS OK</span>
           <span className="pmt_kpiValue" style={{ color: "var(--st-ok)" }}>{successCommits}</span>
           <span className="pmt_kpiSub">de {allCommits.length} totales</span>
+          <KpiSparkBlock kpiKey="metas_ok" value={successCommits} color="var(--st-ok)" />
         </div>
         <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">METAS FALLIDAS</span>
           <span className="pmt_kpiValue" style={{ color: "var(--st-critical)" }}>{failedCommits}</span>
           <span className="pmt_kpiSub">{allCommits.length - successCommits} sin completar</span>
+          <KpiSparkBlock kpiKey="metas_fail" value={failedCommits} color="var(--st-critical)" />
         </div>
         <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">CON RETRASO</span>
@@ -2732,6 +2881,7 @@ export default function PmTrackerPanel({
           <span className="pmt_kpiSub">
             {lateCommits > 0 ? "pasaron su deadline" : "Sin retrasos"}
           </span>
+          <KpiSparkBlock kpiKey="con_retraso" value={lateCommits} color="var(--st-warning)" />
         </div>
         <div className="pmt_kpiTile pmt_kpiTile--sm">
           <span className="pmt_kpiLabel">DÍAS RESTANTES</span>
@@ -2741,6 +2891,7 @@ export default function PmTrackerPanel({
               ? `Fin: ${new Date(project.end_date + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}`
               : "Sin fecha fin"}
           </span>
+          <KpiSparkBlock kpiKey="dias_restantes" value={daysRemaining} color="#2563eb" />
         </div>
 
         {/* Editable note tile */}
@@ -2950,7 +3101,7 @@ export default function PmTrackerPanel({
                       onClick={() => { setDrawerEntryId(entry.id); setDrawerTab("overview"); }}>
                       <span className="pmt_rankNum">#{i + 1}</span>
                       <div className={`pmt_rankInitial${i === 0 ? " pmt_avatar--first" : ""}`}
-                        style={{ background: entry.color || "#64748b" }}>
+                        style={{ background: matteAvatar(entry.pm_name).bg, color: matteAvatar(entry.pm_name).text }}>
                         {entry.pm_name.charAt(0).toUpperCase()}
                       </div>
                       <div className="pmt_rankInfo">

@@ -100,10 +100,10 @@
   --pmt-accent-text: #141414;
   --pmt-header-bg:   #141414;
   --pmt-header-text: rgba(230, 230, 230, 1.0);
-  --st-ok-soft:      rgba(22, 163, 74, 0.15);
-  --st-crit-soft:    rgba(220, 38, 38, 0.15);
-  --st-warn-soft:    rgba(234, 179, 8, 0.15);
-  --st-info-soft:    rgba(37, 99, 235, 0.15);
+  --st-ok-soft:      oklch(0.32 0.05 145);
+  --st-crit-soft:    oklch(0.32 0.05 25);
+  --st-warn-soft:    oklch(0.32 0.05 75);
+  --st-info-soft:    oklch(0.32 0.05 250);
 }
 
 /* ============================================================================
@@ -122,8 +122,8 @@
   color: var(--pmt-text);
   position: relative;
 
-  --pmt-font-display: var(--font-display, 'Neue Machina', system-ui, sans-serif);
-  --pmt-font-mono:    var(--sb-font-mono, var(--pmt-font-mono));
+  --pmt-font-display: var(--sb-font-sans, 'Inter', system-ui, sans-serif);
+  --pmt-font-mono:    var(--sb-font-sans, 'Inter', system-ui, sans-serif);
 
   /* radius scale — kept tight for professional look */
   --pmt-r-xs: 2px;
@@ -131,15 +131,22 @@
   --pmt-r-md: 5px;
   --pmt-r-lg: 6px;
 
-  /* status tokens — these stay constant across all themes (semantic) */
-  --st-ok:           #16a34a;
-  --st-ok-soft:      #dcfce7;
-  --st-critical:     #dc2626;
-  --st-crit-soft:    #fee2e2;
-  --st-warning:      #d97706;
-  --st-warn-soft:    #fef3c7;
-  --st-info:         #2563eb;
-  --st-info-soft:    #eff6ff;
+  /* Status tokens — OKLCH unified family.
+     Same lightness (0.62) and chroma (0.155) across all 4 states; only hue varies.
+     Soft variants share the hue with high lightness (0.96) and low chroma (0.04).
+       OK       → hue 145  (verde)
+       Riesgo   → hue 75   (ámbar)
+       Crítico  → hue 25   (rojo)
+       Info     → hue 250  (azul)
+  */
+  --st-ok:           oklch(0.62 0.155 145);
+  --st-ok-soft:      oklch(0.96 0.04 145);
+  --st-critical:     oklch(0.62 0.155 25);
+  --st-crit-soft:    oklch(0.96 0.04 25);
+  --st-warning:      oklch(0.62 0.155 75);
+  --st-warn-soft:    oklch(0.96 0.04 75);
+  --st-info:         oklch(0.62 0.155 250);
+  --st-info-soft:    oklch(0.96 0.04 250);
   /* progress = in_progress state; overridden per theme */
   --st-progress:     var(--st-warning);
   --st-progress-soft:var(--st-warn-soft);
@@ -388,7 +395,7 @@
 }
 
 .pmt_kpiLabel {
-  font-size: 10px; font-weight: 700;
+  font-size: 10px; font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--pmt-text-subtle);
 }
@@ -418,6 +425,21 @@
 
 .pmt_kpiArrow--up   { color: var(--st-ok); font-style: normal; }
 .pmt_kpiArrow--down { color: var(--st-critical); font-style: normal; }
+
+/* Sparkline + delta */
+.pmt_kpiSparkRow {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 4px;
+}
+.pmt_kpiSpark { display: block; flex-shrink: 0; opacity: 0.85; }
+.pmt_kpiDelta {
+  font-size: 10.5px; font-weight: 500;
+  color: var(--pmt-text-subtle);
+  white-space: nowrap;
+}
+.pmt_kpiDelta--up   { color: var(--st-ok); }
+.pmt_kpiDelta--down { color: var(--st-critical); }
+.pmt_kpiDelta--flat { color: var(--pmt-text-subtle); }
 
 /* ─── Body layout ─────────────────────────────────────────────────────────── */
 
@@ -539,7 +561,7 @@
 .pmt_filterMenuSection:last-child { border-bottom: none; }
 
 .pmt_filterMenuLabel {
-  font-size: 10px; font-weight: 700;
+  font-size: 10px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.07em;
   color: var(--pmt-text-subtle);
   padding: 0 12px 4px;
@@ -641,10 +663,9 @@
 
 .pmt_pmAvatar {
   width: 34px; height: 34px;
-  border-radius: var(--pmt-r-md);
+  border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   font-weight: 600; font-size: 13px;
-  color: #fff;
   flex-shrink: 0;
 }
 
@@ -776,7 +797,7 @@
   display: flex; align-items: baseline; justify-content: space-between;
 }
 .pmt_cardScoreLabel {
-  font-size: 10px; font-weight: 700;
+  font-size: 10px; font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--pmt-text-subtle);
 }
@@ -963,10 +984,9 @@
 
 .pmt_listAvatar {
   width: 28px; height: 28px;
-  border-radius: var(--pmt-r-md);
+  border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 600;
-  color: #fff;
   flex-shrink: 0;
 }
 
@@ -1100,9 +1120,8 @@
 
 .pmt_rankInitial {
   width: 26px; height: 26px;
-  border-radius: var(--pmt-r-md);
+  border-radius: 6px;
   font-size: 10px; font-weight: 600;
-  color: #fff;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -1217,7 +1236,7 @@
 }
 
 .pmt_pgTeamInfo { display: flex; flex-direction: column; margin-left: 8px; }
-.pmt_pgTeamName { font-size: 12px; font-weight: 700; color: var(--pmt-text); }
+.pmt_pgTeamName { font-size: 12px; font-weight: 600; color: var(--pmt-text); }
 .pmt_pgPmName   { font-size: 10px; color: var(--pmt-text-subtle); }
 
 .pmt_pgTeamTrack {
@@ -1286,7 +1305,7 @@
   display: flex; align-items: center; gap: 10px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--pmt-border-soft);
-  font-size: 15px; font-weight: 700;
+  font-size: 15px; font-weight: 600;
   color: var(--pmt-text);
   flex-shrink: 0;
 }
@@ -1328,7 +1347,7 @@
   justify-content: flex-end;
   letter-spacing: -0.01em;
 }
-.pmt_orionGrade { font-size: 11px; font-weight: 700; }
+.pmt_orionGrade { font-size: 11px; font-weight: 600; }
 
 .pmt_orionToggle {
   padding: 5px 13px;
@@ -1388,9 +1407,8 @@
 
 .pmt_drawerAvatar {
   width: 44px; height: 44px;
-  border-radius: var(--pmt-r-md);
+  border-radius: 10px;
   font-size: 18px; font-weight: 600;
-  color: #fff;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -2149,7 +2167,7 @@
 }
 .pmt_kpiNoteText p  { margin: 0; }
 .pmt_kpiNoteText em { font-style: italic; }
-.pmt_kpiNoteText strong { font-weight: 700; }
+.pmt_kpiNoteText strong { font-weight: 600; }
 
 .pmt_kpiNoteEmpty {
   flex: 1;
@@ -2380,7 +2398,7 @@
 /* Rank number for #1 (when applied alongside rankRow--first or standalone) */
 .pmt_rankRow--first .pmt_rankNum {
   color: #b8860b;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* ─── Card: gold border on the first-place card (grid view) ──────────────── */
@@ -2415,7 +2433,7 @@
 
 .pmt_root[data-theme="midnight"] .pmt_rankRow--first .pmt_rankNum {
   color: #d8d8d8;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .pmt_root[data-theme="midnight"] .pmt_card--first {
@@ -2474,7 +2492,7 @@
 
 .pmt_kpiLabel {
   font-size: 9px;         /* antes: 10px */
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--pmt-text-subtle);
@@ -2540,7 +2558,7 @@
 .pmt_kpiNoteText h3 {
   margin: 0 0 2px;
 }
-.pmt_kpiNoteText strong { font-weight: 700; }
+.pmt_kpiNoteText strong { font-weight: 600; }
 .pmt_kpiNoteText em     { font-style: italic; }
 .pmt_kpiNoteText ul,
 .pmt_kpiNoteText ol     { padding-left: 16px; }
@@ -2768,7 +2786,7 @@
 .pmt_kpiCustomNameInput {
   width: 100%;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-align: center;

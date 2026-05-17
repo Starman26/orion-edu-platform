@@ -78,6 +78,14 @@ const SECTION_LABEL: Record<string, string> = {
   done:    "Completados",
 };
 
+const SECTION_MORE_LABEL: Record<string, string> = {
+  in_use:  "en curso",
+  waiting: "en cola",
+  done:    "completadas",
+};
+
+const SECTION_VISIBLE = 3;
+
 const THEMES = [
   { id: "light",    name: "Light",    bg: "#ffffff", fg: "#111111", accent: "#2563eb" },
   { id: "slate",    name: "Slate",    bg: "#1e293b", fg: "#f8fafc", accent: "#38bdf8" },
@@ -159,6 +167,13 @@ function computeAutoStatus(entry: QueueEntry): "waiting" | "in_use" | "done" {
   return "waiting";
 }
 
+// Status efectivo: respeta cambios manuales (kanban drop) y avanza
+// automáticamente las entradas todavía "waiting" cuando pasa su horario.
+function effectiveStatus(entry: QueueEntry): QueueEntry["status"] {
+  if (entry.status === "waiting") return computeAutoStatus(entry);
+  return entry.status;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isSameDay(a: Date, b: Date) {
@@ -181,15 +196,62 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
 }
 
-function fmtShortDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es", { month: "short", day: "numeric" });
+const AVATAR_PALETTE: { bg: string; text: string }[] = [
+  { bg: "#dbeafe", text: "#1e40af" }, // blue
+  { bg: "#fef3c7", text: "#92400e" }, // amber
+  { bg: "#dcfce7", text: "#166534" }, // green
+  { bg: "#fce7f3", text: "#9d174d" }, // pink
+  { bg: "#ede9fe", text: "#5b21b6" }, // purple
+  { bg: "#cffafe", text: "#155e75" }, // cyan
+  { bg: "#fee2e2", text: "#991b1b" }, // red
+  { bg: "#fed7aa", text: "#9a3412" }, // orange
+  { bg: "#e0e7ff", text: "#3730a3" }, // indigo
+  { bg: "#ccfbf1", text: "#115e59" }, // teal
+];
+
+function avatarColor(name: string): { bg: string; text: string } {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
 }
 
-
-function fmtDurHM(hours: number): string {
+function fmtDurCompact(hours: number): string {
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  if (m === 0) return `${h}h`;
+  if (h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function fmtMinCompact(mins: number): string {
+  if (mins < 60) return `${mins}m`;
+  return fmtDurCompact(mins / 60);
+}
+
+function entryScheduleLabel(entry: { scheduled_at: string }, status: "waiting" | "in_use" | "done" | "cancelled"): string {
+  const time = fmtTime(entry.scheduled_at);
+  if (status === "in_use") return `iniciado ${time}`;
+  if (status === "waiting") return `inicia ${time}`;
+  if (status === "done") return `terminó ${time}`;
+  return time;
+}
+
+function entryRemainingLabel(entry: { scheduled_at: string; duration_hours: number }, status: "waiting" | "in_use" | "done" | "cancelled"): string {
+  const now = Date.now();
+  const start = new Date(entry.scheduled_at).getTime();
+  const end = start + entry.duration_hours * 3_600_000;
+  if (status === "in_use") {
+    return `resta ${fmtMinCompact(Math.max(0, Math.round((end - now) / 60000)))}`;
+  }
+  if (status === "waiting") {
+    const diffMin = Math.round((start - now) / 60000);
+    if (diffMin <= 0) return "comenzando";
+    return `en ${fmtMinCompact(diffMin)}`;
+  }
+  if (status === "done") return "completado";
+  return "fallido";
 }
 
 // ─── Setup notice ─────────────────────────────────────────────────────────────
@@ -310,17 +372,24 @@ export default function EquipmentQueuePanel({
   const [selectedEqId, setSelectedEqId] = useState<string | null>(null);
   const [showForm, setShowForm]     = useState(false);
   const [midView, setMidView]       = useState<"list" | "rules" | "kanban">("list");
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [expandedFullSections, setExpandedFullSections] = useState<Set<string>>(new Set());
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOver,   setDragOver]   = useState<string | null>(null);
   const [calDate, setCalDate]       = useState(() => new Date());
 
   const [leftSearch, setLeftSearch]   = useState("");
   const [filterType, setFilterType]   = useState<string | null>(null);
+  const [leftStatusFilter, setLeftStatusFilter] = useState<"all" | "free" | "in_use">("all");
   const [showFilter, setShowFilter]   = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
   // Pinned equipment IDs — persisted per team in localStorage
   const pinnedKey = `equeue_pinned_${teamId}`;
+  const disclaimerKey = `equeue_disclaimer_dismissed_${userId}`;
+  const [disclaimerHidden, setDisclaimerHidden] = useState<boolean>(() => {
+    try { return localStorage.getItem(disclaimerKey) === "1"; } catch { return false; }
+  });
   const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(pinnedKey) ?? "null") ?? []; }
     catch { return []; }
@@ -604,6 +673,130 @@ export default function EquipmentQueuePanel({
         </div>
       </div>
 
+      {/* ── Sub-bar (between title and panels) ── */}
+      {(() => {
+        const now = new Date();
+        const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+
+        // Disponibles ahora
+        const inUseEqIds = new Set(
+          entries.filter((e) => effectiveStatus(e) === "in_use").map((e) => e.equipment_id)
+        );
+        const pinnedEq = equipment.filter((eq) => pinnedIds.includes(eq.id));
+        const totalPinned = pinnedEq.length;
+        const freeEq = pinnedEq.filter((eq) => !inUseEqIds.has(eq.id));
+        const freeCount = freeEq.length;
+        const freeNames = freeEq.slice(0, 2).map((eq) => eq.name).join(", ");
+        const freeMore = freeCount > 2 ? `, +${freeCount - 2}` : "";
+
+        // Próxima reserva — cualquier reserva con scheduled_at en el futuro
+        const proxima = entries
+          .filter((e) => new Date(e.scheduled_at).getTime() > now.getTime())
+          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
+        const proximaMinutes = proxima
+          ? Math.max(0, Math.round((new Date(proxima.scheduled_at).getTime() - now.getTime()) / 60000))
+          : 0;
+
+        // Reservas hoy
+        const todayEntries = entries.filter((e) => {
+          const t = new Date(e.scheduled_at).getTime();
+          return t >= todayStart.getTime() && t <= todayEnd.getTime();
+        });
+        const todayCount = todayEntries.length;
+        const todayCupo = Math.max(todayCount, totalPinned * 8);
+        const todayDone = todayEntries.filter((e) => effectiveStatus(e) === "done").length;
+        const todayInUse = todayEntries.filter((e) => effectiveStatus(e) === "in_use").length;
+
+        // Utilización semanal + bars per day (semana lunes→domingo)
+        const weekStart = new Date(now);
+        weekStart.setHours(0, 0, 0, 0);
+        const dow = weekStart.getDay(); // Sun=0..Sat=6
+        weekStart.setDate(weekStart.getDate() - ((dow + 6) % 7)); // back to Monday
+        const dayHours: number[] = Array.from({ length: 7 }, (_, i) => {
+          const dayStart = new Date(weekStart);
+          dayStart.setDate(dayStart.getDate() + i);
+          const dayEnd = new Date(dayStart);
+          dayEnd.setDate(dayEnd.getDate() + 1);
+          return entries
+            .filter((e) => {
+              const t = new Date(e.scheduled_at).getTime();
+              return t >= dayStart.getTime() && t < dayEnd.getTime();
+            })
+            .reduce((a, e) => a + e.duration_hours, 0);
+        });
+        // Cap realista: 8h × 5 días laborales por equipo = 40h/semana por equipo
+        const weekCapPerEq = 8 * 5;
+        const weekHours = dayHours.reduce((a, h) => a + h, 0);
+        const totalCap = totalPinned * weekCapPerEq;
+        const utilizacion = totalCap === 0 ? 0 : Math.round((weekHours / totalCap) * 100);
+        const maxDayH = Math.max(1, ...dayHours);
+
+        return (
+          <div className="equeue_subBar">
+            <div className="equeue_subKpiCard">
+              <span className="equeue_subKpiLabel">Disponibles ahora</span>
+              <div className="equeue_subKpiRow">
+                <span className="equeue_subKpiValue">{freeCount}</span>
+                <span className="equeue_subKpiUnit">/ {totalPinned}<br/><span className="equeue_subKpiUnitSm">equipos</span></span>
+              </div>
+              <span className="equeue_subKpiSub">
+                <span className="equeue_subKpiDot" style={{ background: "var(--st-ok)" }} />
+                {freeNames || "—"}{freeMore} {freeCount > 0 && "libres"}
+              </span>
+            </div>
+
+            <div className="equeue_subKpiCard">
+              <span className="equeue_subKpiLabel">Próxima reserva</span>
+              <div className="equeue_subKpiRow">
+                <span className="equeue_subKpiValue">
+                  {proxima ? fmtTime(proxima.scheduled_at) : "—"}
+                </span>
+                {proxima && (
+                  <span className="equeue_subKpiUnit">
+                    en {proximaMinutes}<br/><span className="equeue_subKpiUnitSm">min</span>
+                  </span>
+                )}
+              </div>
+              <span className="equeue_subKpiSub">
+                {proxima
+                  ? <>{proxima.requested_by_name} · <strong>{getEqName(proxima.equipment_id)}</strong> · {fmtDurCompact(proxima.duration_hours)}</>
+                  : "Sin reservas próximas"}
+              </span>
+            </div>
+
+            <div className="equeue_subKpiCard">
+              <span className="equeue_subKpiLabel">Reservas hoy</span>
+              <div className="equeue_subKpiRow">
+                <span className="equeue_subKpiValue">{todayCount}</span>
+                <span className="equeue_subKpiUnit">/ {todayCupo}<br/><span className="equeue_subKpiUnitSm">cupo</span></span>
+              </div>
+              <span className="equeue_subKpiSub">
+                <span style={{ color: "var(--st-ok)" }}>{todayDone} completadas</span>
+                {" · "}
+                <span style={{ color: "var(--st-warning)" }}>{todayInUse} en curso</span>
+              </span>
+            </div>
+
+            <div className="equeue_subKpiCard">
+              <span className="equeue_subKpiLabel">Utilización semanal</span>
+              <div className="equeue_subKpiRow">
+                <span className="equeue_subKpiValue" style={{ color: utilizacion > 70 ? "var(--st-warning)" : "var(--pmt-text)" }}>
+                  {utilizacion}
+                </span>
+                <span className="equeue_subKpiUnit">%</span>
+                <div className="equeue_subKpiBars">
+                  {dayHours.map((h, i) => (
+                    <span key={i} className="equeue_subKpiBar"
+                      style={{ height: `${Math.max(8, (h / maxDayH) * 100)}%` }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── 3-panel body ── */}
       <div className={`equeue_body${midView === "kanban" ? " equeue_body--kanban" : ""}`}>
 
@@ -661,20 +854,54 @@ export default function EquipmentQueuePanel({
             </div>
           </div>
 
+          {/* Status filter chips */}
+          {pinnedIds.length > 0 && (() => {
+            const total = pinnedIds.length;
+            const inUseCount = pinnedIds.filter((id) =>
+              entries.some((e) => e.equipment_id === id && effectiveStatus(e) === "in_use")
+            ).length;
+            const freeCount = total - inUseCount;
+            return (
+              <div className="equeue_leftStatusFilter">
+                <button type="button"
+                  className={`equeue_leftStatusChip${leftStatusFilter === "all" ? " is-active" : ""}`}
+                  onClick={() => setLeftStatusFilter("all")}>
+                  Todos <span className="equeue_leftStatusChipCount">{total}</span>
+                </button>
+                <button type="button"
+                  className={`equeue_leftStatusChip${leftStatusFilter === "free" ? " is-active" : ""}`}
+                  onClick={() => setLeftStatusFilter("free")}>
+                  Libres <span className="equeue_leftStatusChipCount">{freeCount}</span>
+                </button>
+                <button type="button"
+                  className={`equeue_leftStatusChip${leftStatusFilter === "in_use" ? " is-active" : ""}`}
+                  onClick={() => setLeftStatusFilter("in_use")}>
+                  En uso <span className="equeue_leftStatusChipCount">{inUseCount}</span>
+                </button>
+              </div>
+            );
+          })()}
+
           {/* Pinned equipment cards */}
           {pinnedIds.length === 0 ? (
             <div className="equeue_leftEmpty">
               Usa "Add Equipment" para agregar equipos aquí
             </div>
           ) : (
-            equipment.filter((eq) =>
-              pinnedIds.includes(eq.id) &&
-              (!filterType || eq.type === filterType) &&
-              (!leftSearch || eq.name.toLowerCase().includes(leftSearch.toLowerCase()) ||
-               (eq.brand ?? "").toLowerCase().includes(leftSearch.toLowerCase()))
-            ).map((eq) => {
-              const inUse   = entries.some((e) => e.equipment_id === eq.id && computeAutoStatus(e) === "in_use");
-              const waiting = entries.filter((e) => e.equipment_id === eq.id && computeAutoStatus(e) === "waiting").length;
+            equipment.filter((eq) => {
+              if (!pinnedIds.includes(eq.id)) return false;
+              if (filterType && eq.type !== filterType) return false;
+              if (leftSearch && !eq.name.toLowerCase().includes(leftSearch.toLowerCase()) &&
+                  !(eq.brand ?? "").toLowerCase().includes(leftSearch.toLowerCase())) return false;
+              if (leftStatusFilter !== "all") {
+                const eqInUse = entries.some((e) => e.equipment_id === eq.id && effectiveStatus(e) === "in_use");
+                if (leftStatusFilter === "in_use" && !eqInUse) return false;
+                if (leftStatusFilter === "free" && eqInUse) return false;
+              }
+              return true;
+            }).map((eq) => {
+              const inUse   = entries.some((e) => e.equipment_id === eq.id && effectiveStatus(e) === "in_use");
+              const waiting = entries.filter((e) => e.equipment_id === eq.id && effectiveStatus(e) === "waiting").length;
               const isActive = selectedEqId === eq.id;
               const color = getEqColor(eq.id);
               return (
@@ -694,7 +921,7 @@ export default function EquipmentQueuePanel({
                     )}
                   </div>
                   <div className="equeue_eqItemIcon">
-                    {equipmentTypeIcon(eq.type, 26)}
+                    {equipmentTypeIcon(eq.type, 22)}
                     {inUse && <span className="equeue_eqItemDot" />}
                   </div>
                 </button>
@@ -705,16 +932,26 @@ export default function EquipmentQueuePanel({
 
         {/* ── MIDDLE + RIGHT wrapper (for spanning disclaimer) ── */}
         <div className="equeue_midRightWrap">
-          {/* Disclaimer — arriba, span mid + right */}
-          <div className="equeue_disclaimer">
-            <Info size={15} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>
-              Usa <strong>Añadir Reserva</strong> para crear nuevas reservas · En{" "}
-              <strong>Kanban</strong> arrastra tarjetas entre columnas para cambiar su
-              estado · Arrastrar a <strong>Fallido</strong> cancela la entrada · El
-              estado se actualiza automáticamente según el horario
-            </span>
-          </div>
+          {/* Disclaimer — arriba, span mid + right (dismissible) */}
+          {!disclaimerHidden && (
+            <div className="equeue_disclaimer">
+              <Info size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>
+                Usa <strong>Añadir Reserva</strong> para crear nuevas reservas · En{" "}
+                <strong>Kanban</strong> arrastra tarjetas entre columnas para cambiar su
+                estado · Arrastrar a <strong>Fallido</strong> cancela la entrada · El
+                estado se actualiza automáticamente según el horario
+              </span>
+              <button type="button" className="equeue_disclaimerClose"
+                onClick={() => {
+                  setDisclaimerHidden(true);
+                  try { localStorage.setItem(disclaimerKey, "1"); } catch {}
+                }}
+                title="Ocultar">
+                <X size={13} />
+              </button>
+            </div>
+          )}
           <div className="equeue_midRightTop">
 
         {/* ── MIDDLE: Queue entries ── */}
@@ -738,12 +975,12 @@ export default function EquipmentQueuePanel({
               <button type="button"
                 className={`equeue_midTab${midView === "list" ? " is-active" : ""}`}
                 onClick={() => setMidView("list")}>
-                Lista de uso
+                Reservas <span className="equeue_midTabCount">{midEntries.length}</span>
               </button>
               <button type="button"
                 className={`equeue_midTab${midView === "rules" ? " is-active" : ""}`}
                 onClick={() => setMidView("rules")}>
-                Vista de reglas
+                Reglas <span className="equeue_midTabCount">{rules.length}</span>
               </button>
               <button type="button"
                 className={`equeue_midTab${midView === "kanban" ? " is-active" : ""}`}
@@ -751,11 +988,23 @@ export default function EquipmentQueuePanel({
                 Kanban
               </button>
             </div>
-            {(midView === "list" || midView === "kanban") && (
-              <button type="button" className="equeue_addBtn" onClick={() => openForm()}>
-                <Plus size={13} /> Añadir Reserva
-              </button>
-            )}
+            <div className="equeue_midBarActions">
+              {disclaimerHidden && (
+                <button type="button" className="equeue_infoBtn"
+                  onClick={() => {
+                    setDisclaimerHidden(false);
+                    try { localStorage.removeItem(disclaimerKey); } catch {}
+                  }}
+                  title="Mostrar información">
+                  <Info size={13} />
+                </button>
+              )}
+              {(midView === "list" || midView === "kanban") && (
+                <button type="button" className="equeue_addBtn" onClick={() => openForm()}>
+                  <Plus size={13} /> Añadir
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Rules view */}
@@ -884,51 +1133,9 @@ export default function EquipmentQueuePanel({
           {/* Kanban view */}
           {midView === "kanban" && (
             <>
-            {/* KPI bar */}
-            {(() => {
-              const total = midEntries.length;
-              const waiting = midEntries.filter((e) => e.status === "waiting").length;
-              const inUse = midEntries.filter((e) => e.status === "in_use").length;
-              const done = midEntries.filter((e) => e.status === "done").length;
-              const cancelled = midEntries.filter((e) => e.status === "cancelled").length;
-              const avgDur = total === 0 ? 0 : midEntries.reduce((a, e) => a + e.duration_hours, 0) / total;
-              const failRate = total === 0 ? 0 : Math.round((cancelled / total) * 100);
-              return (
-                <div className="equeue_kpiBar">
-                  <div className="equeue_kpiCard">
-                    <span className="equeue_kpiLabel">Total</span>
-                    <span className="equeue_kpiValue">{total}</span>
-                  </div>
-                  <div className="equeue_kpiCard">
-                    <span className="equeue_kpiLabel">En espera</span>
-                    <span className="equeue_kpiValue" style={{ color: "var(--pmt-text-muted)" }}>{waiting}</span>
-                  </div>
-                  <div className="equeue_kpiCard">
-                    <span className="equeue_kpiLabel">En uso</span>
-                    <span className="equeue_kpiValue" style={{ color: "var(--st-warning)" }}>{inUse}</span>
-                  </div>
-                  <div className="equeue_kpiCard">
-                    <span className="equeue_kpiLabel">Completados</span>
-                    <span className="equeue_kpiValue" style={{ color: "var(--st-ok)" }}>{done}</span>
-                  </div>
-                  <div className="equeue_kpiCard">
-                    <span className="equeue_kpiLabel">Fallidos</span>
-                    <span className="equeue_kpiValue" style={{ color: "var(--st-critical)" }}>{cancelled}</span>
-                  </div>
-                  <div className="equeue_kpiCard">
-                    <span className="equeue_kpiLabel">Duración prom.</span>
-                    <span className="equeue_kpiValue" style={{ color: "var(--st-info)" }}>{fmtDurHM(avgDur)}</span>
-                  </div>
-                  <div className="equeue_kpiCard">
-                    <span className="equeue_kpiLabel">Tasa de fallo</span>
-                    <span className="equeue_kpiValue" style={{ color: cancelled > 0 ? "var(--st-critical)" : "var(--pmt-text)" }}>{failRate}%</span>
-                  </div>
-                </div>
-              );
-            })()}
             <div className="equeue_kanban">
               {KANBAN_COLS.map(({ status, label, dot }) => {
-                const colEntries = midEntries.filter((e) => e.status === status);
+                const colEntries = midEntries.filter((e) => effectiveStatus(e) === status);
                 const isOver = dragOver === status;
                 return (
                   <div key={status}
@@ -948,31 +1155,41 @@ export default function EquipmentQueuePanel({
                         colEntries.map((entry) => {
                           const eq = getEq(entry.equipment_id);
                           const color = getEqColor(entry.equipment_id);
+                          const ac = avatarColor(entry.requested_by_name);
                           return (
                             <div key={entry.id}
                               className="equeue_kanbanCard"
                               draggable
                               onDragStart={() => setDraggingId(entry.id)}
                               onDragEnd={() => { setDraggingId(null); setDragOver(null); }}>
-                              <div className="equeue_kanbanCardHead">
+                              <span className="equeue_kanbanCardBar" style={{ background: color.border }} />
+                              <button type="button" className="equeue_kanbanCardX"
+                                onClick={() => handleCancel(entry.id)} title="Eliminar">
+                                <X size={11} />
+                              </button>
+                              <span className="equeue_kanbanCardAvatar"
+                                style={{ background: ac.bg, color: ac.text }}>
+                                {entry.requested_by_name.charAt(0).toUpperCase()}
+                              </span>
+                              <div className="equeue_kanbanCardBody">
                                 <span className="equeue_kanbanCardName">{entry.requested_by_name}</span>
-                                <button type="button" className="equeue_kanbanCardX"
-                                  onClick={() => handleCancel(entry.id)} title="Eliminar">
-                                  <X size={11} />
-                                </button>
+                                <div className="equeue_kanbanCardSubRow">
+                                  {eq && (
+                                    <span className="equeue_kanbanCardEq">
+                                      {equipmentTypeIcon(eq.type, 10)}
+                                      {eq.name}
+                                    </span>
+                                  )}
+                                  <span className="equeue_midCardSep">·</span>
+                                  <span>{fmtTime(entry.scheduled_at)}</span>
+                                  {entry.material && (
+                                    <span className="equeue_midCardMaterial">{entry.material}</span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="equeue_kanbanCardBadges">
-                                {eq && (
-                                  <span className="equeue_kanbanBadge"
-                                    style={{ background: color.bg, color: color.text, borderColor: color.border }}>
-                                    {eq.name}
-                                  </span>
-                                )}
-                                <span className="equeue_kanbanBadge">{fmtDurHM(entry.duration_hours)}</span>
-                                {entry.material && <span className="equeue_kanbanBadge">{entry.material}</span>}
-                              </div>
-                              <div className="equeue_kanbanCardMeta">
-                                ▸ {fmtShortDate(entry.scheduled_at)}, {fmtTime(entry.scheduled_at)}
+                              <div className="equeue_kanbanCardRight">
+                                <span className="equeue_kanbanCardDur">{fmtDurCompact(entry.duration_hours)}</span>
+                                <span className="equeue_kanbanCardRem">{entryRemainingLabel(entry, status)}</span>
                               </div>
                             </div>
                           );
@@ -988,24 +1205,45 @@ export default function EquipmentQueuePanel({
           )}
 
           {/* Sections */}
-          {midView === "list" && <div className="equeue_midScroll">
+          {midView === "list" && (<>
+            <div className="equeue_midScroll">
             {loading ? (
               <div className="equeue_loading">Cargando...</div>
             ) : (
               SECTION_ORDER.map((status) => {
-                const sectionEntries = midEntries.filter((e) => computeAutoStatus(e) === status);
-                if (sectionEntries.length === 0 && status === "done") return null;
+                const sectionEntries = midEntries.filter((e) => effectiveStatus(e) === status);
+                const isEmpty = sectionEntries.length === 0;
+                const userToggled = collapsedSections.has(status);
+                const isCollapsed = isEmpty ? !userToggled : userToggled;
+                const isFullExpanded = expandedFullSections.has(status);
+                const visibleEntries = isFullExpanded
+                  ? sectionEntries
+                  : sectionEntries.slice(0, SECTION_VISIBLE);
+                const hiddenEntries = isFullExpanded
+                  ? []
+                  : sectionEntries.slice(SECTION_VISIBLE);
+                const hiddenDur = hiddenEntries.reduce((a, e) => a + e.duration_hours, 0);
                 return (
                   <div key={status} className="equeue_midSection">
-                    <div className="equeue_midSectionHeader">
+                    <button type="button" className="equeue_midSectionHeader"
+                      onClick={() => {
+                        setCollapsedSections((prev) => {
+                          const n = new Set(prev);
+                          if (n.has(status)) n.delete(status); else n.add(status);
+                          return n;
+                        });
+                      }}>
+                      <ChevronDown size={12}
+                        className={`equeue_midSectionChevron${isCollapsed ? " is-collapsed" : ""}`} />
                       <span className="equeue_midSectionDot" style={{ background: STATUS_DOT[status] }} />
                       <span className="equeue_midSectionLabel">{SECTION_LABEL[status]}</span>
-                    </div>
+                      <span className="equeue_midSectionCount">· {sectionEntries.length}</span>
+                    </button>
 
-                    {sectionEntries.length === 0 ? (
+                    {isCollapsed ? null : isEmpty ? (
                       <div className="equeue_midEmpty">Sin entradas</div>
                     ) : (
-                      sectionEntries.map((entry) => {
+                      visibleEntries.map((entry) => {
                         const eq = getEq(entry.equipment_id);
                         const isEditing = editingId === entry.id;
                         return (
@@ -1013,9 +1251,15 @@ export default function EquipmentQueuePanel({
                             className={`equeue_midCard${isEditing ? " is-editing" : ""}`}>
 
                             <div className="equeue_midCardLeft">
-                              <span className="equeue_midCardAvatar">
-                                {entry.requested_by_name.charAt(0).toUpperCase()}
-                              </span>
+                              {(() => {
+                                const c = avatarColor(entry.requested_by_name);
+                                return (
+                                  <span className="equeue_midCardAvatar"
+                                    style={{ background: c.bg, color: c.text, borderColor: c.bg }}>
+                                    {entry.requested_by_name.charAt(0).toUpperCase()}
+                                  </span>
+                                );
+                              })()}
                             </div>
 
                             <div className="equeue_midCardBody">
@@ -1075,25 +1319,39 @@ export default function EquipmentQueuePanel({
                               ) : (
                                 /* ── Normal view ── */
                                 <>
-                                  <div className="equeue_midCardTop">
+                                  <div className="equeue_midCardTopRow">
+                                    <span className="equeue_midCardUser">{entry.requested_by_name}</span>
+                                    <span className="equeue_midCardDot">·</span>
                                     <span className="equeue_midCardEq">
                                       {eq && equipmentTypeIcon(eq.type, 12)}
                                       {getEqName(entry.equipment_id)}
                                     </span>
                                   </div>
-                                  <span className="equeue_midCardUser">{entry.requested_by_name}</span>
-                                  {entry.notes && (
-                                    <span className="equeue_midCardNotes">{entry.notes}</span>
-                                  )}
-                                  <div className="equeue_midCardMeta">
-                                    <span>{fmtShortDate(entry.scheduled_at)}</span>
-                                    <span>{fmtTime(entry.scheduled_at)}</span>
-                                    <span>Duration: {fmtDurHM(entry.duration_hours)}</span>
-                                    {entry.material && <span>{entry.material}</span>}
+                                  <div className="equeue_midCardSubRow">
+                                    {entry.notes && (
+                                      <>
+                                        <span className="equeue_midCardNotes">{entry.notes}</span>
+                                        <span className="equeue_midCardSep">·</span>
+                                      </>
+                                    )}
+                                    <span>{entryScheduleLabel(entry, status)}</span>
+                                    {entry.material && (
+                                      <>
+                                        <span className="equeue_midCardSep">·</span>
+                                        <span className="equeue_midCardMaterial">{entry.material}</span>
+                                      </>
+                                    )}
                                   </div>
                                 </>
                               )}
                             </div>
+
+                            {!isEditing && (
+                              <div className="equeue_midCardRight">
+                                <span className="equeue_midCardDur">{fmtDurCompact(entry.duration_hours)}</span>
+                                <span className="equeue_midCardRem">{entryRemainingLabel(entry, status)}</span>
+                              </div>
+                            )}
 
                             {!isEditing && entry.requested_by_user_id === userId && (
                               <button type="button" className="equeue_midCardEdit"
@@ -1106,11 +1364,34 @@ export default function EquipmentQueuePanel({
                         );
                       })
                     )}
+
+                    {!isCollapsed && !isEmpty && (hiddenEntries.length > 0 || isFullExpanded && sectionEntries.length > SECTION_VISIBLE) && (
+                      <button type="button" className="equeue_midSectionMore"
+                        onClick={() => {
+                          setExpandedFullSections((prev) => {
+                            const n = new Set(prev);
+                            if (n.has(status)) n.delete(status); else n.add(status);
+                            return n;
+                          });
+                        }}>
+                        <ChevronDown size={12}
+                          className={`equeue_midSectionMoreChevron${isFullExpanded ? " is-up" : ""}`} />
+                        <span className="equeue_midSectionMoreLabel">
+                          {isFullExpanded
+                            ? `Ver menos ${SECTION_MORE_LABEL[status]}`
+                            : `Ver ${hiddenEntries.length} más ${SECTION_MORE_LABEL[status]}`}
+                        </span>
+                        {!isFullExpanded && hiddenDur > 0 && (
+                          <span className="equeue_midSectionMoreDur">≈ {fmtDurCompact(hiddenDur)}</span>
+                        )}
+                      </button>
+                    )}
                   </div>
                 );
               })
             )}
-          </div>}
+            </div>
+          </>)}
 
         </div>
 
@@ -1142,6 +1423,24 @@ export default function EquipmentQueuePanel({
                   <span className="equeue_calHourLine" />
                 </div>
               ))}
+
+              {/* Current time line */}
+              {isSameDay(calDate, new Date()) && (() => {
+                const now = new Date();
+                const frac = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+                if (frac < CAL_START || frac > CAL_END) return null;
+                const top = (frac - CAL_START) * HOUR_PX;
+                return (
+                  <div className="equeue_calNowLine" style={{ top }}>
+                    <span className="equeue_calNowLabel">
+                      {String(now.getHours()).padStart(2, "0")}:
+                      {String(now.getMinutes()).padStart(2, "0")}
+                    </span>
+                    <span className="equeue_calNowDot" />
+                    <span className="equeue_calNowBar" />
+                  </div>
+                );
+              })()}
 
               {/* Events */}
               {computeCalLayout(calEntries).map((entry) => {
