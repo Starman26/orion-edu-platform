@@ -1,6 +1,6 @@
 // src/pages/Config.tsx — Analysis page with real Supabase data + embedded chat
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { Menu, Plus, Search, BarChart2, PieChart, TrendingUp, Activity, Clock, Target, Pencil, Trash2, ChevronLeft, ChevronRight, Printer } from "lucide-react";
+import { Menu, Plus, Search, BarChart2, PieChart, TrendingUp, Activity, Clock, Target, Pencil, Trash2, ChevronLeft, ChevronRight, Printer, X, Check } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useThinking } from "../context/Thinkingcontext";
 import { useAgentChat } from "../components/useAgentChat";
@@ -322,10 +322,17 @@ export default function Analysis() {
   const activeRunIdRef = useRef<string | null>(null);
   const lastResponseRef = useRef<string>("");
 
+  // Team members (for visibility / participant picker)
+  type TeamMemberLite = { auth_user_id: string; full_name: string; email?: string | null };
+  const [teamMembers, setTeamMembers] = useState<TeamMemberLite[]>([]);
+
   // Create form (inline in right panel)
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createTitle, setCreateTitle] = useState("");
   const [createDescription, setCreateDescription] = useState("");
+  const [createVisibility, setCreateVisibility] = useState<"private" | "team" | "shared">("private");
+  const [createParticipantIds, setCreateParticipantIds] = useState<string[]>([]);
+  const [showTeammatePicker, setShowTeammatePicker] = useState(false);
 
   // Edit form
   const [showEditForm, setShowEditForm] = useState(false);
@@ -333,6 +340,9 @@ export default function Analysis() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editFirstMsgId, setEditFirstMsgId] = useState<string | null>(null);
+  const [editVisibility, setEditVisibility] = useState<"private" | "team" | "shared">("private");
+  const [editParticipantIds, setEditParticipantIds] = useState<string[]>([]);
+  const [showEditTeammatePicker, setShowEditTeammatePicker] = useState(false);
 
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -490,10 +500,11 @@ export default function Analysis() {
       const { data: sessions, error: sessErr } = await supabase
         .schema("chat")
         .from("sessions")
-        .select("id, title, created_at, updated_at, auth_user_id, template_id")
+        .select("id, title, created_at, updated_at, auth_user_id, template_id, visibility, participant_ids")
         .eq("chat_mode", "analysis")
         .eq("status", "active")
         .eq("team_id", teamId)
+        .or(`visibility.eq.team,auth_user_id.eq.${userId},participant_ids.cs.{${userId}}`)
         .order("updated_at", { ascending: false });
 
       console.log("[Analysis] Query result — sessions:", sessions, "error:", sessErr);
@@ -582,6 +593,39 @@ export default function Analysis() {
   useEffect(() => {
     if (userId && teamId) fetchSessions();
   }, [userId, teamId, fetchSessions]);
+
+  // ── Load team members (for visibility / participant picker) ──
+  useEffect(() => {
+    if (!teamId || !userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: memberships } = await supabase
+        .from("team_memberships")
+        .select("auth_user_id")
+        .eq("team_id", teamId);
+      const ids = (memberships ?? [])
+        .map((m: any) => m.auth_user_id as string)
+        .filter((id) => id && id !== userId);
+      if (ids.length === 0) {
+        if (!cancelled) setTeamMembers([]);
+        return;
+      }
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("auth_user_id, full_name, email")
+        .in("auth_user_id", ids);
+      if (!cancelled) {
+        setTeamMembers(
+          (profs ?? []).map((p: any) => ({
+            auth_user_id: p.auth_user_id,
+            full_name: p.full_name || (p.email ?? "Unknown"),
+            email: p.email,
+          })),
+        );
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [teamId, userId]);
 
   // ── Load session data: first user message (prompt) + latest AI response ──
   const loadSessionData = useCallback(async (sessionId: string) => {
@@ -725,6 +769,8 @@ export default function Analysis() {
       title,
       chat_mode: "analysis",
       status: "active",
+      visibility: createVisibility,
+      participant_ids: createVisibility === "shared" ? createParticipantIds : [],
     };
     if (templates.length > 0 && createTemplateId) {
       sessionPayload.template_id = createTemplateId;
@@ -779,6 +825,9 @@ export default function Analysis() {
     // Reset form
     setCreateTitle("");
     setCreateDescription("");
+    setCreateVisibility("private");
+    setCreateParticipantIds([]);
+    setShowTeammatePicker(false);
     setShowCreateForm(false);
   };
 
@@ -786,6 +835,9 @@ export default function Analysis() {
   const handleCancelCreate = () => {
     setCreateTitle("");
     setCreateDescription("");
+    setCreateVisibility("private");
+    setCreateParticipantIds([]);
+    setShowTeammatePicker(false);
     setShowCreateForm(false);
   };
 
@@ -805,10 +857,21 @@ export default function Analysis() {
       .limit(1)
       .maybeSingle();
 
+    // Fetch visibility + participants
+    const { data: sessRow } = await supabase
+      .schema("chat")
+      .from("sessions")
+      .select("visibility, participant_ids")
+      .eq("id", sessionId)
+      .maybeSingle();
+
     setEditSessionId(sessionId);
     setEditTitle(session.title);
     setEditDescription(lastMsg?.content || "");
     setEditFirstMsgId(lastMsg?.id || null);
+    setEditVisibility((sessRow?.visibility as "private" | "team" | "shared") ?? "private");
+    setEditParticipantIds(Array.isArray(sessRow?.participant_ids) ? sessRow.participant_ids : []);
+    setShowEditTeammatePicker(false);
     setShowEditForm(true);
     setShowCreateForm(false);
   };
@@ -820,11 +883,15 @@ export default function Analysis() {
     const title = editTitle.trim() || "Untitled Analysis";
     const description = editDescription.trim();
 
-    // Update session title
+    // Update session title + visibility + participants
     const { error: sessErr } = await supabase
       .schema("chat")
       .from("sessions")
-      .update({ title })
+      .update({
+        title,
+        visibility: editVisibility,
+        participant_ids: editVisibility === "shared" ? editParticipantIds : [],
+      })
       .eq("id", editSessionId);
 
     if (sessErr) console.error("[EditAnalysis] Failed to update session:", sessErr);
@@ -1096,14 +1163,65 @@ export default function Analysis() {
                   </div>
 
                   <div className="analysis_createField">
-                    <label>Involved teammates</label>
-                    <div className="analysis_teammates">
-                      <button type="button" className="analysis_addTeammate">
-                        <Plus size={14} />
-                        <span>Add teammate</span>
-                      </button>
+                    <label>Visibility</label>
+                    <div className="analysis_visibilityRow">
+                      {(["private", "team", "shared"] as const).map((v) => (
+                        <button key={v} type="button"
+                          className={`analysis_visibilityChip${createVisibility === v ? " is-active" : ""}`}
+                          onClick={() => setCreateVisibility(v)}>
+                          {v === "private" ? "Solo yo" : v === "team" ? "Todo el equipo" : "Compartido"}
+                        </button>
+                      ))}
                     </div>
                   </div>
+
+                  {createVisibility === "shared" && (
+                    <div className="analysis_createField">
+                      <label>Involved teammates</label>
+                      <div className="analysis_teammates">
+                        {createParticipantIds.map((id) => {
+                          const m = teamMembers.find((x) => x.auth_user_id === id);
+                          if (!m) return null;
+                          return (
+                            <span key={id} className="analysis_teammateChip">
+                              <span>{m.full_name.split(" ")[0]}</span>
+                              <button type="button" className="analysis_teammateChipX"
+                                onClick={() => setCreateParticipantIds((prev) => prev.filter((x) => x !== id))}>
+                                <X size={11} />
+                              </button>
+                            </span>
+                          );
+                        })}
+                        <button type="button" className="analysis_addTeammate"
+                          onClick={() => setShowTeammatePicker((v) => !v)}>
+                          <Plus size={14} />
+                          <span>Add teammate</span>
+                        </button>
+                      </div>
+                      {showTeammatePicker && (
+                        <div className="analysis_teammatePicker">
+                          {teamMembers.length === 0 ? (
+                            <div className="analysis_teammatePickerEmpty">No hay otros miembros en el equipo</div>
+                          ) : (
+                            teamMembers.map((m) => {
+                              const selected = createParticipantIds.includes(m.auth_user_id);
+                              return (
+                                <button key={m.auth_user_id} type="button"
+                                  className={`analysis_teammatePickerItem${selected ? " is-selected" : ""}`}
+                                  onClick={() => setCreateParticipantIds((prev) =>
+                                    prev.includes(m.auth_user_id)
+                                      ? prev.filter((x) => x !== m.auth_user_id)
+                                      : [...prev, m.auth_user_id])}>
+                                  <span>{m.full_name}</span>
+                                  {selected && <Check size={13} />}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="analysis_createFooter">
@@ -1161,14 +1279,65 @@ export default function Analysis() {
                   </div>
 
                   <div className="analysis_createField">
-                    <label>Involved teammates</label>
-                    <div className="analysis_teammates">
-                      <button type="button" className="analysis_addTeammate">
-                        <Plus size={14} />
-                        <span>Add teammate</span>
-                      </button>
+                    <label>Visibility</label>
+                    <div className="analysis_visibilityRow">
+                      {(["private", "team", "shared"] as const).map((v) => (
+                        <button key={v} type="button"
+                          className={`analysis_visibilityChip${editVisibility === v ? " is-active" : ""}`}
+                          onClick={() => setEditVisibility(v)}>
+                          {v === "private" ? "Solo yo" : v === "team" ? "Todo el equipo" : "Compartido"}
+                        </button>
+                      ))}
                     </div>
                   </div>
+
+                  {editVisibility === "shared" && (
+                    <div className="analysis_createField">
+                      <label>Involved teammates</label>
+                      <div className="analysis_teammates">
+                        {editParticipantIds.map((id) => {
+                          const m = teamMembers.find((x) => x.auth_user_id === id);
+                          if (!m) return null;
+                          return (
+                            <span key={id} className="analysis_teammateChip">
+                              <span>{m.full_name.split(" ")[0]}</span>
+                              <button type="button" className="analysis_teammateChipX"
+                                onClick={() => setEditParticipantIds((prev) => prev.filter((x) => x !== id))}>
+                                <X size={11} />
+                              </button>
+                            </span>
+                          );
+                        })}
+                        <button type="button" className="analysis_addTeammate"
+                          onClick={() => setShowEditTeammatePicker((v) => !v)}>
+                          <Plus size={14} />
+                          <span>Add teammate</span>
+                        </button>
+                      </div>
+                      {showEditTeammatePicker && (
+                        <div className="analysis_teammatePicker">
+                          {teamMembers.length === 0 ? (
+                            <div className="analysis_teammatePickerEmpty">No hay otros miembros en el equipo</div>
+                          ) : (
+                            teamMembers.map((m) => {
+                              const selected = editParticipantIds.includes(m.auth_user_id);
+                              return (
+                                <button key={m.auth_user_id} type="button"
+                                  className={`analysis_teammatePickerItem${selected ? " is-selected" : ""}`}
+                                  onClick={() => setEditParticipantIds((prev) =>
+                                    prev.includes(m.auth_user_id)
+                                      ? prev.filter((x) => x !== m.auth_user_id)
+                                      : [...prev, m.auth_user_id])}>
+                                  <span>{m.full_name}</span>
+                                  {selected && <Check size={13} />}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="analysis_createFooter">
