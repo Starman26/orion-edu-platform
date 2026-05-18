@@ -195,10 +195,10 @@ function OnboardingLayout({
       <DotGrid />
       <div className="onboarding-frame">
         <header className="onbHeader">
-          {/* ORION Edu wordmark — same as login + dashboard */}
+          {/* ORION Labs wordmark — same as login + dashboard */}
           <div className="onbBrand">
             <span style={{ fontWeight: 400 }}>O</span>RION
-            <span style={{ fontWeight: 300, fontStyle: 'italic', marginLeft: '4px', opacity: 0.7 }}>Edu</span>
+            <span style={{ fontWeight: 300, fontStyle: 'italic', marginLeft: '4px', opacity: 0.7 }}>Labs</span>
           </div>
 
           <div className="onbNav">

@@ -2971,7 +2971,7 @@ export default function Dashboard() {
                   return (
                   <div key={msg.id}>
                     {isLastAi && (
-                      <div className="dash_agentLabel dash_shineText">ORION<span className="dash_agentLabelEdu">Edu</span></div>
+                      <div className="dash_agentLabel dash_shineText">ORION<span className="dash_agentLabelEdu">Labs</span></div>
                     )}
                     <MessageBubble
                       message={msg}
@@ -3052,7 +3052,7 @@ export default function Dashboard() {
               onChange={handleFilesSelected}
             />
             <p className="dash_chatDisclaimer">
-            ORION Edu operates real equipment — verify all movements before execution. AI-generated responses may contain errors.
+            ORION Labs operates real equipment — verify all movements before execution. AI-generated responses may contain errors.
             </p>
           </div>
         </div>

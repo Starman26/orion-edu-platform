@@ -64,8 +64,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 46px;
-  padding: 0 24px;
+  height: 60px;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
   background: transparent;
   flex-shrink: 0;
 }
@@ -98,23 +98,12 @@
 }
 
 .login-wordmark {
-  font-family: 'Neu Machina', 'Inter', system-ui, sans-serif;
-  font-size: 14px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #101113;
-  letter-spacing: 0.04em;
+  color: #0F0E0A;
+  letter-spacing: 0.02em;
   user-select: none;
-}
-
-.login-wordmark-o {
-  font-weight: 400;
-}
-
-.login-wordmark-edu {
-  font-weight: 300;
-  font-style: italic;
-  margin-left: 4px;
-  opacity: 0.7;
 }
 
 .login-topbar-label {

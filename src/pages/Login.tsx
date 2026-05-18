@@ -216,13 +216,10 @@ export default function Login() {
     <div className="login-root">
       <DotGrid />
 
-      {/* Top bar — mimics dashboard header rhythm */}
+      {/* Top bar — matches landing nav rhythm */}
       <header className="login-topbar">
         <div className="login-topbar-left">
-          <span className="login-wordmark">
-            <span className="login-wordmark-o">O</span>RION
-            <span className="login-wordmark-edu">Edu</span>
-          </span>
+          <span className="login-wordmark">ORION</span>
         </div>
         <div className="login-topbar-center">
           <button type="button" className="login-back-text" onClick={() => navigate("/")}>

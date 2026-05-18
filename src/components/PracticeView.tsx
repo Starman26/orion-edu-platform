@@ -1198,7 +1198,7 @@ const handleStepClick = async (stepIdx: number) => {
               onRemoveFile={() => {}}
             />
             <p className="studio__practiceDisclaimer">
-              ORION Edu operates real equipment — verify all movements before execution.
+              ORION Labs operates real equipment — verify all movements before execution.
             </p>
           </div>
         </div>

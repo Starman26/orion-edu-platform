@@ -1,381 +1,834 @@
-/* src/styles/landing.css — ORION Landing (All Light)
- * White Canvas — #fafafa bg, #101113 text, thin borders, dot grid
- * ─────────────────────────────────────────────────────────────── */
+/* ============================================================
+   ORION Edu — Landing Page
+   Aesthetic: Serious Industrial
+   Fonts: Inter (display + body) · JetBrains Mono (code)
+   ============================================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap');
 
-@font-face {
-  font-family: 'Neu Machina';
-  src: url('/fonts/NeuMachina-Light.woff2') format('woff2'),
-       url('/fonts/NeuMachina-Light.woff') format('woff'),
-       url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Light.woff2') format('woff2');
-  font-weight: 300; font-style: normal; font-display: swap;
+/* ── Tokens ── */
+:root {
+  --bg:          #F7F7F5;
+  --surface:     #FFFFFF;
+  --fg:          #0F0E0A;
+  --ink:         #2B2A26;
+  --muted:       #807E77;
+  --border:      #E4E2DC;
+  --surface-sub: #EFEEEA;
+
+  --f-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --f-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --f-text:    'Source Serif 4', 'Source Serif Pro', Georgia, serif;
+  --f-mono:    'JetBrains Mono', 'Fira Code', monospace;
+
+  --r:    4px;
+  --r-md: 8px;
+
+  --max-w: 1160px;
+  --pad-x: clamp(1.5rem, 5vw, 4rem);
 }
-@font-face {
-  font-family: 'Neu Machina';
-  src: url('/fonts/NeuMachina-Regular.woff2') format('woff2'),
-       url('/fonts/NeuMachina-Regular.woff') format('woff'),
-       url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Regular.woff2') format('woff2');
-  font-weight: 400; font-style: normal; font-display: swap;
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  font-family: var(--f-body);
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+a { text-decoration: none; color: inherit; }
+button { font-family: var(--f-body); }
 
-/* ============================================================================
-   BASE
-   ============================================================================ */
-
+/* ── Root ── */
 .land-root {
-  display: flex; flex-direction: column; min-height: 100vh; width: 100%;
-  background: #fafafa; color: #101113;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  min-height: 100vh;
+  background: var(--bg);
   position: relative;
-}
-.land-root *, .land-root *::before, .land-root *::after { box-sizing: border-box; }
-
-.land-dotgrid {
-  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  overflow-x: hidden;
+  padding-top: 60px;
 }
 
-.land-eyes-wrap { display: flex; align-items: center; }
+/* ── Grain texture ── */
+.land-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+}
 
+/* ── Eyes ── */
+.land-eyes-wrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
 .land-eye {
-  background: #ffffff; border-radius: 2px; opacity: 0.85;
-  animation: landBlink 4s ease-in-out infinite;
-}
-.land-eye:nth-child(2) { animation-delay: 0.05s; }
-@keyframes landBlink {
-  0%, 42%, 48%, 100% { transform: scaleY(1); }
-  45% { transform: scaleY(0.1); }
+  background: var(--fg);
+  border-radius: 100px;
 }
 
-/* ============================================================================
-   NAV — Light, clean
-   ============================================================================ */
-
+/* ═══════════════════════════════════════
+   NAV
+═══════════════════════════════════════ */
 .land-nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: space-between;
-  height: 56px; padding: 0 40px;
-  background: rgba(250, 250, 250, 0.8);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(16, 17, 19, 0.06);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--pad-x);
+  height: 60px;
+  background: rgba(247, 247, 245, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.land-nav-brand {
+  font-family: var(--f-body);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+
+.land-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 2.25rem;
 }
 
 .land-wordmark {
-  font-family: 'Neu Machina', system-ui; font-size: 15px; font-weight: 700;
-  color: #101113; letter-spacing: 0.04em; user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--f-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--fg);
+  text-transform: uppercase;
 }
-.land-wordmark-o { font-weight: 400; }
-.land-wordmark-edu { font-weight: 300; font-style: italic; margin-left: 4px; opacity: 0.7; }
+.land-wordmark-sub {
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 2px;
+}
+.land-wordmark--dim .land-eye { background: rgba(242,241,237,0.4); }
+.land-wordmark--dim { color: rgba(242,241,237,0.45); }
 
-.land-nav-right { display: flex; align-items: center; gap: 6px; }
-
+.land-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
 .land-nav-link {
-  font-size: 13px; font-weight: 400; color: rgba(16, 17, 19, 0.45);
-  text-decoration: none; padding: 8px 12px; border-radius: 6px;
-  transition: color 0.15s ease;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  transition: color 0.18s;
 }
-.land-nav-link:hover { color: #101113; }
+.land-nav-link:hover { color: var(--fg); }
 
-.land-nav-btn {
-  padding: 7px 16px; font-size: 13px; font-weight: 500;
-  font-family: 'Neu Machina', system-ui; border-radius: 7px; cursor: pointer;
-  transition: all 0.15s ease;
+.land-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.land-nav-btn--ghost {
-  background: transparent; border: 1px solid rgba(16, 17, 19, 0.1);
-  color: rgba(16, 17, 19, 0.6);
+
+/* ═══════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════ */
+.land-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  transition: opacity 0.18s, color 0.18s, border-color 0.18s, background 0.18s;
+  padding: 0.6rem 1.4rem;
+  white-space: nowrap;
 }
-.land-nav-btn--ghost:hover { border-color: rgba(16, 17, 19, 0.2); color: #101113; }
-.land-nav-btn--primary { background: #101113; color: #ffffff; border: none; }
-.land-nav-btn--primary:hover { background: #2a2b2e; }
 
-/* ============================================================================
-   HERO — Light, centered
-   ============================================================================ */
+/* Dark (default CTA) */
+.land-btn--dark {
+  background: var(--fg);
+  color: var(--surface);
+  border-color: var(--fg);
+}
+.land-btn--dark:hover { opacity: 0.8; }
 
+/* Dark small (nav) */
+.land-btn--dark-sm {
+  background: var(--fg);
+  color: var(--surface);
+  border-color: var(--fg);
+  padding: 0.38rem 0.95rem;
+  font-size: 0.78rem;
+}
+.land-btn--dark-sm:hover { opacity: 0.8; }
+
+/* Outline small (nav — bordered, transparent bg) */
+.land-btn--outline-sm {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--fg);
+  padding: 0.38rem 0.95rem;
+  font-size: 0.78rem;
+}
+.land-btn--outline-sm:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(15, 14, 10, 0.5);
+}
+
+/* Ghost */
+.land-btn--ghost {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+}
+.land-btn--ghost:hover { color: var(--fg); border-color: var(--ink); }
+
+/* Ghost small (nav) */
+.land-btn--ghost-sm {
+  background: transparent;
+  color: var(--muted);
+  border-color: transparent;
+  padding: 0.38rem 0.75rem;
+  font-size: 0.78rem;
+}
+.land-btn--ghost-sm:hover { color: var(--fg); }
+
+/* Light (on dark background) */
+.land-btn--light {
+  background: var(--surface);
+  color: var(--fg);
+  border-color: var(--surface);
+}
+.land-btn--light:hover { opacity: 0.88; }
+
+/* Ghost light (on dark background) */
+.land-btn--ghost-light {
+  background: transparent;
+  color: rgba(242,241,237,0.6);
+  border-color: rgba(242,241,237,0.22);
+}
+.land-btn--ghost-light:hover {
+  color: var(--surface);
+  border-color: rgba(242,241,237,0.55);
+}
+
+/* ═══════════════════════════════════════
+   RULE
+═══════════════════════════════════════ */
+.land-rule {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ═══════════════════════════════════════
+   HERO
+═══════════════════════════════════════ */
 .land-hero {
-  position: relative; z-index: 1;
-  padding: 140px 40px 64px;
-  display: flex; flex-direction: column; align-items: center; text-align: center;
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: clamp(3rem, 5vw, 5rem);
+  align-items: center;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: clamp(4rem, 7vw, 7.5rem) var(--pad-x) clamp(4.5rem, 9vw, 9rem);
 }
 
-.land-hero-inner {
-  max-width: 600px; display: flex; flex-direction: column; align-items: center;
-  animation: landFadeUp 0.6s ease-out;
-}
-@keyframes landFadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+.land-hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
 }
 
-/* Badge */
-.land-hero-badge {
-  display: inline-flex; align-items: center; gap: 10px;
-  padding: 6px 14px 6px 10px; border-radius: 999px;
-  border: 1px solid rgba(16, 17, 19, 0.08);
-  background: #101113;
-  margin-bottom: 28px;
+.land-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  align-self: flex-start;
+  transition: opacity 0.18s;
 }
-.land-hero-badge span {
-  font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.6);
-  letter-spacing: 0.02em;
+.land-hero-kicker:hover { opacity: 0.7; }
+.land-kicker-badge {
+  font-family: var(--f-body);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  background: var(--surface-sub);
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.land-kicker-text {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--fg);
+  letter-spacing: -0.005em;
 }
 
-/* Title — two-tone like dashboard greeting */
 .land-hero-title {
-  font-family: 'Neu Machina', system-ui; font-size: 3.2rem; font-weight: 300;
-  line-height: 1.1; margin: 0 0 20px; letter-spacing: -0.03em;
+  font-family: var(--f-display);
+  font-size: clamp(2.25rem, 4vw, 3.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--fg);
 }
-.land-hero-title--light { color: rgba(16, 17, 19, 0.3); }
-.land-hero-title--dark { color: #101113; }
+.land-hero-title em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--muted);
+}
 
 .land-hero-sub {
-  font-size: 15px; line-height: 1.65; color: rgba(16, 17, 19, 0.45);
-  max-width: 460px; margin: 0 0 32px;
+  font-family: var(--f-text);
+  font-size: 1.1rem;
+  line-height: 1.55;
+  color: var(--ink);
+  max-width: 44ch;
+  font-weight: 300;
 }
 
-.land-hero-ctas { display: flex; align-items: center; gap: 10px; }
-
-/* Shared CTA styles */
-.land-cta {
-  padding: 11px 24px; font-size: 14px; font-weight: 500;
-  font-family: 'Neu Machina', system-ui; border-radius: 8px; cursor: pointer;
-  transition: all 0.15s ease; letter-spacing: 0.01em;
+.land-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
-.land-cta--primary { background: #101113; color: #ffffff; border: none; }
-.land-cta--primary:hover { background: #2a2b2e; transform: translateY(-1px); }
-.land-cta--secondary {
-  background: transparent; color: rgba(16, 17, 19, 0.55); border: none;
-}
-.land-cta--secondary:hover { color: #101113; }
 
-/* ============================================================================
-   PRODUCT MOCKUP — Light frame
-   ============================================================================ */
-
+/* ═══════════════════════════════════════
+   TERMINAL MOCKUP
+═══════════════════════════════════════ */
 .land-mockup {
-  position: relative; z-index: 1; margin-top: 56px; width: 100%; max-width: 780px;
-  animation: landFadeUp 0.8s ease-out 0.15s both;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow:
+    0 2px 8px rgba(15, 14, 10, 0.06),
+    0 8px 32px rgba(15, 14, 10, 0.07),
+    0 0 0 1px rgba(15, 14, 10, 0.03);
+  overflow: hidden;
+  width: 100%;
+  max-width: 720px;
+  justify-self: end;
+  aspect-ratio: 4 / 3;
 }
-.land-mockup-window {
-  border-radius: 12px; overflow: hidden;
-  border: 1px solid rgba(16, 17, 19, 0.1);
-  background: #ffffff;
-  box-shadow: 0 4px 24px rgba(16, 17, 19, 0.06), 0 1px 4px rgba(16, 17, 19, 0.04);
+
+.land-mockup-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
-.land-mockup-bar {
-  height: 36px; background: #fafafa;
-  border-bottom: 1px solid rgba(16, 17, 19, 0.06);
-  display: flex; align-items: center; padding: 0 14px;
+
+/* Title bar */
+.land-mockup-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.9rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
-.land-mockup-dots { display: flex; gap: 6px; }
+.land-mockup-dots {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
 .land-mockup-dots span {
-  width: 8px; height: 8px; border-radius: 50%; background: rgba(16, 17, 19, 0.08);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: block;
+  background: var(--border);
 }
-.land-mockup-body { display: flex; height: 260px; }
+.land-mockup-dots span:nth-child(1) { background: #FF5F57; }
+.land-mockup-dots span:nth-child(2) { background: #FEBC2E; }
+.land-mockup-dots span:nth-child(3) { background: #28C840; }
 
-/* Sidebar column */
+.land-mockup-title-text {
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+/* Body */
+.land-mockup-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Sidebar */
 .land-mockup-sidebar {
-  width: 48px; border-right: 1px solid rgba(16, 17, 19, 0.06);
-  display: flex; flex-direction: column; align-items: center;
-  padding: 14px 0; gap: 6px; background: #fafafa;
+  width: 120px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding: 0.6rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--surface);
 }
-.land-mockup-sidebar-item {
-  width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 17, 19, 0.04);
+.land-mockup-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.38rem 0.65rem;
+  font-family: var(--f-body);
+  font-size: 0.68rem;
+  color: var(--muted);
+  cursor: default;
+  border-radius: 3px;
+  margin: 0 4px;
 }
-.land-mockup-sidebar-item--active { background: rgba(16, 17, 19, 0.08); }
-
-/* Mini eyes card in sidebar */
-.land-mockup-sidebar-card {
-  margin-top: auto; width: 36px; height: 28px;
-  background: #101113; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
+.land-mockup-nav-item--active {
+  background: rgba(15,14,10,0.05);
+  color: var(--fg);
+  font-weight: 500;
 }
-
-/* Main area */
-.land-mockup-main {
-  flex: 1; display: flex; flex-direction: column;
-  justify-content: center; padding: 28px 36px; gap: 20px;
+.land-mockup-nav-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
 }
-.land-mockup-greeting { display: flex; flex-direction: column; gap: 6px; }
-.land-mockup-status { display: flex; }
-.land-mockup-text { height: 12px; border-radius: 4px; }
-.land-mockup-text--light { background: rgba(16, 17, 19, 0.06); }
-.land-mockup-text--dark { background: rgba(16, 17, 19, 0.15); }
-.land-mockup-text--muted { background: rgba(16, 17, 19, 0.05); }
-.land-mockup-input {
-  padding: 14px 16px; border-radius: 8px;
-  border: 1px solid rgba(16, 17, 19, 0.06); background: #ffffff;
-}
-
-/* Toolbar column */
-.land-mockup-toolbar {
-  width: 42px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 6px;
-}
-.land-mockup-toolbar-btn {
-  width: 26px; height: 26px; border-radius: 6px; background: rgba(16, 17, 19, 0.03);
+.land-mockup-nav-item--active .land-mockup-nav-dot {
+  background: #4CAF50;
 }
 
-/* ============================================================================
+/* Chat */
+.land-mockup-chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.land-mockup-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.land-mockup-dot-online {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4CAF50;
+  flex-shrink: 0;
+}
+
+.land-mockup-msgs {
+  flex: 1;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.land-mockup-msg {
+  font-family: var(--f-body);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--r);
+  max-width: 92%;
+}
+.land-mockup-msg--system {
+  font-family: var(--f-mono);
+  font-size: 0.6rem;
+  color: var(--muted);
+  padding: 0.1rem 0;
+  background: none;
+}
+.land-mockup-msg--user {
+  background: var(--fg);
+  color: var(--surface);
+  align-self: flex-end;
+}
+.land-mockup-msg--agent {
+  background: var(--surface-sub);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.land-mockup-agent-label {
+  font-family: var(--f-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.land-mockup-msg--actions {
+  display: flex;
+  gap: 0.4rem;
+  background: none;
+  padding: 0.1rem 0;
+}
+.land-mockup-confirm-btn,
+.land-mockup-deny-btn {
+  font-family: var(--f-body);
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 0.22rem 0.6rem;
+  border-radius: 3px;
+  cursor: default;
+}
+.land-mockup-confirm-btn {
+  background: var(--fg);
+  color: var(--surface);
+}
+.land-mockup-deny-btn {
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.land-mockup-input-bar {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--f-body);
+  font-size: 0.68rem;
+  color: var(--border);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════
    SOCIAL PROOF
-   ============================================================================ */
-
-.land-proof { text-align: center; padding: 56px 40px 48px; position: relative; z-index: 1; }
+═══════════════════════════════════════ */
+.land-proof {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: clamp(2rem, 4vw, 3.5rem);
+  padding: 3rem var(--pad-x);
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
 .land-proof-label {
-  font-size: 11px; font-weight: 500; color: rgba(16, 17, 19, 0.3);
-  letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 14px;
+  font-family: var(--f-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .land-proof-logos {
-  display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: clamp(1.75rem, 3.5vw, 3rem);
+  flex-wrap: wrap;
 }
-.land-proof-logos span {
-  font-family: 'Neu Machina', system-ui; font-size: 14px; font-weight: 400;
-  color: rgba(16, 17, 19, 0.4);
+.land-proof-row {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(1.75rem, 3.5vw, 3rem);
 }
-.land-proof-dot { color: rgba(16, 17, 19, 0.15); }
+.land-proof-dot {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1;
+  user-select: none;
+}
+.land-proof-logo {
+  height: 56px;
+  max-width: 200px;
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.land-proof-logo--img {
+  object-fit: contain;
+  background: transparent;
+  filter: grayscale(1);
+  opacity: 0.75;
+  transition: filter 0.2s, opacity 0.2s;
+}
+.land-proof-logo--img:hover {
+  filter: grayscale(0);
+  opacity: 1;
+}
+.land-proof-logo--text {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--f-text);
+  font-size: 1.4rem;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
 
-/* ============================================================================
-   SECTIONS
-   ============================================================================ */
-
+/* ═══════════════════════════════════════
+   SECTIONS (shared)
+═══════════════════════════════════════ */
 .land-section {
-  position: relative; z-index: 1;
-  padding: 72px 40px; max-width: 960px; width: 100%; margin: 0 auto;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: clamp(4rem, 7vw, 7rem) var(--pad-x);
 }
-.land-section-header { text-align: center; margin-bottom: 48px; }
-.land-section-tag {
-  display: inline-block; font-size: 11px; font-weight: 500;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: rgba(16, 17, 19, 0.3); margin-bottom: 10px;
+
+.land-section-intro {
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.land-section-label {
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
 }
 .land-section-title {
-  font-family: 'Neu Machina', system-ui; font-size: 2rem; font-weight: 300;
-  line-height: 1.15; letter-spacing: -0.02em; margin: 0;
+  font-family: var(--f-display);
+  font-size: clamp(1.7rem, 2.9vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--fg);
 }
-.land-section-title--light { color: rgba(16, 17, 19, 0.3); }
-.land-section-title--dark { color: #101113; }
-
-/* ============================================================================
-   FEATURES — 3×2 grid, thin border cards
-   ============================================================================ */
-
-.land-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-
-.land-feature {
-  padding: 22px; border: 1px solid rgba(16, 17, 19, 0.07); border-radius: 10px;
-  transition: border-color 0.15s ease;
+.land-section-title em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--muted);
 }
-.land-feature:hover { border-color: rgba(16, 17, 19, 0.16); }
+.land-section-sub {
+  font-family: var(--f-text);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--ink);
+  max-width: 54ch;
+  font-weight: 300;
+}
 
-.land-feature-icon {
-  width: 36px; height: 36px; border-radius: 8px;
-  background: rgba(16, 17, 19, 0.04);
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(16, 17, 19, 0.5); margin-bottom: 14px;
+/* ═══════════════════════════════════════
+   FEATURES GRID — bordered table pattern
+═══════════════════════════════════════ */
+.land-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.land-feature-card {
+  padding: 1.9rem 1.75rem;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  transition: background 0.2s;
+}
+.land-feature-card:hover {
+  background: rgba(15,14,10,0.02);
+}
+
+.land-feature-id {
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  color: var(--border);
 }
 .land-feature-title {
-  font-family: 'Neu Machina', system-ui; font-size: 14px; font-weight: 500;
-  color: #101113; margin: 0 0 6px;
+  font-family: var(--f-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+  line-height: 1.3;
 }
 .land-feature-desc {
-  font-size: 13px; line-height: 1.55; color: rgba(16, 17, 19, 0.4); margin: 0;
+  font-family: var(--f-text);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ink);
+  font-weight: 300;
 }
 
-/* ============================================================================
-   STEPS — 3-column, numbered
-   ============================================================================ */
-
-.land-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-
-.land-step {
-  padding: 24px; border-radius: 10px;
-  border: 1px solid rgba(16, 17, 19, 0.07);
+/* ═══════════════════════════════════════
+   STEPS GRID
+═══════════════════════════════════════ */
+.land-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
 }
+
+.land-step-card {
+  padding: 2.25rem 3rem 2.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  position: relative;
+}
+.land-step-card:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 1px;
+  background: var(--border);
+}
+.land-step-card:not(:first-child) {
+  padding-left: 3rem;
+}
+
 .land-step-num {
-  font-family: 'Neu Machina', system-ui; font-size: 24px; font-weight: 300;
-  color: rgba(16, 17, 19, 0.12); display: block; margin-bottom: 12px;
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--border);
 }
 .land-step-title {
-  font-family: 'Neu Machina', system-ui; font-size: 15px; font-weight: 500;
-  color: #101113; margin: 0 0 6px;
+  font-family: var(--f-display);
+  font-size: clamp(1.25rem, 2.2vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--fg);
 }
 .land-step-desc {
-  font-size: 13px; line-height: 1.55; color: rgba(16, 17, 19, 0.4); margin: 0;
+  font-family: var(--f-text);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--ink);
+  font-weight: 300;
+  max-width: 32ch;
 }
 
-/* ============================================================================
+/* ═══════════════════════════════════════
    CTA SECTION
-   ============================================================================ */
-
+═══════════════════════════════════════ */
 .land-cta-section {
-  position: relative; z-index: 1;
-  padding: 48px 40px 80px; display: flex; justify-content: center;
+  background: var(--fg);
+  padding: clamp(2rem, 4vw, 3.5rem) var(--pad-x);
 }
-.land-cta-card {
-  display: flex; flex-direction: column; align-items: center;
-  text-align: center; gap: 16px; max-width: 440px; width: 100%;
-  padding: 44px 40px;
-  border: 1px solid rgba(16, 17, 19, 0.08); border-radius: 14px;
+.land-cta-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.1rem;
 }
-
-/* Small dark card for eyes in CTA */
-.land-cta-eyescard {
-  width: 64px; height: 44px; background: #101113; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  position: relative; overflow: hidden;
-}
-.land-cta-eyescard::before {
-  content: ''; position: absolute; inset: 0;
-  background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 6px 6px; pointer-events: none;
-}
+/* Eyes on dark bg */
+.land-cta-inner .land-eye { background: var(--bg); }
 
 .land-cta-title {
-  font-family: 'Neu Machina', system-ui; font-size: 1.4rem; font-weight: 300;
-  color: #101113; margin: 0; letter-spacing: -0.02em;
+  font-family: var(--f-display);
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--surface);
+  line-height: 1.2;
 }
-.land-cta-desc {
-  font-size: 14px; color: rgba(16, 17, 19, 0.45); margin: 0; line-height: 1.5;
+.land-cta-sub {
+  font-family: var(--f-text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(247,247,245,0.55);
+  max-width: 46ch;
+  font-weight: 300;
 }
-.land-cta-row { display: flex; gap: 10px; margin-top: 4px; }
+.land-cta-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
 
-/* ============================================================================
+/* ═══════════════════════════════════════
    FOOTER
-   ============================================================================ */
-
+═══════════════════════════════════════ */
 .land-footer {
-  position: relative; z-index: 1;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 40px; border-top: 1px solid rgba(16, 17, 19, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem var(--pad-x);
+  border-top: 1px solid rgba(242,241,237,0.1);
+  background: var(--fg);
 }
-.land-footer-left { display: flex; align-items: center; gap: 16px; }
-.land-footer-text { font-size: 11px; color: rgba(16, 17, 19, 0.3); }
+.land-footer-copy {
+  font-family: var(--f-text);
+  font-style: italic;
+  font-size: 0.78rem;
+  font-weight: 300;
+  color: rgba(242,241,237,0.4);
+  letter-spacing: 0;
+  text-align: center;
+}
 
-/* ============================================================================
+/* ═══════════════════════════════════════
    RESPONSIVE
-   ============================================================================ */
+═══════════════════════════════════════ */
+@media (max-width: 920px) {
+  .land-hero {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  .land-mockup {
+    max-width: 100%;
+    height: 300px;
+  }
+  .land-nav-links { display: none; }
+  .land-features-grid { grid-template-columns: repeat(2, 1fr); }
+  .land-steps-grid { grid-template-columns: 1fr; }
+  .land-step-card {
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .land-step-card:not(:last-child)::after { display: none; }
+  .land-step-card:not(:first-child) { padding-left: 0; }
+}
 
-@media (max-width: 900px) {
-  .land-features { grid-template-columns: repeat(2, 1fr); }
-  .land-steps { grid-template-columns: 1fr; max-width: 380px; margin: 0 auto; }
-  .land-hero-title { font-size: 2.4rem; }
-}
-@media (max-width: 640px) {
-  .land-features { grid-template-columns: 1fr; }
-  .land-hero { padding: 120px 20px 48px; }
-  .land-hero-title { font-size: 1.9rem; }
-  .land-section { padding: 56px 20px; }
-  .land-nav { padding: 0 20px; }
-  .land-nav-link { display: none; }
-  .land-hero-ctas, .land-cta-row { flex-direction: column; width: 100%; }
-  .land-cta { width: 100%; text-align: center; }
-  .land-footer { flex-direction: column; gap: 8px; text-align: center; }
-  .land-footer-left { flex-direction: column; gap: 8px; }
-  .land-mockup-body { height: 180px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .land-eye { animation: none; }
-  .land-hero-inner, .land-mockup { animation: none; }
+@media (max-width: 600px) {
+  .land-features-grid { grid-template-columns: 1fr; }
+  .land-proof { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+  .land-cta-inner { align-items: flex-start; }
 }

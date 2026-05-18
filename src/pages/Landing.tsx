@@ -1,54 +1,19 @@
 // src/pages/Landing.tsx
 import { useNavigate } from "react-router-dom";
 import "../styles/landing.css";
+import heroImage from "../assets/landing-hero.png";
+import tecLogo from "../assets/tec-logo.png";
+import mitLogo from "../assets/mit-logo.png";
+import unamLogo from "../assets/unam-logo.png";
 
-function Eyes({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
-  const dims = { sm: { w: 3, h: 8, gap: 8 }, md: { w: 5, h: 14, gap: 14 }, lg: { w: 7, h: 18, gap: 20 } };
-  const d = dims[size];
-  return (
-    <div className="land-eyes-wrap" style={{ gap: d.gap }}>
-      <div className="land-eye" style={{ width: d.w, height: d.h }} />
-      <div className="land-eye" style={{ width: d.w, height: d.h }} />
-    </div>
-  );
-}
-
-function ProductMockup() {
+function TerminalMockup() {
   return (
     <div className="land-mockup">
-      <div className="land-mockup-window">
-        <div className="land-mockup-bar">
-          <div className="land-mockup-dots"><span /><span /><span /></div>
-        </div>
-        <div className="land-mockup-body">
-          <div className="land-mockup-sidebar">
-            <div className="land-mockup-sidebar-item land-mockup-sidebar-item--active" />
-            <div className="land-mockup-sidebar-item" />
-            <div className="land-mockup-sidebar-item" />
-            <div className="land-mockup-sidebar-item" />
-            <div className="land-mockup-sidebar-card">
-              <Eyes size="sm" />
-            </div>
-          </div>
-          <div className="land-mockup-main">
-            <div className="land-mockup-greeting">
-              <div className="land-mockup-text land-mockup-text--light" style={{ width: '55%' }} />
-              <div className="land-mockup-text land-mockup-text--dark" style={{ width: '40%' }} />
-            </div>
-            <div className="land-mockup-status">
-              <div className="land-mockup-text land-mockup-text--muted" style={{ width: '22%' }} />
-            </div>
-            <div className="land-mockup-input">
-              <div className="land-mockup-text land-mockup-text--muted" style={{ width: '35%' }} />
-            </div>
-          </div>
-          <div className="land-mockup-toolbar">
-            <div className="land-mockup-toolbar-btn" />
-            <div className="land-mockup-toolbar-btn" />
-            <div className="land-mockup-toolbar-btn" />
-          </div>
-        </div>
-      </div>
+      <img
+        src={heroImage}
+        alt="ORION Edu interface preview"
+        className="land-mockup-image"
+      />
     </div>
   );
 }
@@ -58,93 +23,185 @@ export default function Landing() {
 
   return (
     <div className="land-root">
-      {/* Dot grid */}
-      <div className="land-dotgrid" aria-hidden="true">
-        <svg width="100%" height="100%">
-          <defs>
-            <pattern id="landDots" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="0.8" fill="rgba(16,17,19,0.05)" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#landDots)" />
-        </svg>
-      </div>
+      {/* Grain texture overlay */}
+      <div className="land-grain" aria-hidden="true" />
 
-      {/* Nav */}
+      {/* ── Nav ── */}
       <nav className="land-nav">
-        <span className="land-wordmark">
-          <span className="land-wordmark-o">O</span>RION
-          <span className="land-wordmark-edu">Edu</span>
-        </span>
+        <a href="/" className="land-nav-brand">ORION</a>
+
         <div className="land-nav-right">
-          <a href="#features" className="land-nav-link">Features</a>
-          <a href="#how" className="land-nav-link">How it works</a>
-          <button type="button" className="land-nav-btn land-nav-btn--ghost" onClick={() => navigate("/login")}>Sign in</button>
-          <button type="button" className="land-nav-btn land-nav-btn--primary" onClick={() => navigate("/login?signup=true")}>Get started</button>
+          <div className="land-nav-links">
+            <a href="#features" className="land-nav-link">Capabilities</a>
+            <a href="#how"      className="land-nav-link">How it works</a>
+            <a href="#"         className="land-nav-link">Research</a>
+          </div>
+
+          <div className="land-nav-actions">
+            <button
+              type="button"
+              className="land-btn land-btn--ghost-sm"
+              onClick={() => navigate("/login")}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              className="land-btn land-btn--outline-sm"
+              onClick={() => navigate("/login?signup=true")}
+            >
+              Join ORION
+            </button>
+          </div>
         </div>
       </nav>
 
-      {/* Hero */}
+      {/* ── Hero ── */}
       <section className="land-hero">
-        <div className="land-hero-inner">
-          <div className="land-hero-badge">
-            <Eyes size="sm" />
-            <span>Now in Beta</span>
-          </div>
+        <div className="land-hero-content">
+          <a href="#" className="land-hero-kicker">
+            <span className="land-kicker-badge">Now in Beta</span>
+            <span className="land-kicker-text">
+              Bridge is live: plug in your cobot or PLC and start talking
+            </span>
+          </a>
 
           <h1 className="land-hero-title">
-            <span className="land-hero-title--light">Collapse your lab stack</span>
-            <br />
-            <span className="land-hero-title--dark">into a conversation</span>
+            Collapse your lab stack<br />
+            <em>into a conversation</em>
           </h1>
 
           <p className="land-hero-sub">
-            ORION Edu replaces disconnected SCADA dashboards, MES terminals, and manual logs
-            with a single AI agent that connects to your cobots, PLCs, and sensors.
+            ORION replaces disconnected HMIs, SCADA panels, and lab manuals with a
+            single AI interface; so researchers focus on engineering outcomes, not on
+            learning five different tools.
           </p>
 
-          <div className="land-hero-ctas">
-            <button type="button" className="land-cta land-cta--primary" onClick={() => navigate("/login?signup=true")}>Start for free</button>
-            <button type="button" className="land-cta land-cta--secondary" onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}>See how it works →</button>
+          <div className="land-hero-actions">
+            <button
+              type="button"
+              className="land-btn land-btn--dark"
+              onClick={() => navigate("/login?signup=true")}
+            >
+              Join for free
+            </button>
+            <button
+              type="button"
+              className="land-btn land-btn--ghost"
+              onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="9" y="2" width="6" height="5" rx="1" />
+                <rect x="2" y="17" width="6" height="5" rx="1" />
+                <rect x="9" y="17" width="6" height="5" rx="1" />
+                <rect x="16" y="17" width="6" height="5" rx="1" />
+                <path d="M12 7v4M5 17v-2h14v2M12 11v4" />
+              </svg>
+              See how it works
+            </button>
           </div>
         </div>
 
-        <ProductMockup />
+        <TerminalMockup />
       </section>
 
-      {/* Social proof */}
+      {/* ── Rule ── */}
+      <div className="land-rule" />
+
+      {/* ── Social proof ── */}
       <section className="land-proof">
-        <p className="land-proof-label">Built for learning factories and research labs</p>
+        <span className="land-proof-label">Built &amp; tested at</span>
         <div className="land-proof-logos">
-          <span>Tecnológico de Monterrey</span>
-          <span className="land-proof-dot">·</span>
-          <span>MIT</span>
-          <span className="land-proof-dot">·</span>
-          <span>FrED Factory</span>
+          {[
+            { name: "Tecnológico de Monterrey", logo: tecLogo },
+            { name: "MIT", logo: mitLogo },
+            { name: "FrED Factory", logo: null },
+            { name: "UNAM", logo: unamLogo },
+          ].map((p, i, arr) => (
+            <span key={p.name} className="land-proof-row">
+              {p.logo ? (
+                <img
+                  src={p.logo}
+                  alt={`${p.name} logo`}
+                  className="land-proof-logo land-proof-logo--img"
+                />
+              ) : (
+                <span
+                  className="land-proof-logo land-proof-logo--text"
+                  aria-label={p.name}
+                >
+                  FrED Factory Lab
+                </span>
+              )}
+              {i < arr.length - 1 && (
+                <span className="land-proof-dot" aria-hidden="true">·</span>
+              )}
+            </span>
+          ))}
         </div>
       </section>
 
-      {/* Features */}
+      {/* ── Rule ── */}
+      <div className="land-rule" />
+
+      {/* ── Features ── */}
       <section className="land-section" id="features">
-        <div className="land-section-header">
-          <span className="land-section-tag">Capabilities</span>
+        <div className="land-section-intro">
+          <span className="land-section-label">01 — Capabilities</span>
           <h2 className="land-section-title">
-            <span className="land-section-title--light">Everything your lab needs,</span>
-            <br />
-            <span className="land-section-title--dark">nothing it doesn't</span>
+            Everything your lab needs,<br /><em>nothing it doesn't</em>
           </h2>
+          <p className="land-section-sub">
+            Built on a multi-agent architecture designed for real industrial
+            environments — not demos.
+          </p>
         </div>
-        <div className="land-features">
+
+        <div className="land-features-grid">
           {[
-            { title: "Conversational Control", desc: "Chat with your equipment using natural language. No more switching between HMIs, SCADA screens, and spreadsheets.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> },
-            { title: "Real-Time Lab Bridge", desc: "WebSocket connection to xArm cobots, ABB robots, Siemens PLCs, and any OPC-UA / MQTT device.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg> },
-            { title: "Multi-Agent Architecture", desc: "Planner, retriever, tool executor, and troubleshooter work together with human-in-the-loop confirmation.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/></svg> },
-            { title: "RAG Knowledge Base", desc: "Upload manuals, SOPs, and datasheets. The agent retrieves answers grounded in your documentation.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> },
-            { title: "Voice & Code Modes", desc: "Switch between chat, voice, agent, and code modes — each optimized for different workflows.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg> },
-            { title: "Equipment Profiles", desc: "Each device gets an AI-readable skill card with specs, safe positions, and operational constraints.", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h6"/></svg> },
+            {
+              id: "A",
+              title: "Conversational Control",
+              desc: "Chat with your equipment in natural language. No switching between HMIs, SCADA screens, and spreadsheets.",
+            },
+            {
+              id: "B",
+              title: "Real-Time Lab Bridge",
+              desc: "WebSocket connection to xArm cobots, ABB robots, Siemens PLCs, and any OPC-UA / MQTT device.",
+            },
+            {
+              id: "C",
+              title: "Multi-Agent Architecture",
+              desc: "Planner, retriever, tool executor, and troubleshooter agents work in concert with human-in-the-loop approval.",
+            },
+            {
+              id: "D",
+              title: "Grounded in Your Docs",
+              desc: "Upload manuals and SOPs. Every answer traces back to your documentation, not the model's imagination.",
+            },
+            {
+              id: "E",
+              title: "Per-Device Skill Cards",
+              desc: "Each machine gets its own context: safe positions, joint limits, known faults, and operational constraints.",
+            },
+            {
+              id: "F",
+              title: "Voice & Code Modes",
+              desc: "Switch between chat, voice, and code — same agent, different interface for different workflows.",
+            },
           ].map((f) => (
-            <div key={f.title} className="land-feature">
-              <div className="land-feature-icon">{f.icon}</div>
+            <div key={f.id} className="land-feature-card">
+              <span className="land-feature-id">{f.id}</span>
               <h3 className="land-feature-title">{f.title}</h3>
               <p className="land-feature-desc">{f.desc}</p>
             </div>
@@ -152,23 +209,37 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* ── Rule ── */}
+      <div className="land-rule" />
+
+      {/* ── How it works ── */}
       <section className="land-section" id="how">
-        <div className="land-section-header">
-          <span className="land-section-tag">Workflow</span>
+        <div className="land-section-intro">
+          <span className="land-section-label">02 — Workflow</span>
           <h2 className="land-section-title">
-            <span className="land-section-title--light">Three steps to</span>
-            <br />
-            <span className="land-section-title--dark">a smarter lab</span>
+            Three steps to<br /><em>a smarter lab</em>
           </h2>
         </div>
-        <div className="land-steps">
+
+        <div className="land-steps-grid">
           {[
-            { num: "01", title: "Connect", desc: "Install ORION Edu Connect on your lab bridge PC. It auto-discovers xArm, ABB, and PLC devices on your network." },
-            { num: "02", title: "Configure", desc: "Create equipment profiles with specs, safe positions, and operational boundaries. Upload SOPs and manuals." },
-            { num: "03", title: "Operate", desc: "Start chatting. Ask diagnostic questions, run protocols, and monitor your lab from a single conversation." },
+            {
+              num: "01",
+              title: "Connect",
+              desc: "Install ORION Edu Connect on your lab bridge PC. It auto-discovers xArm, ABB, and PLC devices on your local network.",
+            },
+            {
+              num: "02",
+              title: "Configure",
+              desc: "Create equipment profiles with specs, safe positions, and operational boundaries. Upload SOPs and manuals.",
+            },
+            {
+              num: "03",
+              title: "Operate",
+              desc: "Start chatting. Ask diagnostic questions, run protocols, and monitor your entire lab from a single conversation.",
+            },
           ].map((s) => (
-            <div key={s.num} className="land-step">
+            <div key={s.num} className="land-step-card">
               <span className="land-step-num">{s.num}</span>
               <h3 className="land-step-title">{s.title}</h3>
               <p className="land-step-desc">{s.desc}</p>
@@ -177,25 +248,20 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ── CTA ── */}
       <section className="land-cta-section">
-        <div className="land-cta-card">
-          <div className="land-cta-eyescard">
-            <Eyes size="md" />
-          </div>
+        <div className="land-cta-inner">
           <h2 className="land-cta-title">Ready to talk to your lab?</h2>
-          <p className="land-cta-desc">Create a free account and connect your first device in under 10 minutes.</p>
-          <div className="land-cta-row">
-            <button type="button" className="land-cta land-cta--primary" onClick={() => navigate("/login?signup=true")}>Create account</button>
-            <button type="button" className="land-cta land-cta--secondary" onClick={() => navigate("/login")}>Sign in</button>
-          </div>
+          <p className="land-cta-sub">
+            Create a free account and connect your first device in under 10 minutes.
+          </p>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="land-footer" style={{ justifyContent: "center" }}>
-        <span className="land-footer-text" style={{ opacity: 0.9, fontSize: "0.7rem", letterSpacing: "0.08em" }}>
-          designed by Cyclicall CC
+      {/* ── Footer ── */}
+      <footer className="land-footer">
+        <span className="land-footer-copy">
+          © 2026 Cyclicall CC International Industries
         </span>
       </footer>
     </div>

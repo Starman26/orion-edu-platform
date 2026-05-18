@@ -559,7 +559,7 @@ export default function ProfilePage() {
                           type="button"
                           className="prof_badgeShareBtn"
                           onClick={() => {
-                            const text = `I just earned the "${selectedBadge.name}" badge on ORION Edu Lab Platform! ${selectedBadge.description}`;
+                            const text = `I just earned the "${selectedBadge.name}" badge on ORION Labs Lab Platform! ${selectedBadge.description}`;
                             const url = window.location.origin;
                             window.open(
                               `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}&summary=${encodeURIComponent(text)}`,
