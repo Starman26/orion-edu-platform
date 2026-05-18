@@ -145,16 +145,57 @@ export default function Login() {
 
     try {
       if (!isElectron) {
-        const { error } = await supabase.auth.signInWithOAuth({
+        // Open popup synchronously from the click to avoid popup blockers
+        const w = 500;
+        const h = 650;
+        const left = window.screenX + (window.outerWidth - w) / 2;
+        const top = window.screenY + (window.outerHeight - h) / 2;
+        const popup = window.open(
+          "about:blank",
+          "orion-oauth",
+          `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+
+        if (!popup) {
+          setError("Please allow popups for this site to sign in with Google.");
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
             redirectTo: getCallbackUrl(),
+            skipBrowserRedirect: true,
           },
         });
-        if (error) {
-          setError(error.message);
-          setLoading(false);
+
+        if (error || !data?.url) {
+          popup.close();
+          throw error || new Error("Could not start OAuth flow.");
         }
+
+        popup.location.href = data.url;
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (event === "SIGNED_IN" && session) {
+              subscription.unsubscribe();
+              clearInterval(closedCheck);
+              if (!popup.closed) popup.close();
+              await routeAfterAuth(session.user.id);
+            }
+          }
+        );
+
+        const closedCheck = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(closedCheck);
+            subscription.unsubscribe();
+            setLoading(false);
+          }
+        }, 500);
+
         return;
       }
 
@@ -178,7 +219,6 @@ export default function Login() {
     } catch (err: any) {
       console.error("Error en login con Google:", err);
       setError(err.message || "No se pudo iniciar sesión con Google.");
-    } finally {
       setLoading(false);
     }
   }

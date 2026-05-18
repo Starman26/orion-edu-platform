@@ -6,7 +6,13 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       console.log("[AuthCallback] Full URL:", window.location.href.slice(0, 200));
 
+      const isInPopup = Boolean(window.opener && window.opener !== window);
+
       const routeAfterSession = async (userId: string) => {
+        if (isInPopup) {
+          window.close();
+          return;
+        }
         const { data: profile } = await supabase
           .from("profiles")
           .select("onboarding_completed, active_team_id")
@@ -24,7 +30,8 @@ export default function AuthCallback() {
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           console.error("[AuthCallback] exchangeCodeForSession error:", error.message);
-          window.location.replace("/login");
+          if (isInPopup) window.close();
+          else window.location.replace("/login");
           return;
         }
         if (data.session) {
@@ -44,7 +51,8 @@ export default function AuthCallback() {
         const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
         if (error) {
           console.error("[AuthCallback] setSession error:", error.message);
-          window.location.replace("/login");
+          if (isInPopup) window.close();
+          else window.location.replace("/login");
           return;
         }
         if (data.session) {
