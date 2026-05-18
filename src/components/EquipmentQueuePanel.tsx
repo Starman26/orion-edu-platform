@@ -505,7 +505,7 @@ export default function EquipmentQueuePanel({
     const payload = {
       id: newId, team_id: teamId, equipment_id: fEquipmentId,
       requested_by_user_id: userId, requested_by_name: userName,
-      scheduled_at: fScheduledAt, duration_hours: durH,
+      scheduled_at: new Date(fScheduledAt).toISOString(), duration_hours: durH,
       status: "waiting" as const, notes: fNotes.trim() || null,
       material: fMaterial || null,
       session_id: sessionId ?? null,
@@ -526,7 +526,7 @@ export default function EquipmentQueuePanel({
     if (!eScheduledAt) return;
     setESaving(true);
     const updates = {
-      scheduled_at: eScheduledAt,
+      scheduled_at: new Date(eScheduledAt).toISOString(),
       duration_hours: eDurH + eDurM / 60,
       notes: eNotes.trim() || null,
       material: eMaterial || null,
