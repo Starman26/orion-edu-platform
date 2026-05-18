@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/landing.css";
 import heroImage from "../assets/landing-hero.png";
 import tecLogo from "../assets/tec-logo.png";
-import mitLogo from "../assets/mit-logo.png";
+import mitLogo from "../assets/MIT-logo.png";
 import unamLogo from "../assets/unam-logo.png";
 
 function TerminalMockup() {
