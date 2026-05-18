@@ -354,26 +354,27 @@ function ZoneSlider({
 
 // ─── Sparkline + delta for KPI tiles ─────────────────────────────────────────
 
-function Sparkline({ values, color = "var(--pmt-text-subtle)", width = 60, height = 18 }: {
-  values: number[]; color?: string; width?: number; height?: number;
+function Sparkline({ values, color = "var(--pmt-text-subtle)" }: {
+  values: number[]; color?: string;
 }) {
-  if (values.length < 2) {
-    return <svg width={width} height={height} className="pmt_kpiSpark" />;
-  }
+  const W = 100;
+  const H = 22;
+  if (values.length < 2) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
-  const stepX = width / (values.length - 1);
+  const stepX = W / (values.length - 1);
   const points = values.map((v, i) => {
     const x = i * stepX;
-    const y = height - ((v - min) / range) * (height - 2) - 1;
+    const y = H - ((v - min) / range) * (H - 4) - 2;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ");
   return (
-    <svg width={width} height={height} className="pmt_kpiSpark">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="pmt_kpiSpark">
       <polyline
         fill="none" stroke={color} strokeWidth="1.5"
         strokeLinecap="round" strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
         points={points}
       />
     </svg>
@@ -412,16 +413,21 @@ function useKpiHistory(key: string, value: number): { history: number[]; delta: 
 
 function KpiSparkBlock({ kpiKey, value, color }: { kpiKey: string; value: number; color?: string }) {
   const { history, delta } = useKpiHistory(kpiKey, value);
-  if (history.length < 2) return null;
-  const deltaSign = delta === null ? null : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+  if (history.length < 2) {
+    // Placeholder to keep card heights aligned even before history exists
+    return <div className="pmt_kpiSparkRow pmt_kpiSparkRow--empty" />;
+  }
+  const deltaSign = delta === null ? "flat" : delta > 0 ? "up" : delta < 0 ? "down" : "flat";
   return (
     <div className="pmt_kpiSparkRow">
-      <Sparkline values={history} color={color ?? "var(--pmt-text-subtle)"} />
-      {delta !== null && delta !== 0 && (
-        <span className={`pmt_kpiDelta pmt_kpiDelta--${deltaSign}`}>
-          {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(0)} vs ayer
-        </span>
-      )}
+      <div className="pmt_kpiSparkWrap">
+        <Sparkline values={history} color={color ?? "var(--pmt-text-subtle)"} />
+      </div>
+      <span className={`pmt_kpiDelta pmt_kpiDelta--${deltaSign}`}>
+        {delta === null || delta === 0
+          ? "= vs ayer"
+          : `${delta > 0 ? "↑" : "↓"} ${Math.abs(delta).toFixed(0)} vs ayer`}
+      </span>
     </div>
   );
 }
