@@ -466,7 +466,24 @@ export default function EquipmentQueuePanel({
     const { data, error } = await supabase.schema("lab").from("equipment_queue_entries")
       .select("*").eq("team_id", teamId).neq("status", "cancelled")
       .order("scheduled_at", { ascending: true });
-    if (error) { setTableError(true); } else { setEntries((data as QueueEntry[]) ?? []); }
+    if (error) {
+      // Only show "table not found" banner if the error genuinely indicates a missing
+      // table or unexposed schema. Transient errors (network, 5xx, auth) shouldn't
+      // wipe the panel — keep showing existing entries.
+      const msg = (error.message || "").toLowerCase();
+      const code = (error.code || "").toString();
+      const isMissingTable =
+        code === "42P01" ||                       // postgres: undefined_table
+        code === "PGRST205" ||                    // postgrest: table not in schema cache
+        msg.includes("does not exist") ||
+        msg.includes("could not find the table") ||
+        msg.includes("schema cache");
+      if (isMissingTable) setTableError(true);
+      else console.error("[EquipmentQueue] Transient fetch error:", error);
+    } else {
+      setTableError(false);
+      setEntries((data as QueueEntry[]) ?? []);
+    }
     setLoading(false);
   }, [teamId]);
 
