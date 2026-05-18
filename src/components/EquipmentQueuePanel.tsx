@@ -472,6 +472,24 @@ export default function EquipmentQueuePanel({
 
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
+  // Auto-refresh: re-fetch every 20s. Skip if tab is hidden or user is editing/adding.
+  useEffect(() => {
+    const POLL_MS = 20_000;
+    const tick = () => {
+      if (document.hidden) return;
+      if (editingId !== null) return;
+      if (showForm) return;
+      fetchEntries();
+    };
+    const id = setInterval(tick, POLL_MS);
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [fetchEntries, editingId, showForm]);
+
   // Scroll calendar to 7am on mount
   useEffect(() => {
     if (calScrollRef.current) {

@@ -2476,8 +2476,9 @@ export default function PmTrackerPanel({
   });
 
   // ── Load data ────────────────────────────────────────────────────────────────
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
+    if (!silent) setLoading(true);
     try {
       const { data: projectData, error: projectError } = await supabase
         .from("trace_projects").select("*").eq("team_id", teamId).maybeSingle();
@@ -2522,11 +2523,29 @@ export default function PmTrackerPanel({
     } catch (err) {
       console.error("[PmTracker] Load error:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [sessionId, teamId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-refresh: re-fetch silently every 20s. Skip when tab is hidden.
+  // Modal state (add-meta, description) lives in DrawerCommits sub-component and
+  // is not disrupted by parent data refetches — local form drafts survive.
+  useEffect(() => {
+    const POLL_MS = 20_000;
+    const tick = () => {
+      if (document.hidden) return;
+      loadData({ silent: true });
+    };
+    const id = setInterval(tick, POLL_MS);
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadData]);
 
   useEffect(() => {
     if (!showFilterMenu) return;
