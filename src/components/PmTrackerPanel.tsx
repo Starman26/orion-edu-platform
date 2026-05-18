@@ -3063,7 +3063,7 @@ export default function PmTrackerPanel({
             <Plus size={13} /> Add Tracker
           </button>
 
-          <button type="button" className="pmt_btnIcon" onClick={loadData} title="Recargar">
+          <button type="button" className="pmt_btnIcon" onClick={() => loadData()} title="Recargar">
             <RefreshCw size={14} />
           </button>
         </div>
