@@ -21,6 +21,7 @@ import { supabase } from "../lib/supabaseClient";
 
 import "../styles/sidebar.css";
 import "../styles/livinglab.css";
+import workspaceMarkImage from "../assets/landing-hero.png";
 
 type NavItem = {
   key: string;
@@ -58,22 +59,6 @@ type Member = {
   full_name: string | null;
   auth_user_id: string | null;
 };
-
-/** Orion brand mark — simple ring inside the workspace switcher square. */
-function OrionMark({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 14 14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.25"
-      aria-hidden="true"
-    >
-      <circle cx="7" cy="7" r="5.25" />
-    </svg>
-  );
-}
 
 const LS_KEY = "cora_sidebar_collapsed";
 const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
@@ -675,7 +660,11 @@ export function Sidebar({
           aria-haspopup="listbox"
         >
           <span className="sidebar__workspaceMark" aria-hidden="true">
-            <OrionMark className="sidebar__workspaceMarkIcon" />
+            <img
+              src={workspaceMarkImage}
+              alt=""
+              className="sidebar__workspaceMarkImg"
+            />
           </span>
           <span className="sidebar__workspaceText">
             <span className="sidebar__workspaceEyebrow">Workspace</span>
