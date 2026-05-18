@@ -48,6 +48,12 @@
   color: var(--pmt-text);
 }
 
+.equeue_root *::-webkit-scrollbar { width: 5px; height: 5px; }
+.equeue_root *::-webkit-scrollbar-track { background: transparent; }
+.equeue_root *::-webkit-scrollbar-thumb { background: var(--pmt-border); border-radius: 3px; }
+.equeue_root *::-webkit-scrollbar-thumb:hover { background: var(--pmt-text-subtle); }
+.equeue_root * { scrollbar-width: thin; scrollbar-color: var(--pmt-border) transparent; }
+
 /* ============================================================================
    TOOLBAR
    ============================================================================ */

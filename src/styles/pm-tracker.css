@@ -384,6 +384,10 @@
   flex-shrink: 0;
   overflow-x: auto;
 }
+.pmt_kpiStrip::-webkit-scrollbar { height: 5px; }
+.pmt_kpiStrip::-webkit-scrollbar-track { background: transparent; }
+.pmt_kpiStrip::-webkit-scrollbar-thumb { background: var(--pmt-border); border-radius: 3px; }
+.pmt_kpiStrip::-webkit-scrollbar-thumb:hover { background: var(--pmt-text-subtle); }
 
 .pmt_kpiTile {
   flex: 1; min-width: 130px; height: 150px;
@@ -1828,6 +1832,63 @@
 }
 .pmt_commitDeleteBtn:hover { color: var(--st-critical); background: var(--st-crit-soft); }
 
+/* ─── Commit status groups (collapsible) ──────────────────────────────────── */
+
+.pmt_commitGroup { padding: 4px 0; }
+
+.pmt_commitGroupHeader {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%;
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border-soft);
+  border-radius: var(--pmt-r-md);
+  text-align: left; cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: background 0.1s, border-color 0.1s;
+}
+.pmt_commitGroupHeader:hover {
+  background: var(--pmt-surface-2);
+  border-color: var(--pmt-border);
+}
+.pmt_commitGroupChevron {
+  color: var(--pmt-text-subtle);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.pmt_commitGroupChevron.is-collapsed { transform: rotate(-90deg); }
+.pmt_commitGroupDot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.pmt_commitGroupLabel {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--pmt-text-muted);
+}
+.pmt_commitGroupCount {
+  font-size: 11px; font-weight: 500;
+  color: var(--pmt-text-subtle);
+  letter-spacing: 0.04em;
+}
+.pmt_commitGroupBody {
+  display: flex; flex-direction: column;
+  padding: 2px 0 6px;
+}
+.pmt_commitGroupEmpty {
+  font-size: 12px;
+  color: var(--pmt-text-subtle);
+  padding: 8px 14px 12px;
+  text-align: center;
+}
+
+/* Add-meta button in toolbar position */
+.pmt_addCommitBtn--toolbar {
+  margin: 0;
+}
+
 /* ─── Description popup ───────────────────────────────────────────────────── */
 
 .pmt_descOverlay {
@@ -2181,6 +2242,17 @@
 .pmt_kpiNoteText p  { margin: 0; }
 .pmt_kpiNoteText em { font-style: italic; }
 .pmt_kpiNoteText strong { font-weight: 600; }
+
+.pmt_kpiNoteText--scrambling {
+  color: var(--pmt-text-subtle);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  animation: pmt-scramble-pulse 1.2s ease-in-out infinite;
+}
+@keyframes pmt-scramble-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
 
 .pmt_kpiNoteEmpty {
   flex: 1;

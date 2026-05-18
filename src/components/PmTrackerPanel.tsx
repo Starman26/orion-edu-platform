@@ -53,6 +53,12 @@ ROTACIÓN DE CONTENIDO — varía el ángulo cada vez. Escoge UNO al azar:
 
 Inclínate más por menciones (ángulos 2–3) que por comentarios globales — nombrar personas lo hace más cercano. Usa los nombres reales del snapshot, nunca los inventes.
 
+UNICIDAD DE LA PALABRA — OBLIGATORIO:
+- NUNCA uses una palabra que aparezca en "Palabras recientes" abajo. Escoge una diferente, fresca, que no se haya usado.
+- Si la lista de palabras recientes está vacía, elige libremente.
+- La palabra del día NO debe coincidir (ni siquiera variantes morfológicas: singular/plural, mayúsculas) con ninguna de la lista.
+Palabras recientes (no repetir): {RECENT_WORDS}
+
 Ejemplo del ÚNICO formato de salida aceptable:
 **Word of the day:**
 *Ritmo*
@@ -529,6 +535,7 @@ function ManageAccessSection({
   const [roleFilter, setRoleFilter]             = useState<"all" | "lab_researcher" | "admin">("all");
   const [accessFilter, setAccessFilter]         = useState<"all" | "editor" | "reader">("all");
   const [showMemberFilter, setShowMemberFilter] = useState(false);
+  const [showAllMembers, setShowAllMembers]     = useState(false);
   const memberFilterRef                         = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -560,9 +567,20 @@ function ManageAccessSection({
       if (accessFilter === "editor" && !editors.includes(m.user_id)) return false;
       if (accessFilter === "reader" &&  editors.includes(m.user_id)) return false;
       return true;
+    })
+    .sort((a, b) => {
+      const aE = editors.includes(a.user_id) ? 0 : 1;
+      const bE = editors.includes(b.user_id) ? 0 : 1;
+      if (aE !== bE) return aE - bE;
+      return (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "");
     });
 
   const hasActiveFilter = roleFilter !== "all" || accessFilter !== "all";
+  const isSearching = memberSearch.trim().length > 0 || hasActiveFilter;
+  const visibleMembers = (isSearching || showAllMembers)
+    ? filteredMembers
+    : filteredMembers.slice(0, 5);
+  const hiddenCount = filteredMembers.length - visibleMembers.length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -617,7 +635,7 @@ function ManageAccessSection({
           )}
         </div>
       </div>
-      {filteredMembers
+      {visibleMembers
         .map((member) => {
           const isEditor = editors.includes(member.user_id);
           return (
@@ -649,16 +667,53 @@ function ManageAccessSection({
                 style={{
                   padding: "4px 12px", fontSize: 11, fontWeight: 600,
                   fontFamily: "inherit", borderRadius: 5, cursor: "pointer",
-                  border: isEditor ? "1px solid var(--st-ok)" : "1px solid var(--pmt-border)",
-                  background: isEditor ? "var(--st-ok-soft)" : "transparent",
-                  color: isEditor ? "var(--st-ok)" : "var(--pmt-text-muted)",
+                  border: "1px solid var(--pmt-border)",
+                  background: "transparent",
+                  color: isEditor ? "var(--pmt-text)" : "var(--pmt-text-muted)",
                   transition: "all 0.12s",
                 }}>
-                {isEditor ? "✓ Editor" : "Solo lectura"}
+                {isEditor ? "Editor" : "Solo lectura"}
               </button>
             </div>
           );
         })}
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAllMembers(true)}
+          style={{
+            marginTop: 6, padding: "8px 0", fontSize: 12, fontWeight: 500,
+            fontFamily: "inherit", borderRadius: 5, cursor: "pointer",
+            border: "1px dashed var(--pmt-border)", background: "transparent",
+            color: "var(--pmt-text-muted)", width: "100%",
+            transition: "all 0.12s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderStyle = "solid";
+            e.currentTarget.style.color = "var(--pmt-text)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderStyle = "dashed";
+            e.currentTarget.style.color = "var(--pmt-text-muted)";
+          }}
+        >
+          View all teammates ({hiddenCount} more)
+        </button>
+      )}
+      {showAllMembers && filteredMembers.length > 5 && !isSearching && (
+        <button
+          type="button"
+          onClick={() => setShowAllMembers(false)}
+          style={{
+            marginTop: 6, padding: "6px 0", fontSize: 11, fontWeight: 500,
+            fontFamily: "inherit", cursor: "pointer",
+            border: "none", background: "transparent",
+            color: "var(--pmt-text-subtle)",
+          }}
+        >
+          Show less
+        </button>
+      )}
       <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)", marginTop: 4 }}>
         El creador siempre tiene acceso completo.
       </div>
@@ -758,7 +813,7 @@ function TeamDrawer({
   teamMembers: TeamMember[];
   currentUserId: string | null;
   onUpdateEditors: (entryId: string, editorIds: string[]) => Promise<void>;
-  onAddCommit: (draft: { label: string; element: string; deadline_day: number; due_date?: string }) => void;
+  onAddCommit: (draft: { label: string; element: string; deadline_day: number; due_date?: string; description?: string }) => void;
   onDeleteCommit: (commitId: string) => void;
   onEditCommitLabel: (commitId: string, label: string) => void;
   onEditCommitDescription: (commitId: string, description: string) => void;
@@ -767,12 +822,22 @@ function TeamDrawer({
   onPasteCommits: () => Promise<void>;
 }) {
   const [addCommitOpen, setAddCommitOpen]   = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<"in_progress" | "pending" | "done">>(
+    new Set(["pending", "done"])
+  );
+  const toggleGroup = (key: "in_progress" | "pending" | "done") =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   const [commitDraft, setCommitDraft]       = useState({
     label: "",
     element: areas[0]?.key ?? "robot",
     deadline_day: Math.ceil(totalDays / 2),
     start_date: "",
     due_date: "",
+    description: "",
   });
   const [editingLabelId, setEditingLabelId]   = useState<string | null>(null);
   const [areaFilter, setAreaFilter]           = useState<string | null>(null);
@@ -1021,11 +1086,17 @@ function TeamDrawer({
                       </button>
                     </>
                   )}
+                  {selectedIds.size === 0 && canEdit && (
+                    <button type="button" className="pmt_addCommitBtn pmt_addCommitBtn--toolbar"
+                      onClick={() => setAddCommitOpen(true)}>
+                      <Plus size={12} /> Agregar meta
+                    </button>
+                  )}
                   {selectedIds.size === 0 && commits.length > 0 && (
-                    <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--copy"
+                    <button type="button" className="pmt_commitClipBtn pmt_commitClipBtn--icon"
+                      title={`Copiar todas (${commits.length})`}
                       onClick={() => onCopyCommits(commits)}>
                       <Copy size={11} />
-                      Copiar todas ({commits.length})
                     </button>
                   )}
                   {copiedCommits.length > 0 && canEdit && (
@@ -1039,10 +1110,12 @@ function TeamDrawer({
               </div>
 
               <div className="pmt_drawerCommits">
-                {commits.length === 0 && !addCommitOpen && (
+                {commits.length === 0 && (
                   <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--pmt-text-subtle)", fontSize: 13 }}>
                     Aún no hay metas para este equipo.<br />
-                    <span style={{ fontSize: 12 }}>Escribe una meta abajo y asígnale un día límite.</span>
+                    <span style={{ fontSize: 12 }}>
+                      {canEdit ? "Usa el botón \"Agregar meta\" arriba para crear la primera." : "El editor del equipo aún no ha agregado metas."}
+                    </span>
                   </div>
                 )}
                 {visibleCommits.length === 0 && commits.length > 0 && (
@@ -1050,133 +1123,213 @@ function TeamDrawer({
                     Sin metas para esta área.
                   </div>
                 )}
-                {visibleCommits.map((commit) => {
-                  const isLate  = isCommitLate(commit, todayDay);
-                  const penalty = commit.due_date
-                    ? commitDaysLate(commit, penaltyPerDay, maxPenalty)
-                    : calcPenalty(commit.deadline_day, commit.status, todayDay, penaltyPerDay, maxPenalty);
-                  const el      = elKey(commit);
-                  const isSelected = selectedIds.has(commit.id);
-                  return (
-                    <div key={commit.id} className={`pmt_commitRow2${isLate ? " pmt_commitRow2--late" : ""}${isSelected ? " pmt_commitRow2--selected" : ""}`}>
-                      <input
-                        type="checkbox"
-                        className="pmt_commitCheckbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelect(commit.id)} />
-                      <button type="button"
-                        className={`pmt_commitPip pmt_commitPip--${commit.status}`}
-                        onClick={canEdit ? () => onStatusChange(commit.id, STATUS_CYCLE[commit.status]) : undefined}
-                        style={canEdit ? undefined : { cursor: "default", pointerEvents: "none" }}
-                        title={canEdit ? "Click para cambiar estado" : undefined} />
-                      <span className="pmt_commitArea"
-                        style={{
-                          background: areaColor(areas, el) + "22",
-                          color: areaColor(areas, el),
-                        }}>
-                        {areaLabel(areas, el)}
-                      </span>
-                      {editingLabelId === commit.id ? (
-                        <input className="pmt_commitLabelInput" value={labelDraft} autoFocus
-                          onChange={(e) => setLabelDraft(e.target.value)}
-                          onBlur={() => { onEditCommitLabel(commit.id, labelDraft); setEditingLabelId(null); }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter")  { onEditCommitLabel(commit.id, labelDraft); setEditingLabelId(null); }
-                            if (e.key === "Escape") { setEditingLabelId(null); }
-                          }} />
-                      ) : (
-                        <span className="pmt_commitLabel2" title="Click para editar"
-                          onClick={() => { setEditingLabelId(commit.id); setLabelDraft(commit.label); }}>
-                          {commit.label}
+                {visibleCommits.length > 0 && (() => {
+                  const renderRow = (commit: TraceCommit) => {
+                    const isLate  = isCommitLate(commit, todayDay);
+                    const penalty = commit.due_date
+                      ? commitDaysLate(commit, penaltyPerDay, maxPenalty)
+                      : calcPenalty(commit.deadline_day, commit.status, todayDay, penaltyPerDay, maxPenalty);
+                    const el      = elKey(commit);
+                    const isSelected = selectedIds.has(commit.id);
+                    return (
+                      <div key={commit.id} className={`pmt_commitRow2${isLate ? " pmt_commitRow2--late" : ""}${isSelected ? " pmt_commitRow2--selected" : ""}`}>
+                        <input
+                          type="checkbox"
+                          className="pmt_commitCheckbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(commit.id)} />
+                        <button type="button"
+                          className={`pmt_commitPip pmt_commitPip--${commit.status}`}
+                          onClick={canEdit ? () => onStatusChange(commit.id, STATUS_CYCLE[commit.status]) : undefined}
+                          style={canEdit ? undefined : { cursor: "default", pointerEvents: "none" }}
+                          title={canEdit ? "Click para cambiar estado" : undefined} />
+                        <span className="pmt_commitArea"
+                          style={{
+                            background: areaColor(areas, el) + "22",
+                            color: areaColor(areas, el),
+                          }}>
+                          {areaLabel(areas, el)}
                         </span>
-                      )}
-                      <span className="pmt_commitDay">
-                        {commit.due_date
-                          ? new Date(commit.due_date + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" })
-                          : `Día ${commit.deadline_day}`}
-                      </span>
-                      {isLate && penalty > 0 && (
-                        <span className="pmt_commitPenalty2">-{penalty}pt</span>
-                      )}
-                      <button type="button" className="pmt_commitDescBtn"
-                        title={commit.description ? "Ver/editar descripción" : "Agregar descripción"}
-                        onClick={() => { setDescPopupCommit(commit); setDescDraft(commit.description ?? ""); }}>
-                        <Pencil size={11} />
-                        {commit.description && <span className="pmt_commitDescDot" />}
-                      </button>
-                      {canEdit && (
-                        <button type="button" className="pmt_commitDeleteBtn"
-                          onClick={() => onDeleteCommit(commit.id)} title="Eliminar meta">
-                          <Trash2 size={11} />
+                        {editingLabelId === commit.id ? (
+                          <input className="pmt_commitLabelInput" value={labelDraft} autoFocus
+                            onChange={(e) => setLabelDraft(e.target.value)}
+                            onBlur={() => { onEditCommitLabel(commit.id, labelDraft); setEditingLabelId(null); }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter")  { onEditCommitLabel(commit.id, labelDraft); setEditingLabelId(null); }
+                              if (e.key === "Escape") { setEditingLabelId(null); }
+                            }} />
+                        ) : (
+                          <span className="pmt_commitLabel2" title="Click para editar"
+                            onClick={() => { setEditingLabelId(commit.id); setLabelDraft(commit.label); }}>
+                            {commit.label}
+                          </span>
+                        )}
+                        <span className="pmt_commitDay">
+                          {commit.due_date
+                            ? new Date(commit.due_date + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" })
+                            : `Día ${commit.deadline_day}`}
+                        </span>
+                        {isLate && penalty > 0 && (
+                          <span className="pmt_commitPenalty2">-{penalty}pt</span>
+                        )}
+                        <button type="button" className="pmt_commitDescBtn"
+                          title={commit.description ? "Ver/editar descripción" : "Agregar descripción"}
+                          onClick={() => { setDescPopupCommit(commit); setDescDraft(commit.description ?? ""); }}>
+                          <Pencil size={11} />
+                          {commit.description && <span className="pmt_commitDescDot" />}
                         </button>
-                      )}
-                    </div>
-                  );
-                })}
+                        {canEdit && (
+                          <button type="button" className="pmt_commitDeleteBtn"
+                            onClick={() => onDeleteCommit(commit.id)} title="Eliminar meta">
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  };
+
+                  const GROUPS = [
+                    { key: "in_progress" as const, label: "En curso",     dot: "var(--st-progress)",  match: (s: string) => s === "in_progress" },
+                    { key: "pending"     as const, label: "En cola",      dot: "var(--pmt-text-subtle)", match: (s: string) => s === "pending" },
+                    { key: "done"        as const, label: "Completadas", dot: "var(--st-ok)",        match: (s: string) => s === "success" || s === "failed" },
+                  ];
+                  return GROUPS.map((g) => {
+                    const groupCommits = visibleCommits.filter((c) => g.match(c.status));
+                    const isCollapsed = collapsedGroups.has(g.key);
+                    return (
+                      <div key={g.key} className="pmt_commitGroup">
+                        <button type="button" className="pmt_commitGroupHeader"
+                          onClick={() => toggleGroup(g.key)}>
+                          <ChevronDown size={12}
+                            className={`pmt_commitGroupChevron${isCollapsed ? " is-collapsed" : ""}`} />
+                          <span className="pmt_commitGroupDot" style={{ background: g.dot }} />
+                          <span className="pmt_commitGroupLabel">{g.label}</span>
+                          <span className="pmt_commitGroupCount">· {groupCommits.length}</span>
+                        </button>
+                        {!isCollapsed && (
+                          groupCommits.length === 0 ? (
+                            <div className="pmt_commitGroupEmpty">Sin metas en esta categoría</div>
+                          ) : (
+                            <div className="pmt_commitGroupBody">
+                              {groupCommits.map(renderRow)}
+                            </div>
+                          )
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
 
-              {!addCommitOpen && canEdit && (
-                <button type="button" className="pmt_addCommitBtn"
-                  onClick={() => setAddCommitOpen(true)}>
-                  <Plus size={12} /> Agregar meta
-                </button>
-              )}
+              {/* Add-meta modal popup */}
               {addCommitOpen && (
-                <div className="pmt_addCommitForm">
-                  <select value={commitDraft.element}
-                    onChange={(e) => setCommitDraft((d) => ({ ...d, element: e.target.value }))}>
-                    {areas.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
-                  </select>
-                  <input
-                    placeholder="Describe la meta..."
-                    value={commitDraft.label}
-                    autoFocus
-                    onChange={(e) => setCommitDraft((d) => ({ ...d, label: e.target.value }))}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && commitDraft.label.trim() && commitDraft.due_date) {
-                        onAddCommit(commitDraft);
-                        setAddCommitOpen(false);
-                        setCommitDraft({ label: "", element: areas[0]?.key ?? "robot", deadline_day: Math.ceil(totalDays / 2), start_date: "", due_date: "" });
-                      }
-                    }}
-                  />
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <>
+                  <div className="pmt_descOverlay" onClick={() => setAddCommitOpen(false)} />
+                  <div className="pmt_descPopup">
+                    <div className="pmt_descPopupHead">
+                      <span className="pmt_descPopupTitle">Nueva meta</span>
+                      <button type="button" className="pmt_drawerClose"
+                        onClick={() => setAddCommitOpen(false)}>
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        Inicio
+                        Área
+                      </span>
+                      <select value={commitDraft.element}
+                        onChange={(e) => setCommitDraft((d) => ({ ...d, element: e.target.value }))}
+                        style={{ fontSize: 13, padding: "8px 10px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}>
+                        {areas.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
+                      </select>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Título
                       </span>
                       <input
-                        type="date"
-                        value={commitDraft.start_date ?? ""}
-                        onChange={(e) => setCommitDraft((d) => ({ ...d, start_date: e.target.value }))}
-                        style={{ fontSize: 12, padding: "4px 8px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}
+                        placeholder="Describe la meta..."
+                        value={commitDraft.label}
+                        autoFocus
+                        onChange={(e) => setCommitDraft((d) => ({ ...d, label: e.target.value }))}
+                        style={{ fontSize: 13, padding: "8px 10px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}
                       />
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        Límite
+                        Descripción <span style={{ color: "var(--st-critical)", textTransform: "none", letterSpacing: 0 }}>· requerido</span>
                       </span>
-                      <input
-                        type="date"
-                        value={commitDraft.due_date ?? ""}
-                        min={commitDraft.start_date ?? ""}
-                        onChange={(e) => setCommitDraft((d) => ({
-                          ...d,
-                          due_date: e.target.value,
-                          deadline_day: e.target.value ? dateToDay(e.target.value, projectStartDate) : d.deadline_day,
-                        }))}
-                        style={{ fontSize: 12, padding: "4px 8px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}
+                      <textarea
+                        className="pmt_descTextarea"
+                        placeholder="Detalles, contexto, criterios de éxito..."
+                        value={commitDraft.description}
+                        rows={4}
+                        onChange={(e) => setCommitDraft((d) => ({ ...d, description: e.target.value }))}
                       />
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+                        <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          Inicio
+                        </span>
+                        <input
+                          type="date"
+                          value={commitDraft.start_date ?? ""}
+                          onChange={(e) => setCommitDraft((d) => ({ ...d, start_date: e.target.value }))}
+                          style={{ fontSize: 13, padding: "8px 10px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+                        <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          Límite
+                        </span>
+                        <input
+                          type="date"
+                          value={commitDraft.due_date ?? ""}
+                          min={commitDraft.start_date ?? ""}
+                          onChange={(e) => setCommitDraft((d) => ({
+                            ...d,
+                            due_date: e.target.value,
+                            deadline_day: e.target.value ? dateToDay(e.target.value, projectStartDate) : d.deadline_day,
+                          }))}
+                          style={{ fontSize: 13, padding: "8px 10px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pmt_descPopupActions">
+                      <button type="button" className="pmt_commitClipBtn"
+                        style={{ fontSize: 12, padding: "6px 14px" }}
+                        onClick={() => setAddCommitOpen(false)}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="pmt_addEntryConfirm"
+                        style={{
+                          fontSize: 12, padding: "6px 16px",
+                          ...((!commitDraft.label.trim() || !commitDraft.due_date || !commitDraft.description.trim())
+                            ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                        }}
+                        disabled={!commitDraft.label.trim() || !commitDraft.due_date || !commitDraft.description.trim()}
+                        title={
+                          !commitDraft.label.trim() ? "Falta el título de la meta" :
+                          !commitDraft.due_date ? "Falta la fecha límite" :
+                          !commitDraft.description.trim() ? "Falta la descripción (requerido)" : ""
+                        }
+                        onClick={() => {
+                          if (!commitDraft.label.trim() || !commitDraft.due_date || !commitDraft.description.trim()) return;
+                          onAddCommit(commitDraft);
+                          setAddCommitOpen(false);
+                          setCommitDraft({ label: "", element: areas[0]?.key ?? "robot", deadline_day: Math.ceil(totalDays / 2), start_date: "", due_date: "", description: "" });
+                        }}>
+                        Crear meta
+                      </button>
                     </div>
                   </div>
-                  <button type="button" onClick={() => {
-                    if (!commitDraft.label.trim() || !commitDraft.due_date) return;
-                    onAddCommit(commitDraft);
-                    setAddCommitOpen(false);
-                    setCommitDraft({ label: "", element: areas[0]?.key ?? "robot", deadline_day: Math.ceil(totalDays / 2), start_date: "", due_date: "" });
-                  }}>Agregar</button>
-                  <button type="button" onClick={() => setAddCommitOpen(false)}>Cancelar</button>
-                </div>
+                </>
               )}
 
               {/* Description popup */}
@@ -1975,8 +2128,30 @@ function NoteKpiTile({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState(value);
   const [saving, setSaving]   = useState(false);
+  const [scrambled, setScrambled] = useState<string | null>(null);
 
   useEffect(() => { setDraft(value); }, [value]);
+
+  // ── Scramble effect while generating a new word ───────────────────────────
+  useEffect(() => {
+    if (!generating || !value.trim()) {
+      setScrambled(null);
+      return;
+    }
+    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const scramble = () => {
+      const out = value
+        .split("")
+        .map((ch) => (/\s|[*_#`>\-.,;:¿?¡!()"'\n]/.test(ch) ? ch : charset[Math.floor(Math.random() * charset.length)]))
+        .join("");
+      setScrambled(out);
+    };
+    scramble();
+    const id = setInterval(scramble, 80);
+    return () => clearInterval(id);
+  }, [generating, value]);
+
+  const displayValue = scrambled ?? value;
 
   const commit = async () => {
     if (draft === value) { setEditing(false); return; }
@@ -2014,9 +2189,9 @@ function NoteKpiTile({
   return (
     <div className="pmt_kpiNoteTile" onClick={() => setEditing(true)} title="Click para editar">
       {value.trim() ? (
-        <div className="pmt_kpiNoteText">
+        <div className={`pmt_kpiNoteText${scrambled ? " pmt_kpiNoteText--scrambling" : ""}`}>
           <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-            {value}
+            {displayValue}
           </ReactMarkdown>
         </div>
       ) : (
@@ -2512,7 +2687,7 @@ export default function PmTrackerPanel({
   // ── Add commit (goal) ────────────────────────────────────────────────────────
   const handleAddCommit = useCallback(async (
     entryId: string,
-    draft: { label: string; element: string; deadline_day: number; due_date?: string },
+    draft: { label: string; element: string; deadline_day: number; due_date?: string; description?: string },
   ) => {
     if (!draft.label.trim()) return;
     const insert: Omit<TraceCommit, ""> = {
@@ -2523,6 +2698,7 @@ export default function PmTrackerPanel({
       label: draft.label.trim(),
       deadline_day: Math.max(1, draft.deadline_day),
       ...(draft.due_date ? { due_date: draft.due_date } : {}),
+      ...(draft.description?.trim() ? { description: draft.description.trim() } : {}),
       status: "pending",
       updated_at: new Date().toISOString(),
     };
@@ -2658,6 +2834,40 @@ export default function PmTrackerPanel({
 
   const drawerEntry = drawerEntryId ? entries.find((e) => e.id === drawerEntryId) : null;
 
+  // ── Word of the Day: recent words history (per project) ──────────────────────
+  const recentWordsKey = project ? `pmt.recentWords.${project.id}` : null;
+  const extractWord = (note: string): string | null => {
+    if (!note) return null;
+    // Find the first italic-marked single word/phrase after "Word of the day:"
+    const m = note.match(/\*\*Word of the day:\*\*\s*\n\s*\*([^*\n]+)\*/i);
+    if (m && m[1]) return m[1].trim();
+    return null;
+  };
+  const getRecentWords = (): string[] => {
+    if (!recentWordsKey) return [];
+    try {
+      const raw = localStorage.getItem(recentWordsKey);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+  const pushRecentWord = (word: string) => {
+    if (!recentWordsKey || !word) return;
+    const list = getRecentWords();
+    const norm = word.trim().toLowerCase();
+    const next = [word, ...list.filter((w) => w.trim().toLowerCase() !== norm)].slice(0, 5);
+    try { localStorage.setItem(recentWordsKey, JSON.stringify(next)); } catch {}
+  };
+
+  // Persist the current word into history whenever the note updates (not while generating)
+  useEffect(() => {
+    if (wordGenerating) return;
+    const current = extractWord((projectCfg.note as string | undefined) ?? "");
+    if (current) pushRecentWord(current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectCfg.note, wordGenerating]);
+
   // ── Word of the Day: generate ─────────────────────────────────────────────────
   const handleGenerateWord = () => {
     if (!project || wordGenerating) return;
@@ -2691,7 +2901,11 @@ export default function PmTrackerPanel({
       }),
       leader: leader ? { name: leader.pm_name, team: leader.team_name, score: calcGlobalScore(leader) } : null,
     };
-    const prompt = WORD_PROMPT_TEMPLATE.replace("{SNAPSHOT}", JSON.stringify(snapshot, null, 2));
+    const recent = getRecentWords();
+    const recentText = recent.length > 0 ? recent.join(", ") : "(ninguna)";
+    const prompt = WORD_PROMPT_TEMPLATE
+      .replace("{SNAPSHOT}", JSON.stringify(snapshot, null, 2))
+      .replace("{RECENT_WORDS}", recentText);
     setWordGenerating(true);
     _generateWord(prompt);
   };

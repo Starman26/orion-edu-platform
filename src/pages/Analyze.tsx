@@ -1404,27 +1404,31 @@ export default function Analysis() {
               {/* Results body — PM Tracker, Equipment Queue, or AI chat */}
               {selectedSession?.templateType === "pm_tracker" ? (
                 <div className="analysis_resultsBody analysis_resultsBody--full">
-                  <Suspense fallback={<div className="analysis_previewEmpty"><p>Loading tracker...</p></div>}>
-                    <PmTrackerPanel
-                      sessionId={selectedSessionId!}
-                      teamId={teamId ?? ""}
-                      userId={userId ?? ""}
-                      config={selectedSession.templateConfig ?? {}}
-                      onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
-                    />
-                  </Suspense>
+                  <div className="analysis_templateFrame">
+                    <Suspense fallback={<div className="analysis_previewEmpty"><p>Loading tracker...</p></div>}>
+                      <PmTrackerPanel
+                        sessionId={selectedSessionId!}
+                        teamId={teamId ?? ""}
+                        userId={userId ?? ""}
+                        config={selectedSession.templateConfig ?? {}}
+                        onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
+                      />
+                    </Suspense>
+                  </div>
                 </div>
               ) : selectedSession?.templateType === "equipment_queue" ? (
                 <div className="analysis_resultsBody analysis_resultsBody--full">
-                  <Suspense fallback={<div className="analysis_previewEmpty"><p>Cargando fila...</p></div>}>
-                    <EquipmentQueuePanel
-                      sessionId={selectedSessionId!}
-                      teamId={teamId ?? ""}
-                      userId={userId ?? ""}
-                      userName={userName || "User"}
-                      onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
-                    />
-                  </Suspense>
+                  <div className="analysis_templateFrame">
+                    <Suspense fallback={<div className="analysis_previewEmpty"><p>Cargando fila...</p></div>}>
+                      <EquipmentQueuePanel
+                        sessionId={selectedSessionId!}
+                        teamId={teamId ?? ""}
+                        userId={userId ?? ""}
+                        userName={userName || "User"}
+                        onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
+                      />
+                    </Suspense>
+                  </div>
                 </div>
               ) : (
                 <div className="analysis_resultsBody">
