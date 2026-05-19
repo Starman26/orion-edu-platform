@@ -2287,8 +2287,8 @@ function CustomKpiTile({
 export default function PmTrackerPanel({
   sessionId, teamId, userId: _userId, config, onExpandSidebar,
 }: PmTrackerPanelProps) {
-  const penaltyPerDay   = (config.penalty_per_day   as number | undefined) ?? 5;
-  const maxPenalty      = (config.max_penalty        as number | undefined) ?? 20;
+  const penaltyPerDay   = (config.penalty_per_day   as number | undefined) ?? 1;
+  const maxPenalty      = (config.max_penalty        as number | undefined) ?? 10;
   const configTotalDays = (config.total_working_days as number | undefined) ?? 10;
 
   // ── Core state ──────────────────────────────────────────────────────────────
@@ -2297,6 +2297,8 @@ export default function PmTrackerPanel({
   const [commitsByEntry, setCommitsByEntry] = useState<Record<string, TraceCommit[]>>({});
   const [loading, setLoading]               = useState(true);
   const [creatingProject, setCreatingProject] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", start_date: "", end_date: "" });
 
   // Derived from project config
   const projectCfg  = (project?.config ?? {}) as Record<string, unknown>;
@@ -2481,7 +2483,10 @@ export default function PmTrackerPanel({
     if (!silent) setLoading(true);
     try {
       const { data: projectData, error: projectError } = await supabase
-        .from("trace_projects").select("*").eq("team_id", teamId).maybeSingle();
+        .from("trace_projects").select("*")
+        .eq("team_id", teamId)
+        .eq("analysis_session_id", sessionId)
+        .maybeSingle();
 
       if (projectError) {
         console.error("[PmTracker] Load project error:", projectError);
@@ -2530,13 +2535,17 @@ export default function PmTrackerPanel({
   useEffect(() => { loadData(); }, [loadData]);
 
   // Auto-refresh: re-fetch silently every 20s. Skip when tab is hidden.
-  // Modal state (add-meta, description) lives in DrawerCommits sub-component and
-  // is not disrupted by parent data refetches — local form drafts survive.
+  // Uses a ref so the interval is created exactly ONCE on mount and never resets
+  // when loadData rebuilds (sessionId/teamId changes don't reset the timer).
+  const loadDataRef = useRef(loadData);
+  useEffect(() => { loadDataRef.current = loadData; }, [loadData]);
+
   useEffect(() => {
     const POLL_MS = 20_000;
     const tick = () => {
       if (document.hidden) return;
-      loadData({ silent: true });
+      console.debug("[PmTracker] auto-refresh tick");
+      loadDataRef.current({ silent: true });
     };
     const id = setInterval(tick, POLL_MS);
     const onVisible = () => { if (!document.hidden) tick(); };
@@ -2545,7 +2554,7 @@ export default function PmTrackerPanel({
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadData]);
+  }, []);
 
   useEffect(() => {
     if (!showFilterMenu) return;
@@ -2559,22 +2568,37 @@ export default function PmTrackerPanel({
 
   // ── Create project ───────────────────────────────────────────────────────────
   const handleCreateProject = async () => {
+    const name = createForm.name.trim();
+    if (!name || !createForm.start_date || !createForm.end_date) return;
+    if (createForm.end_date < createForm.start_date) return;
+
     setCreatingProject(true);
     try {
+      const totalDays = Math.max(
+        1,
+        calendarDaysBetween(createForm.start_date, createForm.end_date) + 1,
+      );
       const { data: newProject, error } = await supabase
         .from("trace_projects")
         .insert({
           team_id: teamId,
           analysis_session_id: sessionId || null,
-          name: "Flexible Manufacturing Challenge 2026",
-          start_date: new Date().toISOString().split("T")[0],
-          end_date: new Date(Date.now() + 14 * 864e5).toISOString().split("T")[0],
-          total_working_days: 10,
-          config: { areas: DEFAULT_AREAS, zones: DEFAULT_ZONES, theme: "light" },
+          name,
+          start_date: createForm.start_date,
+          end_date: createForm.end_date,
+          total_working_days: totalDays,
+          config: {
+            areas: DEFAULT_AREAS,
+            zones: DEFAULT_ZONES,
+            theme: "light",
+            auditor_ids: currentUserId ? [currentUserId] : [],
+          },
         })
         .select().single();
       if (error) { console.error("[PmTracker] Create error:", error); return; }
       setProject(newProject as TraceProject);
+      setShowCreateForm(false);
+      setCreateForm({ name: "", start_date: "", end_date: "" });
     } finally {
       setCreatingProject(false);
     }
@@ -2722,7 +2746,16 @@ export default function PmTrackerPanel({
       updated_at: new Date().toISOString(),
     };
     const { data, error } = await supabase.from("trace_commits").insert(insert).select().single();
-    if (error) console.error("[PmTracker] Add commit error:", error);
+    if (error) {
+      console.error("[PmTracker] Add commit error:", error);
+      alert(
+        "No se pudo crear la meta.\n\n" +
+        `${error.message}\n` +
+        (error.details ? `\nDetalles: ${error.details}` : "") +
+        (error.hint ? `\nHint: ${error.hint}` : "")
+      );
+      return; // do NOT add to local state if DB insert failed
+    }
     setCommitsByEntry((prev) => ({
       ...prev,
       [entryId]: [...(prev[entryId] ?? []), (data ?? insert) as TraceCommit].sort(
@@ -2959,14 +2992,80 @@ export default function PmTrackerPanel({
 
   // ── Render: no project ───────────────────────────────────────────────────────
   if (!project) {
+    if (showCreateForm) {
+      const canSubmit =
+        !!createForm.name.trim() &&
+        !!createForm.start_date &&
+        !!createForm.end_date &&
+        createForm.end_date >= createForm.start_date;
+      return (
+        <div className="pmt_emptyProject">
+          <Calendar size={48} strokeWidth={1} style={{ color: "rgba(16,17,19,0.2)" }} />
+          <h3>Nuevo proyecto</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 340, marginTop: 16 }}>
+            <label style={{ fontSize: 12, color: "rgba(16,17,19,0.7)" }}>
+              <span style={{ display: "block", marginBottom: 4 }}>Nombre</span>
+              <input
+                type="text"
+                placeholder="Nombre del proyecto"
+                value={createForm.name}
+                onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                style={{ width: "100%", padding: "8px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 6, fontSize: 14 }}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <label style={{ flex: 1, fontSize: 12, color: "rgba(16,17,19,0.7)" }}>
+                <span style={{ display: "block", marginBottom: 4 }}>Inicio</span>
+                <input
+                  type="date"
+                  value={createForm.start_date}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, start_date: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 6, fontSize: 14 }}
+                />
+              </label>
+              <label style={{ flex: 1, fontSize: 12, color: "rgba(16,17,19,0.7)" }}>
+                <span style={{ display: "block", marginBottom: 4 }}>Fin</span>
+                <input
+                  type="date"
+                  value={createForm.end_date}
+                  min={createForm.start_date || undefined}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, end_date: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 12px", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 6, fontSize: 14 }}
+                />
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateForm(false);
+                  setCreateForm({ name: "", start_date: "", end_date: "" });
+                }}
+                style={{ padding: "8px 16px", background: "transparent", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="pmt_createProjectBtn"
+                onClick={handleCreateProject}
+                disabled={creatingProject || !canSubmit}
+              >
+                {creatingProject ? "Creando..." : "Crear"}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="pmt_emptyProject">
         <Calendar size={48} strokeWidth={1} style={{ color: "rgba(16,17,19,0.2)" }} />
         <h3>Sin proyecto</h3>
         <p>Crea un PM Tracker para empezar a monitorear el progreso de tu equipo.</p>
         <button type="button" className="pmt_createProjectBtn"
-          onClick={handleCreateProject} disabled={creatingProject}>
-          {creatingProject ? "Creando..." : "Crear Proyecto"}
+          onClick={() => setShowCreateForm(true)} disabled={creatingProject}>
+          Crear Proyecto
         </button>
       </div>
     );
