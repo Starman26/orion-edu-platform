@@ -1,7 +1,8 @@
 // src/pages/Config.tsx — Analysis page with real Supabase data + embedded chat
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { Menu, Plus, Search, BarChart2, PieChart, TrendingUp, Activity, Clock, Target, Pencil, Trash2, ChevronLeft, ChevronRight, Printer, X, Check } from "lucide-react";
+import { Menu, Plus, Search, BarChart2, Pencil, Trash2, ChevronLeft, ChevronRight, Printer, X, Check } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { getAnalysisIcon, hashToIconName } from "../lib/analysisIcons";
 import { useThinking } from "../context/Thinkingcontext";
 import { useAgentChat } from "../components/useAgentChat";
 import type { AgentEvent } from "../components/useAgentChat";
@@ -41,7 +42,7 @@ interface AnalysisSession {
   id: string;
   title: string;
   description: string;
-  iconIndex: number;
+  iconName: string;
   authorName: string;
   auth_user_id: string;
   createdAt: string;
@@ -92,17 +93,8 @@ async function loadUserProfile(user: any): Promise<{ name: string; role: string 
   return { name: baseName, role, teamId };
 }
 
-/** Deterministic icon index from session ID */
-function hashIconIndex(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
-  return Math.abs(h) % 6;
-}
-
-const CARD_ICONS = [BarChart2, Clock, TrendingUp, Activity, PieChart, Target];
-
-function getCardIconByIndex(index: number) {
-  const Icon = CARD_ICONS[index % CARD_ICONS.length];
+function renderSessionIcon(iconName: string) {
+  const Icon = getAnalysisIcon(iconName);
   return <Icon size={20} strokeWidth={1.5} />;
 }
 
@@ -201,7 +193,7 @@ function AnalysisCardItem({ session, isSelected, isDeleting, currentUserId, onCl
     >
       <div className="analysis_cardHeader">
         <div className="analysis_cardIcon">
-          {getCardIconByIndex(session.iconIndex)}
+          {renderSessionIcon(session.iconName)}
         </div>
         <span className="analysis_cardTitle">{session.title}</span>
         {isSelected && (
@@ -500,7 +492,7 @@ export default function Analysis() {
       const { data: sessions, error: sessErr } = await supabase
         .schema("chat")
         .from("sessions")
-        .select("id, title, created_at, updated_at, auth_user_id, template_id, visibility, participant_ids")
+        .select("id, title, created_at, updated_at, auth_user_id, template_id, visibility, participant_ids, icon_name")
         .eq("chat_mode", "analysis")
         .eq("status", "active")
         .eq("team_id", teamId)
@@ -570,7 +562,7 @@ export default function Analysis() {
           id: s.id,
           title: s.title || "Untitled Analysis",
           description: "",
-          iconIndex: hashIconIndex(s.id),
+          iconName: (s as { icon_name?: string | null }).icon_name || hashToIconName(s.id),
           authorName: nameMap[s.auth_user_id] || "Unknown",
           auth_user_id: s.auth_user_id,
           createdAt: s.created_at,
@@ -731,7 +723,7 @@ export default function Analysis() {
       id: newId,
       title: "New Analysis",
       description: "",
-      iconIndex: hashIconIndex(newId),
+      iconName: hashToIconName(newId),
       authorName: userName || "User",
       auth_user_id: userId ?? "",
       createdAt: now,
@@ -801,7 +793,7 @@ export default function Analysis() {
       id: newId,
       title,
       description: "",
-      iconIndex: hashIconIndex(newId),
+      iconName: hashToIconName(newId),
       authorName: userName || "User",
       auth_user_id: userId ?? "",
       createdAt: now,
@@ -1372,7 +1364,7 @@ export default function Analysis() {
                 <div className="analysis_resultsHeader">
                   <div className="analysis_resultsHeaderLeft">
                     <div className="analysis_resultsIcon">
-                      {selectedSession && getCardIconByIndex(selectedSession.iconIndex)}
+                      {selectedSession && renderSessionIcon(selectedSession.iconName)}
                     </div>
                     <h2 className="analysis_resultsTitle">{selectedSession?.title || "Analysis"}</h2>
                   </div>

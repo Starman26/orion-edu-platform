@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { supabase } from "../lib/supabaseClient";
+import { ANALYSIS_ICON_NAMES, getAnalysisIcon, type AnalysisIconName } from "../lib/analysisIcons";
 import { useAgentChat } from "./useAgentChat";
 import type { AgentEvent } from "./useAgentChat";
 import "../styles/pm-tracker.css";
@@ -2298,7 +2299,12 @@ export default function PmTrackerPanel({
   const [loading, setLoading]               = useState(true);
   const [creatingProject, setCreatingProject] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", start_date: "", end_date: "" });
+  const [createForm, setCreateForm] = useState<{
+    name: string;
+    start_date: string;
+    end_date: string;
+    icon_name: AnalysisIconName;
+  }>({ name: "", start_date: "", end_date: "", icon_name: "bar-chart" });
 
   // Derived from project config
   const projectCfg  = (project?.config ?? {}) as Record<string, unknown>;
@@ -2597,8 +2603,16 @@ export default function PmTrackerPanel({
         .select().single();
       if (error) { console.error("[PmTracker] Create error:", error); return; }
       setProject(newProject as TraceProject);
+      if (sessionId) {
+        const { error: iconErr } = await supabase
+          .schema("chat")
+          .from("sessions")
+          .update({ icon_name: createForm.icon_name })
+          .eq("id", sessionId);
+        if (iconErr) console.error("[PmTracker] Save session icon error:", iconErr);
+      }
       setShowCreateForm(false);
-      setCreateForm({ name: "", start_date: "", end_date: "" });
+      setCreateForm({ name: "", start_date: "", end_date: "", icon_name: "bar-chart" });
     } finally {
       setCreatingProject(false);
     }
@@ -3034,12 +3048,42 @@ export default function PmTrackerPanel({
                 />
               </label>
             </div>
+            <label style={{ fontSize: 12, color: "rgba(16,17,19,0.7)" }}>
+              <span style={{ display: "block", marginBottom: 4 }}>Icono</span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 6 }}>
+                {ANALYSIS_ICON_NAMES.map((iconName) => {
+                  const Icon = getAnalysisIcon(iconName);
+                  const selected = createForm.icon_name === iconName;
+                  return (
+                    <button
+                      key={iconName}
+                      type="button"
+                      onClick={() => setCreateForm((f) => ({ ...f, icon_name: iconName }))}
+                      title={iconName}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 8,
+                        background: selected ? "rgba(37,99,235,0.1)" : "transparent",
+                        border: selected ? "1px solid #2563eb" : "1px solid rgba(0,0,0,0.15)",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        color: selected ? "#2563eb" : "rgba(16,17,19,0.7)",
+                      }}
+                    >
+                      <Icon size={18} strokeWidth={1.5} />
+                    </button>
+                  );
+                })}
+              </div>
+            </label>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
               <button
                 type="button"
                 onClick={() => {
                   setShowCreateForm(false);
-                  setCreateForm({ name: "", start_date: "", end_date: "" });
+                  setCreateForm({ name: "", start_date: "", end_date: "", icon_name: "bar-chart" });
                 }}
                 style={{ padding: "8px 16px", background: "transparent", border: "1px solid rgba(0,0,0,0.15)", borderRadius: 6, cursor: "pointer", fontSize: 14 }}
               >
