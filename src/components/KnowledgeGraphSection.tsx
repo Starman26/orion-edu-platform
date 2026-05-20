@@ -40,6 +40,7 @@ import {
   Package,
   Link2,
   Trash2,
+  User,
   X,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
@@ -49,7 +50,7 @@ import { equipmentTypeIcon } from "./EquipmentTab";
 // TYPES & CONSTANTS
 // ============================================================================
 
-type NodeKind = "equipment" | "space" | "concept" | "process" | "material";
+type NodeKind = "equipment" | "space" | "concept" | "process" | "material" | "person";
 type Relation =
   | "controls"
   | "monitors"
@@ -57,7 +58,11 @@ type Relation =
   | "connects_to"
   | "is_a"
   | "part_of"
-  | "related_to";
+  | "related_to"
+  | "responsible_for"
+  | "operates"
+  | "supervises"
+  | "member_of";
 
 interface KGNodeRow {
   id: string;
@@ -107,6 +112,7 @@ const NODE_KINDS: { value: NodeKind; label: string; color: string }[] = [
   { value: "concept", label: "Concepto", color: "#7c3aed" },
   { value: "process", label: "Proceso", color: "#ea580c" },
   { value: "material", label: "Material", color: "#16a34a" },
+  { value: "person", label: "Persona", color: "#db2777" },
 ];
 
 const RELATIONS: { value: Relation; label: string }[] = [
@@ -117,6 +123,10 @@ const RELATIONS: { value: Relation; label: string }[] = [
   { value: "is_a", label: "es un" },
   { value: "part_of", label: "parte de" },
   { value: "related_to", label: "relacionado con" },
+  { value: "responsible_for", label: "es encargado de" },
+  { value: "operates", label: "opera" },
+  { value: "supervises", label: "supervisa" },
+  { value: "member_of", label: "pertenece a" },
 ];
 
 // Vertical rails on each side so parallel edges between the same pair of nodes don't stack.
@@ -147,6 +157,8 @@ const kindIcon = (kind: NodeKind, equipmentType?: string) => {
       return <Layers {...props} />;
     case "material":
       return <Package {...props} />;
+    case "person":
+      return <User {...props} />;
   }
 };
 
@@ -434,10 +446,14 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
   // Toolbar dropdowns
   const [equipmentMenuOpen, setEquipmentMenuOpen] = useState(false);
   const [spaceMenuOpen, setSpaceMenuOpen] = useState(false);
+  const [personMenuOpen, setPersonMenuOpen] = useState(false);
   const [equipmentList, setEquipmentList] = useState<
     { id: string; name: string; type: string }[]
   >([]);
   const [spaceList, setSpaceList] = useState<{ id: number; name: string }[]>([]);
+  const [personList, setPersonList] = useState<
+    { auth_user_id: string; full_name: string; role: string | null }[]
+  >([]);
 
   // Modals
   const [showFreeNodeModal, setShowFreeNodeModal] = useState(false);
@@ -504,15 +520,16 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     loadGraph();
   }, [loadGraph]);
 
-  // ── Load equipment & spaces for toolbar dropdowns ──
+  // ── Load equipment, spaces & people for toolbar dropdowns ──
   useEffect(() => {
     if (!teamId) {
       setEquipmentList([]);
       setSpaceList([]);
+      setPersonList([]);
       return;
     }
     (async () => {
-      const [{ data: eq }, { data: sp }] = await Promise.all([
+      const [{ data: eq }, { data: sp }, { data: mems }] = await Promise.all([
         supabase
           .schema("lab")
           .from("equipment_profiles")
@@ -525,9 +542,35 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
           .select("id, name")
           .eq("is_active", true)
           .order("name"),
+        supabase
+          .from("team_memberships")
+          .select("auth_user_id, role")
+          .eq("team_id", teamId),
       ]);
       setEquipmentList((eq || []) as { id: string; name: string; type: string }[]);
       setSpaceList((sp || []) as { id: number; name: string }[]);
+
+      const memberRows = (mems || []) as { auth_user_id: string; role: string | null }[];
+      const ids = memberRows.map((m) => m.auth_user_id).filter(Boolean);
+      if (ids.length === 0) {
+        setPersonList([]);
+        return;
+      }
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("auth_user_id, full_name")
+        .in("auth_user_id", ids);
+      const profMap = new Map<string, string | null>();
+      for (const p of (profs || []) as { auth_user_id: string; full_name: string | null }[]) {
+        profMap.set(p.auth_user_id, p.full_name);
+      }
+      const people = memberRows.map((m) => ({
+        auth_user_id: m.auth_user_id,
+        full_name: profMap.get(m.auth_user_id) || `Miembro ${m.auth_user_id.slice(0, 6)}`,
+        role: m.role,
+      }));
+      people.sort((a, b) => a.full_name.localeCompare(b.full_name));
+      setPersonList(people);
     })();
   }, [teamId]);
 
@@ -560,6 +603,21 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
   const availableSpaces = useMemo(
     () => spaceList.filter((s) => !linkedSpaceIds.has(String(s.id))),
     [spaceList, linkedSpaceIds]
+  );
+
+  const linkedPersonIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const n of nodes) {
+      if (n.data.source_table === "profiles" && n.data.source_id) {
+        set.add(n.data.source_id);
+      }
+    }
+    return set;
+  }, [nodes]);
+
+  const availablePersons = useMemo(
+    () => personList.filter((p) => !linkedPersonIds.has(p.auth_user_id)),
+    [personList, linkedPersonIds]
   );
 
   const selectedNode = useMemo(
@@ -852,6 +910,56 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     [teamId, userId, canEdit, centerPosition, setNodes, showNotice]
   );
 
+  const insertPersonNode = useCallback(
+    async (p: { auth_user_id: string; full_name: string }) => {
+      if (!teamId || !canEdit) return;
+      const pos = centerPosition();
+      const { data, error } = await supabase
+        .schema("lab")
+        .from("kg_nodes")
+        .insert({
+          team_id: teamId,
+          kind: "person",
+          source_table: "profiles",
+          source_id: p.auth_user_id,
+          label: p.full_name,
+          x: pos.x,
+          y: pos.y,
+          created_by: userId,
+        })
+        .select("*")
+        .single();
+
+      if (error) {
+        if ((error.code === "23505") || /duplicate/i.test(error.message)) {
+          showNotice("Ya está en el grafo");
+        } else {
+          console.error("[KG] insert person node:", error);
+          showNotice("No se pudo agregar la persona");
+        }
+        return;
+      }
+      const row = data as KGNodeRow;
+      setNodes((prev) => [
+        ...prev,
+        {
+          id: row.id,
+          type: "kg",
+          position: { x: Number(row.x), y: Number(row.y) },
+          data: {
+            kind: row.kind,
+            label: row.label,
+            notes: row.notes,
+            source_table: row.source_table,
+            source_id: row.source_id,
+          },
+        },
+      ]);
+      setPersonMenuOpen(false);
+    },
+    [teamId, userId, canEdit, centerPosition, setNodes, showNotice]
+  );
+
   const insertFreeNode = useCallback(
     async (payload: { kind: NodeKind; label: string; notes: string }) => {
       if (!teamId || !canEdit) return;
@@ -1097,6 +1205,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     setSelectedEdgeId(null);
     setEquipmentMenuOpen(false);
     setSpaceMenuOpen(false);
+    setPersonMenuOpen(false);
   }, []);
 
   const isEmpty = !loading && nodes.length === 0;
@@ -1113,6 +1222,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
             onClick={() => {
               setEquipmentMenuOpen((v) => !v);
               setSpaceMenuOpen(false);
+              setPersonMenuOpen(false);
             }}
             disabled={!teamId}
           >
@@ -1153,6 +1263,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
             onClick={() => {
               setSpaceMenuOpen((v) => !v);
               setEquipmentMenuOpen(false);
+              setPersonMenuOpen(false);
             }}
             disabled={!teamId}
           >
@@ -1179,6 +1290,50 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
                       <MapPin size={13} strokeWidth={1.8} />
                     </span>
                     {sp.name}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="ll_kg_toolGroup">
+          <button
+            type="button"
+            className="ll_kg_btn"
+            onClick={() => {
+              setPersonMenuOpen((v) => !v);
+              setEquipmentMenuOpen(false);
+              setSpaceMenuOpen(false);
+            }}
+            disabled={!teamId}
+          >
+            <Plus size={13} strokeWidth={2} />
+            Persona
+          </button>
+          {personMenuOpen && (
+            <div className="ll_kg_dropdown">
+              {availablePersons.length === 0 ? (
+                <div className="ll_kg_dropdownEmpty">
+                  {personList.length === 0
+                    ? "No hay miembros en el lab"
+                    : "Todos los miembros ya están en el grafo"}
+                </div>
+              ) : (
+                availablePersons.map((p) => (
+                  <button
+                    key={p.auth_user_id}
+                    type="button"
+                    className="ll_kg_dropdownItem"
+                    onClick={() => insertPersonNode(p)}
+                  >
+                    <span className="ll_kg_dropdownIcon">
+                      <User size={13} strokeWidth={1.8} />
+                    </span>
+                    {p.full_name}
+                    {p.role && (
+                      <span className="ll_kg_dropdownMeta"> · {p.role}</span>
+                    )}
                   </button>
                 ))
               )}
@@ -1367,7 +1522,13 @@ function NodeSidePanel({ node, canEdit, onClose, onUpdate, onDelete }: NodeSideP
             disabled={isLinked || !canEdit}
           />
           {isLinked && (
-            <span className="ll_kg_helper">vinculado a equipos registrados</span>
+            <span className="ll_kg_helper">
+              {node.data.source_table === "profiles"
+                ? "vinculado a un miembro del lab"
+                : node.data.source_table === "spaces"
+                ? "vinculado a un espacio registrado"
+                : "vinculado a un equipo registrado"}
+            </span>
           )}
         </div>
 
