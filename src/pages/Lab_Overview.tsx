@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
+import KnowledgeGraphSection from "../components/KnowledgeGraphSection";
 import "../styles/livinglab.css";
 
 const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
@@ -372,6 +373,9 @@ export function LivingLabPage() {
   const [selectedTables, setSelectedTables] = useState<SelectedTable[]>([]);
   const [tablePreviews, setTablePreviews] = useState<Record<string, TablePreviewData>>({});
 
+  // Active view tab
+  const [activeView, setActiveView] = useState<"kb" | "team">("kb");
+
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -620,8 +624,44 @@ export function LivingLabPage() {
       {/* Content */}
       <div className="ll_scrollWrap">
       <div className="ll_content">
-        {/* Top Row — Team Description + Members + Output Connection */}
-        <div className="ll_topRow">
+        {/* View tabs */}
+        <div className="ll_tabs" role="tablist" aria-label="Living Lab views">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === "kb"}
+            className={`ll_tab ${activeView === "kb" ? "ll_tab--active" : ""}`}
+            onClick={() => setActiveView("kb")}
+          >
+            Knowledge Graph
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === "team"}
+            className={`ll_tab ${activeView === "team" ? "ll_tab--active" : ""}`}
+            onClick={() => setActiveView("team")}
+          >
+            Info Team
+            <span className="ll_tabCount">{members.length}</span>
+          </button>
+        </div>
+
+        {activeView === "kb" && (
+          <>
+            {/* Knowledge Graph */}
+            <KnowledgeGraphSection
+              teamId={teamId}
+              userId={user?.id ?? null}
+              canEdit={userRole === "admin" || userRole === "owner"}
+            />
+          </>
+        )}
+
+        {activeView === "team" && (
+        <>
+        {/* Top Row — Team Description + Output Connection */}
+        <div className="ll_topRow ll_topRow--noMembers">
           {/* Team Description */}
           <div className="ll_description">
             <h2 className="ll_sectionTitle">Team Description</h2>
@@ -645,55 +685,6 @@ export function LivingLabPage() {
               <Pencil size={14} />
               Change Description
             </button>
-          </div>
-
-          {/* Team Members */}
-          <div className="ll_members">
-            <h2 className="ll_sectionTitle">Team Members</h2>
-            <div className="ll_membersList">
-              {membersLoading ? (
-                <>
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="ll_memberRow ll_memberRow--skeleton">
-                      <div className="ll_skeleton" style={{ width: 36, height: 36, borderRadius: "50%" }} />
-                      <div className="ll_memberInfo">
-                        <div className="ll_skeleton" style={{ width: 80, height: 14 }} />
-                        <div className="ll_skeleton" style={{ width: 50, height: 11 }} />
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : members.length === 0 ? (
-                <p className="ll_muted">No members found.</p>
-              ) : (
-                <>
-                  {members.slice(0, 4).map((member, idx) => (
-                    <div key={idx} className="ll_memberRow">
-                      <div className="ll_memberAvatar">
-                        <span>{member.fullName.charAt(0).toUpperCase()}</span>
-                      </div>
-                      <div className="ll_memberInfo">
-                        <span className="ll_memberName">{member.fullName}</span>
-                        <span className="ll_memberRole">{member.role}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {members.length > 4 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowMembersPopup(true)}
-                      style={{
-                        background: "none", border: "none", cursor: "pointer",
-                        fontSize: 11, color: "rgba(16,17,19,0.5)",
-                        padding: "4px 0", width: "100%", textAlign: "left",
-                        fontFamily: "inherit", whiteSpace: "nowrap",
-                      }}>
-                      + {members.length - 4} more teammates
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
           </div>
 
           {/* ORION Bridge Install */}
@@ -724,6 +715,53 @@ export function LivingLabPage() {
           </div>
         </div>
 
+        {/* Team Members — full-width row */}
+        <div className="ll_membersRow">
+          <h2 className="ll_sectionTitle">Team Members</h2>
+          {membersLoading ? (
+            <div className="ll_membersList ll_membersList--row">
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <div key={i} className="ll_memberRow ll_memberRow--skeleton">
+                  <div className="ll_skeleton" style={{ width: 36, height: 36, borderRadius: "50%" }} />
+                  <div className="ll_memberInfo">
+                    <div className="ll_skeleton" style={{ width: 80, height: 14 }} />
+                    <div className="ll_skeleton" style={{ width: 50, height: 11 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : members.length === 0 ? (
+            <p className="ll_muted">No members found.</p>
+          ) : (
+            <div className="ll_membersList ll_membersList--row">
+              {members.slice(0, 3).map((member, idx) => (
+                <div key={idx} className="ll_memberRow">
+                  <div className="ll_memberAvatar">
+                    <span>{member.fullName.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="ll_memberInfo">
+                    <span className="ll_memberName">{member.fullName}</span>
+                    <span className="ll_memberRole">{member.role}</span>
+                  </div>
+                </div>
+              ))}
+              {members.length > 3 && (
+                <button
+                  type="button"
+                  className="ll_membersSeeAll"
+                  onClick={() => setShowMembersPopup(true)}
+                >
+                  See all teammates →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        </>
+        )}
+
+        {activeView === "kb" && (
+        <>
         {/* Knowledge Base */}
         <div className="ll_knowledge">
           <h2 className="ll_sectionTitle">Knowledge Base</h2>
@@ -801,6 +839,8 @@ export function LivingLabPage() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
       </div>
 

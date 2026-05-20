@@ -57,13 +57,13 @@
 }
 
 .ll_content {
-  max-width: 1100px;
-  width: 88%;
+  max-width: 1600px;
+  width: 96%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 90px 0 48px;
+  gap: 20px;
+  padding: 14px 0 48px;
 }
 
 .ll_topRow {
@@ -73,14 +73,26 @@
   align-items: start;
 }
 
+.ll_topRow--noMembers {
+  grid-template-columns: 320px minmax(0, 1fr);
+}
+
 @media (max-width: 1100px) {
   .ll_topRow {
     grid-template-columns: 1fr 1fr;
     gap: 24px;
   }
-  
+
+  .ll_topRow--noMembers {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .ll_outputConnection {
     grid-column: span 2;
+  }
+
+  .ll_topRow--noMembers .ll_outputConnection {
+    grid-column: auto;
   }
 }
 
@@ -88,10 +100,87 @@
   .ll_topRow {
     grid-template-columns: 1fr;
   }
-  
+
+  .ll_topRow--noMembers {
+    grid-template-columns: 1fr;
+  }
+
   .ll_outputConnection {
     grid-column: span 1;
   }
+}
+
+/* Team Members — full-width row variant */
+.ll_membersRow {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ll_membersList--row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+
+.ll_membersList--row .ll_memberRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ll_membersList--row .ll_memberInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ll_membersList--row .ll_memberName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ll_membersList--row .ll_memberRole {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 700px) {
+  .ll_membersList--row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .ll_membersList--row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ll_membersSeeAll {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0 0 0 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.6);
+  text-align: left;
+  min-width: 0;
+  transition: color 0.15s ease;
+}
+
+.ll_membersSeeAll:hover {
+  color: #101113;
 }
 
 /* ============================================================================
@@ -116,7 +205,7 @@
 .ll_description {
   display: flex;
   flex-direction: column;
-  min-height: 160px;
+  min-height: 280px;
 }
 
 .ll_descriptionText {
@@ -130,18 +219,20 @@
 
 .ll_btnPrimary {
   align-self: flex-start;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  font-size: 13px;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-size: 12.5px;
   font-weight: 500;
+  letter-spacing: 0.015em;
   color: #ffffff;
-  background: #101113;
-  border: none;
-  border-radius: 8px;
+  background: #0F0E0A;
+  border: 1px solid #0F0E0A;
+  border-radius: 4px;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.18s ease;
 }
 
 .ll_btnPrimary:hover:not(:disabled) {
@@ -214,6 +305,7 @@
   margin-left: 16px;
   display: flex;
   flex-direction: column;
+  min-height: 280px;
 }
 
 .ll_connectionBox {
@@ -222,11 +314,11 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  padding: 20px 16px;
+  padding: 28px 24px;
   background: rgba(16, 17, 19, 0.03);
   border: 1px solid rgba(16, 17, 19, 0.08);
   border-radius: 10px;
-  gap: 12px;
+  gap: 16px;
 }
 
 .ll_cardDesc {
@@ -309,23 +401,24 @@
 }
 
 .ll_actionBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  font-size: 13px;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 16px;
+  font-size: 12.5px;
   font-weight: 500;
-  color: #101113;
-  background: #ffffff;
-  border: 1px solid rgba(16, 17, 19, 0.12);
-  border-radius: 8px;
+  letter-spacing: 0.015em;
+  color: #ffffff;
+  background: #0F0E0A;
+  border: 1px solid #0F0E0A;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: opacity 0.18s ease;
 }
 
 .ll_actionBtn:hover:not(:disabled) {
-  background: rgba(16, 17, 19, 0.04);
-  border-color: rgba(16, 17, 19, 0.2);
+  opacity: 0.85;
 }
 
 .ll_actionBtn:disabled {
@@ -334,7 +427,7 @@
 }
 
 .ll_actionBtn svg {
-  color: rgba(16, 17, 19, 0.6);
+  color: #ffffff;
 }
 
 /* ============================================================================
@@ -621,23 +714,29 @@
    ============================================================================ */
 
 .ll_btnSecondary {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  font-size: 13px;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 15px;
+  font-size: 12.5px;
   font-weight: 500;
-  color: #101113;
-  background: #ffffff;
-  border: 1px solid rgba(16, 17, 19, 0.12);
-  border-radius: 8px;
+  letter-spacing: 0.015em;
+  color: rgba(15, 14, 10, 0.7);
+  background: transparent;
+  border: 1px solid rgba(15, 14, 10, 0.35);
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: opacity 0.18s ease, color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .ll_btnSecondary:hover:not(:disabled) {
-  background: rgba(16, 17, 19, 0.04);
-  border-color: rgba(16, 17, 19, 0.2);
+  color: #0F0E0A;
+  border-color: #0F0E0A;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(15, 14, 10, 0.5);
 }
 
 .ll_btnSecondary:disabled {
@@ -905,4 +1004,641 @@
   justify-content: center;
   padding: 48px 24px;
   text-align: center;
+}
+
+/* ============================================================================
+   VIEW TABS
+   ============================================================================ */
+
+.ll_tabs {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.08);
+  margin-bottom: 4px;
+}
+
+.ll_tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 2px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.5);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.ll_tab:hover {
+  color: rgba(16, 17, 19, 0.8);
+}
+
+.ll_tab--active {
+  color: #101113;
+  font-weight: 600;
+  border-bottom-color: #101113;
+}
+
+.ll_tabCount {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.4);
+  background: rgba(16, 17, 19, 0.06);
+  padding: 1px 7px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.ll_tab--active .ll_tabCount {
+  color: rgba(16, 17, 19, 0.7);
+  background: rgba(16, 17, 19, 0.09);
+}
+
+/* ============================================================================
+   KNOWLEDGE GRAPH
+   ============================================================================ */
+
+.ll_kg_section {
+  background: #ffffff;
+}
+
+.ll_kg_subtitle {
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.55);
+  margin: 0 0 12px;
+}
+
+.ll_kg_canvas {
+  position: relative;
+  width: 100%;
+  height: 620px;
+  background: #fafafa;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* React Flow gets full-bleed inside the canvas */
+.ll_kg_canvas .react-flow {
+  background: transparent;
+}
+
+/* Toolbar */
+.ll_kg_toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(140%) blur(8px);
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(16, 17, 19, 0.04);
+}
+
+.ll_kg_toolGroup {
+  position: relative;
+}
+
+.ll_kg_btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: 0.015em;
+  color: #ffffff;
+  background: #0F0E0A;
+  border: 1px solid #0F0E0A;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+}
+
+.ll_kg_btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.ll_kg_btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ll_kg_dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(16, 17, 19, 0.12);
+  padding: 4px;
+  z-index: 10;
+}
+
+.ll_kg_dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #101113;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ll_kg_dropdownItem:hover {
+  background: rgba(16, 17, 19, 0.05);
+}
+
+.ll_kg_dropdownIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(16, 17, 19, 0.6);
+}
+
+.ll_kg_dropdownEmpty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.5);
+}
+
+.ll_kg_notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  padding: 8px 14px;
+  background: #101113;
+  color: #ffffff;
+  font-size: 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.ll_kg_viewOnly {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 8;
+  padding: 6px 10px;
+  background: rgba(16, 17, 19, 0.7);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.ll_kg_empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 360px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.55);
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ll_kg_empty b {
+  color: rgba(16, 17, 19, 0.75);
+  font-weight: 600;
+}
+
+/* Custom node */
+.ll_kg_node {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.16);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #101113;
+  box-shadow: 0 1px 2px rgba(16, 17, 19, 0.04);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.ll_kg_node--selected {
+  border-color: #101113;
+  box-shadow: 0 0 0 1px #101113, 0 1px 2px rgba(16, 17, 19, 0.06);
+}
+
+.ll_kg_node_icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #101113;
+}
+
+.ll_kg_node_icon svg {
+  stroke: currentColor;
+}
+
+.ll_kg_node_label {
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ll_kg_node_linked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(16, 17, 19, 0.4);
+  margin-left: 2px;
+}
+
+/* React Flow handles — visible and grabbable. Multiple rails per side. */
+.ll_kg_node .react-flow__handle.ll_kg_handle {
+  width: 9px;
+  height: 9px;
+  background: #ffffff;
+  border: 1.5px solid rgba(16, 17, 19, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+
+.ll_kg_node .react-flow__handle.ll_kg_handle.react-flow__handle-left {
+  left: -5px;
+}
+
+.ll_kg_node .react-flow__handle.ll_kg_handle.react-flow__handle-right {
+  right: -5px;
+}
+
+.ll_kg_node .react-flow__handle.ll_kg_handle.ll_kg_handle--primary {
+  opacity: 0.55;
+  pointer-events: all;
+}
+
+.ll_kg_node:hover .react-flow__handle.ll_kg_handle.ll_kg_handle--primary,
+.ll_kg_node--selected .react-flow__handle.ll_kg_handle.ll_kg_handle--primary {
+  opacity: 1;
+  border-color: #0F0E0A;
+}
+
+.ll_kg_node .react-flow__handle.ll_kg_handle.ll_kg_handle--primary:hover {
+  background: #0F0E0A;
+  border-color: #0F0E0A;
+}
+
+.ll_kg_node .react-flow__handle.ll_kg_handle.connecting,
+.ll_kg_node .react-flow__handle.ll_kg_handle.connectingfrom,
+.ll_kg_node .react-flow__handle.ll_kg_handle.connectingto {
+  opacity: 1;
+  background: #0F0E0A;
+  border-color: #0F0E0A;
+}
+
+/* Side panel */
+.ll_kg_sidePanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 100%;
+  background: #ffffff;
+  border-left: 1px solid rgba(16, 17, 19, 0.1);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  z-index: 6;
+  box-shadow: -4px 0 12px rgba(16, 17, 19, 0.04);
+  animation: ll_kg_sideSlide 0.18s ease;
+}
+
+.ll_kg_sidePanelBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 2px;
+}
+
+@keyframes ll_kg_sideSlide {
+  from {
+    transform: translateX(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.ll_kg_sidePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ll_kg_sidePanelTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #101113;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ll_kg_sidePanelClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: rgba(16, 17, 19, 0.55);
+}
+
+.ll_kg_sidePanelClose:hover {
+  background: rgba(16, 17, 19, 0.06);
+  color: #101113;
+}
+
+.ll_kg_field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ll_kg_fieldLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ll_kg_input,
+.ll_kg_select,
+.ll_kg_textarea {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #101113;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.14);
+  border-radius: 7px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.ll_kg_input:focus,
+.ll_kg_select:focus,
+.ll_kg_textarea:focus {
+  border-color: rgba(16, 17, 19, 0.35);
+}
+
+.ll_kg_input:disabled {
+  background: rgba(16, 17, 19, 0.04);
+  color: rgba(16, 17, 19, 0.65);
+  cursor: not-allowed;
+}
+
+.ll_kg_textarea {
+  resize: vertical;
+  min-height: 60px;
+  max-height: 140px;
+}
+
+.ll_kg_helper {
+  font-size: 11px;
+  color: rgba(16, 17, 19, 0.5);
+  font-style: italic;
+}
+
+.ll_kg_readonlyValue {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #101113;
+  background: rgba(16, 17, 19, 0.04);
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  border-radius: 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ll_kg_kindBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #101113;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.16);
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.ll_kg_kindBadge svg {
+  color: #101113;
+}
+
+.ll_kg_sidePanelFooter {
+  flex: 0 0 auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(16, 17, 19, 0.06);
+}
+
+.ll_kg_btnDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: 0.015em;
+  color: #dc2626;
+  background: transparent;
+  border: 1px solid #dc2626;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+}
+
+.ll_kg_btnDanger:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(220, 38, 38, 0.5);
+}
+
+.ll_kg_btnDangerSolid {
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: 0.015em;
+  color: #dc2626;
+  background: transparent;
+  border: 1px solid #dc2626;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+}
+
+.ll_kg_btnDangerSolid:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(220, 38, 38, 0.5);
+}
+
+.ll_kg_btnGhost {
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  letter-spacing: 0.015em;
+  color: rgba(15, 14, 10, 0.7);
+  background: transparent;
+  border: 1px solid rgba(15, 14, 10, 0.35);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.ll_kg_btnGhost:hover {
+  color: #0F0E0A;
+  border-color: #0F0E0A;
+}
+
+.ll_kg_confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ll_kg_confirmText {
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.7);
+  margin-right: auto;
+}
+
+/* Editable edge — path, label, waypoints, add buttons */
+.react-flow__edge .ll_kg_edgePath {
+  stroke: #b1b1b7;
+  stroke-width: 1.4px;
+}
+
+.react-flow__edge.selected .ll_kg_edgePath,
+.ll_kg_edgePath--active {
+  stroke: #0F0E0A;
+  stroke-width: 1.8px;
+}
+
+.ll_kg_edgeLabel {
+  position: absolute;
+  pointer-events: all;
+  font-size: 11px;
+  color: #101113;
+  background: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(16, 17, 19, 0.08);
+  white-space: nowrap;
+}
+
+.ll_kg_waypoint {
+  position: absolute;
+  pointer-events: all;
+  width: 16px;
+  height: 10px;
+  background: #ffffff;
+  border: 1.5px solid rgba(16, 17, 19, 0.6);
+  border-radius: 999px;
+  cursor: grab;
+  z-index: 5;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: 0 1px 2px rgba(16, 17, 19, 0.08);
+}
+
+.ll_kg_waypoint:hover,
+.ll_kg_waypoint--active {
+  border-color: #0F0E0A;
+  background: #ffffff;
+}
+
+.ll_kg_waypoint:active {
+  cursor: grabbing;
+  background: #0F0E0A;
+}
+
+.ll_kg_waypointAdd {
+  position: absolute;
+  pointer-events: all;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  font-family: inherit;
+  color: rgba(16, 17, 19, 0.6);
+  background: #ffffff;
+  border: 1px dashed rgba(16, 17, 19, 0.35);
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.6;
+  z-index: 4;
+  transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.ll_kg_waypointAdd:hover {
+  opacity: 1;
+  color: #0F0E0A;
+  border-color: #0F0E0A;
+  border-style: solid;
 }

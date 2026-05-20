@@ -72,6 +72,25 @@ KPI Snapshot:
 \`\`\`
 `;
 
+// ─── KPI catalog (user picks which to show in the top strip) ────────────────
+
+const KPI_CATALOG = [
+  { key: "custom_kpi",     label: "Personalizado" },
+  { key: "score_promedio", label: "Score promedio" },
+  { key: "csr_global",     label: "CSR global" },
+  { key: "metas_ok",       label: "Metas OK" },
+  { key: "metas_fallidas", label: "Metas fallidas" },
+  { key: "con_retraso",    label: "Con retraso" },
+  { key: "dias_restantes", label: "Días restantes" },
+  { key: "note",           label: "Nota del día (AI)" },
+] as const;
+
+type KpiKey = (typeof KPI_CATALOG)[number]["key"];
+const ALL_KPI_KEYS: KpiKey[] = KPI_CATALOG.map((k) => k.key);
+const KPI_LABEL: Record<KpiKey, string> = Object.fromEntries(
+  KPI_CATALOG.map((k) => [k.key, k.label]),
+) as Record<KpiKey, string>;
+
 // ─── Area definitions (user-configurable) ────────────────────────────────────
 
 interface AreaDef {
@@ -167,6 +186,7 @@ interface PmTrackerPanelProps {
   userId: string;
   config: Record<string, unknown>;
   onExpandSidebar?: () => void;
+  onSessionIconChange?: (sessionId: string, iconName: string) => void;
 }
 
 // ─── Score helpers ────────────────────────────────────────────────────────────
@@ -2286,7 +2306,7 @@ function CustomKpiTile({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PmTrackerPanel({
-  sessionId, teamId, userId: _userId, config, onExpandSidebar,
+  sessionId, teamId, userId: _userId, config, onExpandSidebar, onSessionIconChange,
 }: PmTrackerPanelProps) {
   const penaltyPerDay   = (config.penalty_per_day   as number | undefined) ?? 1;
   const maxPenalty      = (config.max_penalty        as number | undefined) ?? 10;
@@ -2359,7 +2379,10 @@ export default function PmTrackerPanel({
     zones: DEFAULT_ZONES as ZoneThresholds,
     theme: "light",
     areas: DEFAULT_AREAS as AreaDef[],
+    visible_kpis: ALL_KPI_KEYS as KpiKey[],
+    agent_prompt: "" as string,
   });
+  const [kpiDragIndex, setKpiDragIndex] = useState<number | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   useEffect(() => {
@@ -2404,6 +2427,21 @@ export default function PmTrackerPanel({
     ? calendarDaysBetween(project.start_date, project.end_date) + 1
     : project?.total_working_days ?? configTotalDays;
   const todayDay  = project ? getTodayDay(project) : 1;
+
+  // ── Visible KPIs (ordered) ───────────────────────────────────────────────────
+  const visibleKpis: KpiKey[] = useMemo(() => {
+    const raw = projectCfg.visible_kpis;
+    if (!Array.isArray(raw)) return ALL_KPI_KEYS; // never configured → show all
+    const seen = new Set<string>();
+    const result: KpiKey[] = [];
+    for (const k of raw) {
+      if (typeof k === "string" && (ALL_KPI_KEYS as readonly string[]).includes(k) && !seen.has(k)) {
+        seen.add(k);
+        result.push(k as KpiKey);
+      }
+    }
+    return result;
+  }, [projectCfg]);
 
   // ── Auditor role ─────────────────────────────────────────────────────────────
   const auditorIds = (projectCfg.auditor_ids as string[] | undefined) ?? [];
@@ -2609,7 +2647,11 @@ export default function PmTrackerPanel({
           .from("sessions")
           .update({ icon_name: createForm.icon_name })
           .eq("id", sessionId);
-        if (iconErr) console.error("[PmTracker] Save session icon error:", iconErr);
+        if (iconErr) {
+          console.error("[PmTracker] Save session icon error:", iconErr);
+        } else {
+          onSessionIconChange?.(sessionId, createForm.icon_name);
+        }
       }
       setShowCreateForm(false);
       setCreateForm({ name: "", start_date: "", end_date: "", icon_name: "bar-chart" });
@@ -2703,6 +2745,8 @@ export default function PmTrackerPanel({
         zones:              settingsDraft.zones,
         theme:              settingsDraft.theme,
         areas:              settingsDraft.areas,
+        visible_kpis:       settingsDraft.visible_kpis,
+        agent_prompt:       settingsDraft.agent_prompt.trim() || null,
       },
     };
     const { error } = await supabase.from("trace_projects").update(patch).eq("id", project.id);
@@ -2969,7 +3013,8 @@ export default function PmTrackerPanel({
     };
     const recent = getRecentWords();
     const recentText = recent.length > 0 ? recent.join(", ") : "(ninguna)";
-    const prompt = WORD_PROMPT_TEMPLATE
+    const promptTemplate = (projectCfg.agent_prompt as string | undefined) || WORD_PROMPT_TEMPLATE;
+    const prompt = promptTemplate
       .replace("{SNAPSHOT}", JSON.stringify(snapshot, null, 2))
       .replace("{RECENT_WORDS}", recentText);
     setWordGenerating(true);
@@ -3185,7 +3230,10 @@ export default function PmTrackerPanel({
               zones,
               theme,
               areas,
+              visible_kpis: visibleKpis,
+              agent_prompt: (projectCfg.agent_prompt as string | undefined) ?? "",
             });
+            setKpiDragIndex(null);
             setThemeMenuOpen(false);
             setShowSettings(true);
           }} title="Configuración">
@@ -3244,82 +3292,109 @@ export default function PmTrackerPanel({
         </div>
       )}
 
-      {/* KPI Strip */}
+      {/* KPI Strip — render dynamically from visibleKpis */}
       <div className="pmt_kpiStrip">
-        {/* Custom KPI tile — first so it's always visible */}
-        <CustomKpiTile
-          name={(projectCfg.customKpi as { name: string; score: number } | undefined)?.name ?? ""}
-          score={(projectCfg.customKpi as { name: string; score: number } | undefined)?.score ?? 0}
-          onSave={handleSaveCustomKpi}
-          canEdit={canEditCustomKpi}
-        />
-
-        {/* Compact KPI tiles */}
-        <div className="pmt_kpiTile pmt_kpiTile--sm">
-          <span className="pmt_kpiLabel">SCORE PROMEDIO</span>
-          <span className="pmt_kpiValue" style={{ color: globalGrade.color }}>
-            {entries.length > 0 ? avgScore : "—"}
-            {entries.length > 0 && <span className="pmt_kpiUnit">/100</span>}
-          </span>
-          <span className="pmt_kpiSub">
-            {entries.length === 0
-              ? "Sin equipos"
-              : avgScore >= 75
-                ? <><span className="pmt_kpiArrow pmt_kpiArrow--up">↑</span> Sobre objetivo</>
-                : <><span className="pmt_kpiArrow pmt_kpiArrow--down">↓</span> Bajo objetivo</>}
-          </span>
-          <KpiSparkBlock kpiKey="avg_score" value={avgScore} color={globalGrade.color} />
-        </div>
-        <div className="pmt_kpiTile pmt_kpiTile--sm">
-          <span className="pmt_kpiLabel">CSR GLOBAL</span>
-          <span className="pmt_kpiValue" style={{ color: globalGrade.color }}>
-            {allCommits.length > 0 ? `${globalCsr}%` : "—"}
-          </span>
-          <span className="pmt_kpiSub">
-            {allCommits.length > 0 ? globalGrade.label : "Sin metas"}
-          </span>
-          <KpiSparkBlock kpiKey="csr_global" value={globalCsr} color={globalGrade.color} />
-        </div>
-        <div className="pmt_kpiTile pmt_kpiTile--sm">
-          <span className="pmt_kpiLabel">METAS OK</span>
-          <span className="pmt_kpiValue" style={{ color: "var(--st-ok)" }}>{successCommits}</span>
-          <span className="pmt_kpiSub">de {allCommits.length} totales</span>
-          <KpiSparkBlock kpiKey="metas_ok" value={successCommits} color="var(--st-ok)" />
-        </div>
-        <div className="pmt_kpiTile pmt_kpiTile--sm">
-          <span className="pmt_kpiLabel">METAS FALLIDAS</span>
-          <span className="pmt_kpiValue" style={{ color: "var(--st-critical)" }}>{failedCommits}</span>
-          <span className="pmt_kpiSub">{allCommits.length - successCommits} sin completar</span>
-          <KpiSparkBlock kpiKey="metas_fail" value={failedCommits} color="var(--st-critical)" />
-        </div>
-        <div className="pmt_kpiTile pmt_kpiTile--sm">
-          <span className="pmt_kpiLabel">CON RETRASO</span>
-          <span className="pmt_kpiValue" style={{ color: lateCommits > 0 ? "var(--st-warning)" : "var(--pmt-text)" }}>
-            {lateCommits}
-          </span>
-          <span className="pmt_kpiSub">
-            {lateCommits > 0 ? "pasaron su deadline" : "Sin retrasos"}
-          </span>
-          <KpiSparkBlock kpiKey="con_retraso" value={lateCommits} color="var(--st-warning)" />
-        </div>
-        <div className="pmt_kpiTile pmt_kpiTile--sm">
-          <span className="pmt_kpiLabel">DÍAS RESTANTES</span>
-          <span className="pmt_kpiValue" style={{ color: "#2563eb" }}>{daysRemaining}</span>
-          <span className="pmt_kpiSub">
-            {project?.end_date
-              ? `Fin: ${new Date(project.end_date + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}`
-              : "Sin fecha fin"}
-          </span>
-          <KpiSparkBlock kpiKey="dias_restantes" value={daysRemaining} color="#2563eb" />
-        </div>
-
-        {/* Editable note tile */}
-        <NoteKpiTile
-          value={(projectCfg.note as string | undefined) ?? ""}
-          onSave={handleSaveNoteRef.current}
-          onGenerate={handleGenerateWord}
-          generating={wordGenerating}
-        />
+        {visibleKpis.map((key) => {
+          switch (key) {
+            case "custom_kpi":
+              return (
+                <CustomKpiTile
+                  key={key}
+                  name={(projectCfg.customKpi as { name: string; score: number } | undefined)?.name ?? ""}
+                  score={(projectCfg.customKpi as { name: string; score: number } | undefined)?.score ?? 0}
+                  onSave={handleSaveCustomKpi}
+                  canEdit={canEditCustomKpi}
+                />
+              );
+            case "score_promedio":
+              return (
+                <div key={key} className="pmt_kpiTile pmt_kpiTile--sm">
+                  <span className="pmt_kpiLabel">SCORE PROMEDIO</span>
+                  <span className="pmt_kpiValue" style={{ color: globalGrade.color }}>
+                    {entries.length > 0 ? avgScore : "—"}
+                    {entries.length > 0 && <span className="pmt_kpiUnit">/100</span>}
+                  </span>
+                  <span className="pmt_kpiSub">
+                    {entries.length === 0
+                      ? "Sin equipos"
+                      : avgScore >= 75
+                        ? <><span className="pmt_kpiArrow pmt_kpiArrow--up">↑</span> Sobre objetivo</>
+                        : <><span className="pmt_kpiArrow pmt_kpiArrow--down">↓</span> Bajo objetivo</>}
+                  </span>
+                  <KpiSparkBlock kpiKey={`${project?.id}_avg_score`} value={avgScore} color={globalGrade.color} />
+                </div>
+              );
+            case "csr_global":
+              return (
+                <div key={key} className="pmt_kpiTile pmt_kpiTile--sm">
+                  <span className="pmt_kpiLabel">CSR GLOBAL</span>
+                  <span className="pmt_kpiValue" style={{ color: globalGrade.color }}>
+                    {allCommits.length > 0 ? `${globalCsr}%` : "—"}
+                  </span>
+                  <span className="pmt_kpiSub">
+                    {allCommits.length > 0 ? globalGrade.label : "Sin metas"}
+                  </span>
+                  <KpiSparkBlock kpiKey={`${project?.id}_csr_global`} value={globalCsr} color={globalGrade.color} />
+                </div>
+              );
+            case "metas_ok":
+              return (
+                <div key={key} className="pmt_kpiTile pmt_kpiTile--sm">
+                  <span className="pmt_kpiLabel">METAS OK</span>
+                  <span className="pmt_kpiValue" style={{ color: "var(--st-ok)" }}>{successCommits}</span>
+                  <span className="pmt_kpiSub">de {allCommits.length} totales</span>
+                  <KpiSparkBlock kpiKey={`${project?.id}_metas_ok`} value={successCommits} color="var(--st-ok)" />
+                </div>
+              );
+            case "metas_fallidas":
+              return (
+                <div key={key} className="pmt_kpiTile pmt_kpiTile--sm">
+                  <span className="pmt_kpiLabel">METAS FALLIDAS</span>
+                  <span className="pmt_kpiValue" style={{ color: "var(--st-critical)" }}>{failedCommits}</span>
+                  <span className="pmt_kpiSub">{allCommits.length - successCommits} sin completar</span>
+                  <KpiSparkBlock kpiKey={`${project?.id}_metas_fail`} value={failedCommits} color="var(--st-critical)" />
+                </div>
+              );
+            case "con_retraso":
+              return (
+                <div key={key} className="pmt_kpiTile pmt_kpiTile--sm">
+                  <span className="pmt_kpiLabel">CON RETRASO</span>
+                  <span className="pmt_kpiValue" style={{ color: lateCommits > 0 ? "var(--st-warning)" : "var(--pmt-text)" }}>
+                    {lateCommits}
+                  </span>
+                  <span className="pmt_kpiSub">
+                    {lateCommits > 0 ? "pasaron su deadline" : "Sin retrasos"}
+                  </span>
+                  <KpiSparkBlock kpiKey={`${project?.id}_con_retraso`} value={lateCommits} color="var(--st-warning)" />
+                </div>
+              );
+            case "dias_restantes":
+              return (
+                <div key={key} className="pmt_kpiTile pmt_kpiTile--sm">
+                  <span className="pmt_kpiLabel">DÍAS RESTANTES</span>
+                  <span className="pmt_kpiValue" style={{ color: "#2563eb" }}>{daysRemaining}</span>
+                  <span className="pmt_kpiSub">
+                    {project?.end_date
+                      ? `Fin: ${new Date(project.end_date + "T00:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" })}`
+                      : "Sin fecha fin"}
+                  </span>
+                  <KpiSparkBlock kpiKey={`${project?.id}_dias_restantes`} value={daysRemaining} color="#2563eb" />
+                </div>
+              );
+            case "note":
+              return (
+                <NoteKpiTile
+                  key={key}
+                  value={(projectCfg.note as string | undefined) ?? ""}
+                  onSave={handleSaveNoteRef.current}
+                  onGenerate={handleGenerateWord}
+                  generating={wordGenerating}
+                />
+              );
+            default:
+              return null;
+          }
+        })}
       </div>
 
       {/* Body */}
@@ -3673,6 +3748,104 @@ export default function PmTrackerPanel({
                   values={settingsDraft.zones}
                   onChange={(zonesNext) => setSettingsDraft((d) => ({ ...d, zones: zonesNext }))} />
               </div>
+
+              {/* KPIs visibles + orden (drag and drop) */}
+              <div className="pmt_settingsSection">
+                <div className="pmt_settingsSectionTitle">KPIs en la barra superior</div>
+                <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)", marginBottom: 8 }}>
+                  Arrastra para reordenar. Los KPIs ocultos aparecen abajo para volver a agregarlos.
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {settingsDraft.visible_kpis.map((kpiKey, i) => (
+                    <div
+                      key={kpiKey}
+                      draggable
+                      onDragStart={() => setKpiDragIndex(i)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (kpiDragIndex === null || kpiDragIndex === i) return;
+                        setSettingsDraft((d) => {
+                          const next = [...d.visible_kpis];
+                          const [moved] = next.splice(kpiDragIndex, 1);
+                          next.splice(i, 0, moved);
+                          return { ...d, visible_kpis: next };
+                        });
+                        setKpiDragIndex(i);
+                      }}
+                      onDragEnd={() => setKpiDragIndex(null)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "6px 8px",
+                        background: kpiDragIndex === i ? "var(--pmt-surface-2)" : "var(--pmt-surface)",
+                        border: "1px solid var(--pmt-border)",
+                        borderRadius: 5,
+                        cursor: "grab",
+                        opacity: kpiDragIndex === i ? 0.5 : 1,
+                      }}
+                    >
+                      <span style={{ color: "var(--pmt-text-subtle)", fontSize: 14, userSelect: "none" }}>⋮⋮</span>
+                      <span style={{ flex: 1, fontSize: 13, color: "var(--pmt-text)" }}>{KPI_LABEL[kpiKey]}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSettingsDraft((d) => ({ ...d, visible_kpis: d.visible_kpis.filter((k) => k !== kpiKey) }))}
+                        style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "1px solid var(--pmt-border)", borderRadius: 4, cursor: "pointer", color: "var(--pmt-text-subtle)" }}
+                        title="Ocultar KPI"
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {(() => {
+                  const hidden = ALL_KPI_KEYS.filter((k) => !settingsDraft.visible_kpis.includes(k));
+                  if (hidden.length === 0) return null;
+                  return (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)", marginBottom: 6 }}>Disponibles para agregar:</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {hidden.map((kpiKey) => (
+                          <button
+                            key={kpiKey}
+                            type="button"
+                            onClick={() => setSettingsDraft((d) => ({ ...d, visible_kpis: [...d.visible_kpis, kpiKey] }))}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", border: "1px dashed var(--pmt-border)", borderRadius: 999, background: "transparent", color: "var(--pmt-text-muted)", fontSize: 12, cursor: "pointer" }}
+                          >
+                            <Plus size={11} /> {KPI_LABEL[kpiKey]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Prompt del agente (solo auditor / admin) */}
+              {canEditCustomKpi && (
+                <div className="pmt_settingsSection">
+                  <div className="pmt_settingsSectionTitle">Prompt del agente (Word of the day)</div>
+                  <div style={{ fontSize: 11, color: "var(--pmt-text-subtle)", marginBottom: 8 }}>
+                    Usa <code>{"{SNAPSHOT}"}</code> y <code>{"{RECENT_WORDS}"}</code> como placeholders. Deja vacío para usar el prompt por defecto.
+                  </div>
+                  <textarea
+                    value={settingsDraft.agent_prompt}
+                    onChange={(e) => setSettingsDraft((d) => ({ ...d, agent_prompt: e.target.value }))}
+                    placeholder={WORD_PROMPT_TEMPLATE}
+                    rows={10}
+                    style={{ width: "100%", padding: "8px 10px", fontSize: 12, fontFamily: "ui-monospace, monospace", background: "var(--pmt-surface)", border: "1px solid var(--pmt-border)", borderRadius: 5, color: "var(--pmt-text)", outline: "none", resize: "vertical" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsDraft((d) => ({ ...d, agent_prompt: "" }))}
+                      style={{ padding: "3px 10px", fontSize: 11, background: "transparent", border: "1px solid var(--pmt-border)", borderRadius: 4, color: "var(--pmt-text-subtle)", cursor: "pointer" }}
+                    >
+                      Restablecer al default
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                 <button type="button" className="pmt_addEntryCancel" onClick={() => setShowSettings(false)}>Cancelar</button>

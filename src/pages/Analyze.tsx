@@ -1404,6 +1404,11 @@ export default function Analysis() {
                         userId={userId ?? ""}
                         config={selectedSession.templateConfig ?? {}}
                         onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
+                        onSessionIconChange={(sid, iconName) => {
+                          setAnalysisSessions((prev) =>
+                            prev.map((s) => (s.id === sid ? { ...s, iconName } : s)),
+                          );
+                        }}
                       />
                     </Suspense>
                   </div>
