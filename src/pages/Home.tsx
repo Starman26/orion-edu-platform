@@ -670,7 +670,7 @@ function DashboardHeader({
           {headerMinimal && (
             <span className="dash_headerOrionLabel">
               <span className="dash_headerOrionO">O</span>RION
-              <span className="dash_headerOrionEdu">Edu</span>
+              <span className="dash_headerOrionEdu">Labs</span>
             </span>
           )}
 

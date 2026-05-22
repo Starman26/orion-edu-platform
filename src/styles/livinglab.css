@@ -66,6 +66,240 @@
   padding: 14px 0 48px;
 }
 
+/* ── Knowledge Graph wrapper — matches bridge width ── */
+.ll_kgWrap {
+  max-width: 70%;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 1100px) {
+  .ll_kgWrap { max-width: 90%; }
+}
+
+@media (max-width: 700px) {
+  .ll_kgWrap { max-width: 100%; }
+}
+
+/* ══════════════════════════════════════════
+   YOUR BRIDGE — mini landing
+══════════════════════════════════════════ */
+
+.ll_bridgeView {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  padding: 8px 0 64px;
+  max-width: 70%;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Hero — two columns ── */
+.ll_bridgeHero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: center;
+  padding-bottom: 56px;
+  border-bottom: 1px solid rgba(13, 13, 13, 0.08);
+}
+
+.ll_bridgeHeroText {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ll_bridgeHeroImg {
+  background: rgba(13, 13, 13, 0.06);
+  border-radius: 10px;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+}
+
+.ll_bridgeLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(13, 13, 13, 0.4);
+}
+
+.ll_bridgeTitle {
+  font-size: clamp(26px, 3.5vw, 38px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #0d0d0d;
+  margin: 0;
+}
+
+.ll_bridgeTitle em {
+  font-style: italic;
+  font-weight: 300;
+}
+
+.ll_bridgeSub {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: rgba(13, 13, 13, 0.55);
+  margin: 0;
+}
+
+/* ── Steps — no border, no bg ── */
+.ll_bridgeSteps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+}
+
+.ll_bridgeStep {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.ll_bridgeStepHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: rgba(13, 13, 13, 0.3);
+}
+
+.ll_bridgeStepNum {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.ll_bridgeStepIcon {
+  display: inline-flex;
+}
+
+.ll_bridgeStepTitle {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0d0d0d;
+  margin: 0 0 10px;
+}
+
+.ll_bridgeStepText {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: rgba(13, 13, 13, 0.55);
+  margin: 0;
+}
+
+/* ── Quick links ── */
+.ll_bridgeQuickLinks {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-top: 1px solid rgba(13, 13, 13, 0.08);
+  padding-top: 36px;
+}
+
+.ll_bridgeQuickDivider {
+  width: 1px;
+  background: rgba(13, 13, 13, 0.08);
+  margin: 0 40px;
+  flex-shrink: 0;
+}
+
+.ll_bridgeQuickItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+}
+
+.ll_bridgeQuickLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(13, 13, 13, 0.35);
+}
+
+.ll_bridgeQuickCmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ll_bridgeQuickCode {
+  font-size: 13px;
+  font-family: "SFMono-Regular", "Consolas", "Menlo", monospace;
+  color: #0d0d0d;
+}
+
+.ll_bridgeQuickCopy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: rgba(13, 13, 13, 0.3);
+  border-radius: 3px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.ll_bridgeQuickCopy:hover {
+  color: #0d0d0d;
+}
+
+.ll_bridgeQuickAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0d0d0d;
+  transition: opacity 0.15s;
+}
+
+.ll_bridgeQuickItem--link:hover .ll_bridgeQuickAction {
+  opacity: 0.65;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .ll_bridgeView {
+    max-width: 90%;
+  }
+  .ll_bridgeHero {
+    grid-template-columns: 1fr;
+  }
+  .ll_bridgeHeroImg {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .ll_bridgeView {
+    max-width: 100%;
+  }
+  .ll_bridgeSteps {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .ll_bridgeQuickLinks {
+    flex-direction: column;
+    gap: 24px;
+  }
+  .ll_bridgeQuickDivider {
+    display: none;
+  }
+}
+
 .ll_topRow {
   display: grid;
   grid-template-columns: 400px 180px 300px;
