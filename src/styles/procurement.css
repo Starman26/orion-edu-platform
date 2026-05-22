@@ -665,8 +665,8 @@
 [data-theme="dark"] .prc_searchInput:focus { border-color: var(--border-strong); }
 [data-theme="dark"] .prc_searchInput::placeholder { color: var(--text-dim); }
 [data-theme="dark"] .prc_searchIcon { color: var(--text-dim); }
-[data-theme="dark"] .prc_btn--primary { background: var(--accent); color: var(--accent-fg); }
-[data-theme="dark"] .prc_btn--primary:hover { background: var(--accent-hover); }
+[data-theme="dark"] .prc_btn--primary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-strong); }
+[data-theme="dark"] .prc_btn--primary:hover { background: var(--hover-overlay); color: var(--text-primary); border-color: var(--border-strong); }
 [data-theme="dark"] .prc_btn--ghost { color: var(--text-secondary); border-color: var(--border-base); }
 [data-theme="dark"] .prc_btn--ghost:hover { border-color: var(--border-strong); color: var(--text-primary); }
 [data-theme="dark"] .prc_expandBtn { color: var(--text-muted); }
@@ -687,6 +687,14 @@
 [data-theme="dark"] .prc_filterMenuOpt:hover { background: var(--hover-overlay); color: var(--text-primary); }
 [data-theme="dark"] .prc_filterMenuOpt--active { color: var(--text-primary); }
 [data-theme="dark"] .prc_filterMenuCount { color: var(--text-dim); }
+[data-theme="dark"] .prc_badge--pending,
+[data-theme="dark"] .prc_badge--in_review,
+[data-theme="dark"] .prc_badge--approved,
+[data-theme="dark"] .prc_badge--rejected,
+[data-theme="dark"] .prc_badge--high,
+[data-theme="dark"] .prc_badge--medium,
+[data-theme="dark"] .prc_badge--low,
+[data-theme="dark"] .prc_badge--cat { background: var(--hover-overlay); color: var(--text-secondary); }
 [data-theme="dark"] .prc_tableWrap { background: var(--bg-surface); border-color: var(--border-soft); }
 [data-theme="dark"] .prc_table thead th { background: var(--bg-base); color: var(--text-dim); border-bottom-color: var(--border-soft); }
 [data-theme="dark"] .prc_table tbody td { color: var(--text-primary); border-bottom-color: var(--border-soft); }
