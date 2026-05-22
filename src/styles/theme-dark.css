@@ -945,6 +945,23 @@
   }
   [data-theme="dark"] .ll_kg_confirmText { color: var(--text-secondary); }
 
+  /* ── Your Bridge ── */
+  [data-theme="dark"] .ll_bridgeHero     { border-bottom-color: var(--border-soft); }
+  [data-theme="dark"] .ll_bridgeHeroImg  { background: var(--bg-surface); }
+  [data-theme="dark"] .ll_bridgeLabel    { color: var(--text-dim); }
+  [data-theme="dark"] .ll_bridgeTitle    { color: var(--text-primary); }
+  [data-theme="dark"] .ll_bridgeSub      { color: var(--text-muted); }
+  [data-theme="dark"] .ll_bridgeStepHead { color: var(--text-dim); }
+  [data-theme="dark"] .ll_bridgeStepTitle { color: var(--text-primary); }
+  [data-theme="dark"] .ll_bridgeStepText  { color: var(--text-muted); }
+  [data-theme="dark"] .ll_bridgeQuickLinks  { border-top-color: var(--border-soft); }
+  [data-theme="dark"] .ll_bridgeQuickDivider { background: var(--border-soft); }
+  [data-theme="dark"] .ll_bridgeQuickLabel   { color: var(--text-dim); }
+  [data-theme="dark"] .ll_bridgeQuickCode    { color: var(--text-primary); }
+  [data-theme="dark"] .ll_bridgeQuickCopy    { color: var(--text-dim); }
+  [data-theme="dark"] .ll_bridgeQuickCopy:hover { color: var(--text-primary); }
+  [data-theme="dark"] .ll_bridgeQuickAction  { color: var(--text-primary); }
+
   /* ============================================================================
      STUDIO PAGE
      ============================================================================ */

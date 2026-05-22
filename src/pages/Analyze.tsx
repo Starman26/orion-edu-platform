@@ -17,6 +17,7 @@ import "../styles/dashboard-ui.css";
 
 const PmTrackerPanel = lazy(() => import("../components/PmTrackerPanel"));
 const EquipmentQueuePanel = lazy(() => import("../components/EquipmentQueuePanel"));
+const ProcurementPanel = lazy(() => import("../components/ProcurementPanel"));
 
 // ── Set to false to permanently disable the 3D Queue announcement ──
 const SHOW_3DQUEUE_NOTIF = true;
@@ -1013,15 +1014,15 @@ export default function Analysis() {
       />
 
       <main
-        className={`analysis_content${leftCollapsed && (selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue") ? " analysis_content--full" : ""}`}
+        className={`analysis_content${leftCollapsed && (selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue" || selectedSession?.templateType === "procurement") ? " analysis_content--full" : ""}`}
         style={{
           gridTemplateColumns: leftCollapsed
-            ? ((selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue") ? "1fr" : "0px 1fr")
+            ? ((selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue" || selectedSession?.templateType === "procurement") ? "1fr" : "0px 1fr")
             : undefined,
         }}
       >
         {/* Left Panel — Session Cards (hidden entirely for full-screen templates) */}
-        {!(leftCollapsed && (selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue")) && (
+        {!(leftCollapsed && (selectedSession?.templateType === "pm_tracker" || selectedSession?.templateType === "equipment_queue" || selectedSession?.templateType === "procurement")) && (
           <div className={`analysis_left${leftCollapsed ? " analysis_left--collapsed" : ""}`}>
             <div className="analysis_leftHeader">
               <div className="analysis_leftHeaderTop">
@@ -1088,7 +1089,7 @@ export default function Analysis() {
 
         {/* Right Panel — Create Form / Edit Form / Results / Empty */}
         <div className={`analysis_right ${selectedSessionId || showCreateForm || showEditForm ? "analysis_right--active" : ""}${leftCollapsed ? " analysis_right--collapsed" : ""}`}>
-          {leftCollapsed && selectedSession?.templateType !== "pm_tracker" && selectedSession?.templateType !== "equipment_queue" && (
+          {leftCollapsed && selectedSession?.templateType !== "pm_tracker" && selectedSession?.templateType !== "equipment_queue" && selectedSession?.templateType !== "procurement" && (
             <button
               type="button"
               className="analysis_expandTab"
@@ -1360,7 +1361,7 @@ export default function Analysis() {
             /* ── Results view ── */
             <>
               {/* Results header: hidden for full-screen templates */}
-              {selectedSession?.templateType !== "pm_tracker" && selectedSession?.templateType !== "equipment_queue" && (
+              {selectedSession?.templateType !== "pm_tracker" && selectedSession?.templateType !== "equipment_queue" && selectedSession?.templateType !== "procurement" && (
                 <div className="analysis_resultsHeader">
                   <div className="analysis_resultsHeaderLeft">
                     <div className="analysis_resultsIcon">
@@ -1418,6 +1419,20 @@ export default function Analysis() {
                   <div className="analysis_templateFrame">
                     <Suspense fallback={<div className="analysis_previewEmpty"><p>Cargando fila...</p></div>}>
                       <EquipmentQueuePanel
+                        sessionId={selectedSessionId!}
+                        teamId={teamId ?? ""}
+                        userId={userId ?? ""}
+                        userName={userName || "User"}
+                        onExpandSidebar={leftCollapsed ? () => setLeftCollapsed(false) : undefined}
+                      />
+                    </Suspense>
+                  </div>
+                </div>
+              ) : selectedSession?.templateType === "procurement" ? (
+                <div className="analysis_resultsBody analysis_resultsBody--full">
+                  <div className="analysis_templateFrame">
+                    <Suspense fallback={<div className="analysis_previewEmpty"><p>Cargando procurement...</p></div>}>
+                      <ProcurementPanel
                         sessionId={selectedSessionId!}
                         teamId={teamId ?? ""}
                         userId={userId ?? ""}

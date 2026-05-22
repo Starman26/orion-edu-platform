@@ -492,7 +492,7 @@
 
 /* Completed: green with white check */
 .studio__practiceStep.is-completed .studio__practiceStepDot {
-  background: #22C55E;
+  background: #525252;
   color: #fff;
   border: none;
 }
