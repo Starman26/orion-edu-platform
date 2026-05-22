@@ -707,6 +707,7 @@
 [data-theme="dark"] .prc_emptyState { color: var(--text-dim); }
 [data-theme="dark"] .prc_kanbanCard { background: var(--bg-surface); border-color: var(--border-soft); }
 [data-theme="dark"] .prc_kanbanCard:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+[data-theme="dark"] .prc_kanbanTitle { color: var(--text-primary); }
 [data-theme="dark"] .prc_kanbanId { color: var(--text-muted); }
 [data-theme="dark"] .prc_kanbanSupplier { color: var(--text-primary); }
 [data-theme="dark"] .prc_kanbanDesc { color: var(--text-muted); }
