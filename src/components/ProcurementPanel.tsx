@@ -1,6 +1,6 @@
 // src/components/ProcurementPanel.tsx
 import { useState, useEffect, useRef } from "react";
-import { Plus, X, ExternalLink, Trash2, Pencil, Search, ChevronRight, Filter } from "lucide-react";
+import { Plus, X, ExternalLink, Trash2, Pencil, Search, ChevronRight, Filter, Settings, Check } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import "../styles/procurement.css";
 
@@ -133,6 +133,14 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
+  // Theme switcher
+  type PrcTheme = "default" | "colorful";
+  const [prcTheme, setPrcTheme] = useState<PrcTheme>(
+    () => (localStorage.getItem("prc-theme") as PrcTheme | null) ?? "default",
+  );
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+
   // BOM modal
   const [showBomModal, setShowBomModal] = useState(false);
   const [bomForm, setBomForm]           = useState(blankBom());
@@ -149,6 +157,24 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showFilterMenu]);
+
+  // ── Close theme menu on outside click ────────────────────────────────────
+  useEffect(() => {
+    if (!showThemeMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setShowThemeMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showThemeMenu]);
+
+  const handleSetTheme = (t: PrcTheme) => {
+    setPrcTheme(t);
+    localStorage.setItem("prc-theme", t);
+    setShowThemeMenu(false);
+  };
 
   // ── Load from Supabase ────────────────────────────────────────────────────
 
@@ -314,7 +340,7 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="prc_root">
+    <div className="prc_root" {...(prcTheme !== "default" ? { "data-prc-theme": prcTheme } : {})}>
 
       {/* ── Top bar ── */}
       <div className="prc_topBar">
@@ -396,6 +422,47 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
               Nueva Solicitud
             </button>
           )}
+
+          {/* Theme switcher */}
+          <div className="prc_themeWrap" ref={themeMenuRef}>
+            <button
+              type="button"
+              className={`prc_themeBtn${showThemeMenu ? " prc_themeBtn--open" : ""}`}
+              onClick={() => setShowThemeMenu((v) => !v)}
+              title="Cambiar tema"
+            >
+              <Settings size={14} />
+            </button>
+            {showThemeMenu && (
+              <div className="prc_themeMenu">
+                <div className="prc_themeMenuTitle">Apariencia</div>
+                {(
+                  [
+                    { key: "default",  label: "Clásico",  sub: "Limpio y minimalista", swatch: "linear-gradient(135deg,#101113,#374151)" },
+                    { key: "colorful", label: "Colorido", sub: "Vibrante e intenso",   swatch: "linear-gradient(135deg,#7C3AED,#EC4899)" },
+                  ] as { key: PrcTheme; label: string; sub: string; swatch: string }[]
+                ).map(({ key, label, sub, swatch }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`prc_themeOpt${prcTheme === key ? " prc_themeOpt--active" : ""}`}
+                    onClick={() => handleSetTheme(key)}
+                  >
+                    <div className="prc_themeSwatch" style={{ background: swatch }} />
+                    <div className="prc_themeOptInfo">
+                      <div>{label}</div>
+                      <div className="prc_themeOptSub">{sub}</div>
+                    </div>
+                    {prcTheme === key && (
+                      <div className="prc_themeCheck">
+                        <Check size={9} strokeWidth={3} color="#fff" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
