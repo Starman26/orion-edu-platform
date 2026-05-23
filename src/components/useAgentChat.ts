@@ -19,10 +19,16 @@ export interface AgentEvent {
 }
 
 export interface PracticeChunk {
-  type: 'partial' | 'tool_status' | 'response';
+  type: 'partial' | 'tool_status' | 'response' | 'approval_request';
   content?: string;
   tool?: string;
   status?: string;
+  joint_id?: number;
+  joint_name?: string;
+  angle?: number;
+  joint_desc?: string;
+  joint_number?: number;
+  total_joints?: number;
 }
 
 export interface AgentQuestion {
@@ -132,6 +138,7 @@ export interface SendMessageOptions {
   images?: ChatImage[];
   files?: File[];
   voiceEnabled?: boolean;
+  studentRecording?: Record<string, any>;
 }
 
 interface UseAgentChatReturn {
@@ -568,6 +575,9 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
     }
     if (voiceId) {
       payload.voice_id = voiceId;
+    }
+    if (options?.studentRecording) {
+      payload.student_recording = options.studentRecording;
     }
     console.log("[useAgentChat] POST payload:", {
       interaction_mode: interactionMode,

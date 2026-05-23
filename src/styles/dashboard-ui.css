@@ -4069,3 +4069,46 @@ html.cora-sidebar-collapsed .dash_content:has(.dash_welcomeCenter)::before {
   padding: 1px 5px;
 }
 [data-theme="dark"] .dash_flyoutSection + .dash_flyoutSection { border-top-color: rgba(255, 255, 255, 0.06); }
+
+/* ── Header responsive ── */
+
+@media (max-width: 900px) {
+  .dash_header {
+    padding: 0 14px;
+  }
+  .dash_headerRight {
+    gap: 8px;
+  }
+  /* Hide "Studio /" page prefix, keep only user name + role */
+  .dash_pageName,
+  .dash_pathSeparator:first-of-type {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .dash_header {
+    padding: 0 10px;
+  }
+  .dash_headerRight {
+    gap: 6px;
+  }
+  /* Hide full breadcrumb — too little space */
+  .dash_userInfo {
+    display: none;
+  }
+  .dash_headerDivider {
+    display: none;
+  }
+  /* Shrink robot pill text on very small screens */
+  .studio__robotPill {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  .studio__recordHeaderGroup {
+    gap: 4px;
+  }
+  .studio__recordHeaderStatus {
+    display: none;
+  }
+}

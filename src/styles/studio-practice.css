@@ -141,6 +141,33 @@
   border-color: #333;
 }
 
+.studio__robotPill--recording {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+.studio__robotPill--recording:hover { background: #fee2e2; }
+
+.studio__robotPill--send {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+.studio__robotPill--send:hover:not(:disabled) { background: #333; border-color: #333; }
+.studio__robotPill--send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.studio__recordHeaderGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.studio__recordHeaderStatus {
+  font-size: 11px;
+  color: #dc2626;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 /* ── Info button inside "No robots" pill ── */
 
 .studio__robotInfoBtn {
@@ -624,6 +651,29 @@
   padding: 16px;
   border-top: 1px solid #F0F0F0;
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.studio__practiceDownloadBtn {
+  width: 100%;
+  padding: 9px 0;
+  background: none;
+  border: 1px solid #EBEBEB;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.studio__practiceDownloadBtn:hover {
+  background: #F5F5F5;
+  border-color: #DDD;
+  color: #1A1A1A;
 }
 
 .studio__practiceExitBtn {
@@ -2665,3 +2715,4 @@
 
 .studio__approvalStripBtns button:first-child:hover { background: #333; }
 .studio__approvalStripBtns button:last-child:hover { background: #f3f4f6; }
+

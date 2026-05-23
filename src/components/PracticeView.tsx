@@ -78,6 +78,33 @@ function RobotGaugeTable({ groups }: { groups: { title: string; rows: { label: s
   );
 }
 
+// ── Parse live telemetry into RobotGaugeTable groups ──
+type GaugeGroups = { title: string; rows: { label: string; value: string }[] }[];
+
+function parseTelemetry(telem: any): GaugeGroups {
+  const d = telem?.data ?? telem ?? {};
+  const groups: GaugeGroups = [];
+  if (d.tcp) {
+    const t = d.tcp;
+    groups.push({ title: 'TCP', rows: [
+      { label: 'X',     value: `${Number(t.x).toFixed(2)}mm` },
+      { label: 'Y',     value: `${Number(t.y).toFixed(2)}mm` },
+      { label: 'Z',     value: `${Number(t.z).toFixed(2)}mm` },
+      { label: 'Roll',  value: `${Number(t.roll).toFixed(2)}°` },
+      { label: 'Pitch', value: `${Number(t.pitch).toFixed(2)}°` },
+      { label: 'Yaw',   value: `${Number(t.yaw).toFixed(2)}°` },
+    ]});
+  }
+  const joints: number[] = d.joints_deg ?? d.joints ?? [];
+  if (joints.length > 0) {
+    groups.push({ title: 'Joints', rows: joints.map((v, i) => ({
+      label: `Joint ${i + 1}`,
+      value: `${Number(v).toFixed(2)}°`,
+    })) });
+  }
+  return groups;
+}
+
 // ── Message segmentation: text + gauge interleaving ──
 type MessageSegment =
   | { type: "text"; content: string }
@@ -284,6 +311,17 @@ const [eventRuns, setEventRuns] = useState<Record<string, EventRun>>({});
   const [isCompleted, setIsCompleted] = useState(progress?.status === "completed");
   const isCompletedRef = useRef(progress?.status === "completed");
   const [reviewMode, setReviewMode] = useState(false);
+  const [approvalRequest, setApprovalRequest] = useState<PracticeChunk | null>(null);
+  const [liveRobotState, setLiveRobotState] = useState<GaugeGroups | null>(null);
+
+  // ── Recording state ──
+  const [isRecording, setIsRecording] = useState(false);
+  const [hasRecording, setHasRecording] = useState(false);
+  const [recordCounts, setRecordCounts] = useState<{ elapsed: number } | null>(null);
+  const recordPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordStartTimeRef = useRef<number>(0);
+  const recordSessionIdRef = useRef<string>("");
+  const recordSummaryRef = useRef<any>(null);
 
 // ── Fetch connected robots (poll every 15s) ──
   useEffect(() => {
@@ -435,7 +473,14 @@ const [eventRuns, setEventRuns] = useState<Record<string, EventRun>>({});
   // ── Practice chunk handler (streaming tool execution) ──
   const handlePracticeChunk = useCallback((chunk: PracticeChunk) => {
     console.log("[DUP-DEBUG] chunk:", chunk.type, chunk.content?.substring(0, 50));
+
+    if (chunk.type === 'approval_request') {
+      setApprovalRequest(chunk);
+      return;
+    }
+
     if (isCompletedRef.current) return;
+
     practiceChunksRef.current.push(chunk);
 
     if (chunk.type === 'partial' && chunk.content) {
@@ -591,6 +636,188 @@ const [eventRuns, setEventRuns] = useState<Record<string, EventRun>>({});
       setSuggestions(agentSuggestions.map((s: string) => ({ id: crypto.randomUUID(), text: s })));
     }
   }, [agentSuggestions]);
+
+  // ── Recording helpers ──
+  const stopRecordPoll = () => {
+    if (recordPollRef.current) { clearInterval(recordPollRef.current); recordPollRef.current = null; }
+  };
+
+  const startRecording = async () => {
+    const deviceId = selectedRobotIds[0];
+    if (!deviceId) return;
+    const sessionId = crypto.randomUUID();
+    recordSessionIdRef.current = sessionId;
+    recordSummaryRef.current = null;
+    try {
+      await fetch(`${AGENT_API_URL}/api/record/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, device_id: deviceId }),
+      });
+    } catch (e) {
+      console.error("[startRecording] /api/record/start failed:", e);
+    }
+    recordStartTimeRef.current = Date.now();
+    setIsRecording(true);
+    setHasRecording(false);
+    setRecordCounts({ elapsed: 0 });
+    recordPollRef.current = setInterval(() => {
+      setRecordCounts({ elapsed: Math.round((Date.now() - recordStartTimeRef.current) / 1000) });
+    }, 1000);
+  };
+
+  const stopRecording = async () => {
+    stopRecordPoll();
+    setIsRecording(false);
+    setHasRecording(true);
+    const sessionId = recordSessionIdRef.current;
+    const deviceId = selectedRobotIds[0];
+    if (!sessionId || !deviceId) return;
+    try {
+      const res = await fetch(`${AGENT_API_URL}/api/record/stop`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, device_id: deviceId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        recordSummaryRef.current = {
+          summary: data.summary,
+          started_at: data.started_at,
+          stopped_at: data.stopped_at,
+          active: false,
+        };
+      }
+    } catch (e) {
+      console.error("[stopRecording] /api/record/stop failed:", e);
+    }
+  };
+
+  const sendRecord = async () => {
+    if (isRecording) await stopRecording();
+    setHasRecording(false);
+    setRecordCounts(null);
+    const text = "I'm done. Here's what I did — how did I do?";
+    setIsLoading(true);
+    practiceChunksRef.current = [];
+    setToolExecuting(null);
+    agentSend(text, { studentRecording: recordSummaryRef.current ?? undefined });
+  };
+
+  // ── DEBUG: download the server-side summary that will be sent to the agent ──
+  const downloadRecord = async () => {
+    const sessionId = recordSessionIdRef.current;
+    const deviceId = selectedRobotIds[0];
+    let serverSummary: any = null;
+    let httpStatus: number | null = null;
+    let fetchError: string | null = null;
+
+    if (sessionId) {
+      try {
+        const res = await fetch(`${AGENT_API_URL}/api/record/summary/${sessionId}`);
+        httpStatus = res.status;
+        if (res.ok) serverSummary = await res.json();
+      } catch (e) {
+        fetchError = String(e);
+      }
+    }
+
+    const debugPayload = {
+      _debug_meta: {
+        generated_at: new Date().toISOString(),
+        agent_api_url: AGENT_API_URL,
+        selected_device_id: deviceId,
+        session_id: sessionId,
+        http_status: httpStatus,
+        fetch_error: fetchError,
+      },
+      server_recording_summary: serverSummary,
+      payload_that_would_be_sent_to_agent: recordSummaryRef.current,
+    };
+
+    const blob = new Blob([JSON.stringify(debugPayload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `recording-debug-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Cleanup poll on unmount
+  useEffect(() => () => stopRecordPoll(), []);
+
+  // ── Live telemetry polling for State tab ──
+  useEffect(() => {
+    if (sidebarView !== "state" || selectedRobotIds.length === 0) {
+      setLiveRobotState(null);
+      return;
+    }
+    const robotId = selectedRobotIds[0];
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`${AGENT_API_URL}/api/telemetry/latest`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const telem = data[robotId] ?? data[Object.keys(data)[0]];
+        if (telem) {
+          const groups = parseTelemetry(telem);
+          if (groups.length) setLiveRobotState(groups);
+        }
+      } catch { /* ignore network errors */ }
+    };
+    poll();
+    const id = setInterval(poll, 2000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [sidebarView, selectedRobotIds.join(",")]);
+
+  const downloadReview = async () => {
+    const { data } = await supabase
+      .schema("lab")
+      .from("user_automation_progress")
+      .select("agent_observations, current_step, status, completed_at")
+      .eq("auth_user_id", userId)
+      .eq("automation_id", automation.id)
+      .maybeSingle();
+
+    if (!data?.agent_observations) return;
+
+    let observations: { step: number; observation: string }[] = data.agent_observations;
+    if (typeof observations === 'string') {
+      try { observations = JSON.parse(observations); } catch { return; }
+    }
+    if (!Array.isArray(observations)) return;
+    const lines: string[] = [
+      `Practice Review — ${automation.title}`,
+      `Status: ${data.status}  |  Steps completed: ${data.current_step}`,
+      `Completed: ${data.completed_at ? new Date(data.completed_at).toLocaleString() : "In progress"}`,
+      "",
+      ...observations.map(o =>
+        `Step ${o.step}\n${"-".repeat(40)}\n${o.observation}\n`
+      ),
+    ];
+
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${automation.title.replace(/\s+/g, "_")}_review.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const answerApproval = async (approved: boolean) => {
+    setApprovalRequest(null);
+    if (!sessionId) return;
+    await fetch(`${AGENT_API_URL}/api/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, approved }),
+    }).catch(console.error);
+  };
 
   const handleSend = async () => {
     const text = chatMessage.trim();
@@ -890,6 +1117,44 @@ const handleStepClick = async (stepIdx: number) => {
           </div>
         )}
 
+        {selectedRobotIds.length > 0 && (
+          <div className="studio__recordHeaderGroup">
+            <button
+              type="button"
+              className={`studio__robotPill studio__robotPill--mono ${isRecording ? 'studio__robotPill--recording' : ''}`}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isCompleted}
+            >
+              {isRecording ? '■ Stop' : '● Rec'}
+            </button>
+            {isRecording && recordCounts && (
+              <span className="studio__recordHeaderStatus">
+                {recordCounts.elapsed}s
+              </span>
+            )}
+            {hasRecording && (
+              <button
+                type="button"
+                className="studio__robotPill studio__robotPill--mono studio__robotPill--send"
+                onClick={sendRecord}
+                disabled={isLoading}
+              >
+                Send rec
+              </button>
+            )}
+            {hasRecording && (
+              <button
+                type="button"
+                className="studio__robotPill studio__robotPill--mono"
+                onClick={downloadRecord}
+                title="DEBUG: download the raw payload that would be sent"
+              >
+                ⬇ Debug
+              </button>
+            )}
+          </div>
+        )}
+
         <button
           type="button"
           className={`studio__robotPill studio__robotPill--mono ${inCall ? 'is-active' : ''}`}
@@ -902,7 +1167,7 @@ const handleStepClick = async (stepIdx: number) => {
       </>
     );
     return () => onHeaderControls?.(null);
-  }, [onHeaderControls, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, startCall, stopCall, labOpen]);
+  }, [onHeaderControls, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, startCall, stopCall, labOpen, isRecording, hasRecording, recordCounts, isCompleted, isLoading, startRecording, stopRecording, sendRecord, downloadRecord]);
 
   // Cache segmentMessage per message to avoid re-parsing on every render
   const segmentedMessages = useMemo(() => {
@@ -1008,18 +1273,21 @@ const handleStepClick = async (stepIdx: number) => {
                   </div>
                   <span>Connect to a robot to see its state</span>
                 </div>
-              ) : !robotGaugeData ? (
+              ) : !(liveRobotState ?? robotGaugeData) ? (
                 <div className="studio__practiceSidebarStateWaiting">
                   <Loader2 size={16} className="animate-spin" />
                   <span>Waiting for data...</span>
                 </div>
               ) : (
-                <RobotGaugeTable groups={robotGaugeData} />
+                <RobotGaugeTable groups={(liveRobotState ?? robotGaugeData)!} />
               )}
             </div>
           )}
 
           <div className="studio__practiceSidebarFooter">
+            <button type="button" className="studio__practiceDownloadBtn" onClick={downloadReview}>
+              Download Review
+            </button>
             <button type="button" className="studio__practiceExitBtn" onClick={onBack}>
               Exit Practice
             </button>
@@ -1179,6 +1447,20 @@ const handleStepClick = async (stepIdx: number) => {
                   <button type="button" className="studio__practiceNoRobotsDismiss" onClick={() => setShowNoRobotsPopup(false)}>
                     Dismiss
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {approvalRequest && (
+            <div className="studio__approvalOuter">
+              <div className="studio__approvalStrip">
+                <span className="studio__approvalStripLabel">
+                  ⚠ {approvalRequest.content ?? `Joint ${approvalRequest.joint_id} → ${approvalRequest.angle}°`}
+                </span>
+                <div className="studio__approvalStripBtns">
+                  <button onClick={() => answerApproval(true)}>Approve</button>
+                  <button onClick={() => answerApproval(false)}>Reject</button>
                 </div>
               </div>
             </div>

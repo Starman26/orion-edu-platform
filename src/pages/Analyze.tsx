@@ -39,6 +39,11 @@ interface AnalysisTemplate {
   config: Record<string, unknown>;
 }
 
+interface SessionInteractor {
+  id: string;
+  name: string;
+}
+
 interface AnalysisSession {
   id: string;
   title: string;
@@ -52,6 +57,7 @@ interface AnalysisSession {
   templateType: string | null;
   templateId: string | null;
   templateConfig: Record<string, unknown> | null;
+  interactors: SessionInteractor[];
 }
 
 // ============================================================================
@@ -183,9 +189,13 @@ interface CardProps {
   onDelete: () => void;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
+  onShowInteractors: () => void;
 }
 
-function AnalysisCardItem({ session, isSelected, isDeleting, currentUserId, onClick, onEdit, onDelete, onConfirmDelete, onCancelDelete }: CardProps) {
+function AnalysisCardItem({ session, isSelected, isDeleting, currentUserId, onClick, onEdit, onDelete, onConfirmDelete, onCancelDelete, onShowInteractors }: CardProps) {
+  const MAX_STACKED = 3;
+  const visibleInteractors = session.interactors.slice(0, MAX_STACKED);
+  const extraInteractors = session.interactors.length - visibleInteractors.length;
   return (
     <button
       type="button"
@@ -216,6 +226,35 @@ function AnalysisCardItem({ session, isSelected, isDeleting, currentUserId, onCl
           {session.authorName.charAt(0).toUpperCase()}
         </div>
         <span className="analysis_cardAuthorName">{session.authorName}</span>
+        {!isDeleting && session.interactors.length > 0 && (
+          <span
+            role="button"
+            tabIndex={0}
+            className="analysis_cardInteractors"
+            title={
+              session.interactors.length === 1
+                ? `${session.interactors[0].name} has interacted`
+                : `${session.interactors.length} teammates have interacted`
+            }
+            onClick={(e) => { e.stopPropagation(); onShowInteractors(); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); e.preventDefault(); onShowInteractors(); } }}
+          >
+            {visibleInteractors.map((u, i) => (
+              <span
+                key={u.id}
+                className="analysis_cardInteractorAvatar"
+                style={{ zIndex: visibleInteractors.length - i }}
+              >
+                {u.name.charAt(0).toUpperCase()}
+              </span>
+            ))}
+            {extraInteractors > 0 && (
+              <span className="analysis_cardInteractorAvatar analysis_cardInteractorAvatar--more">
+                +{extraInteractors}
+              </span>
+            )}
+          </span>
+        )}
         {isDeleting ? (
           <div className="analysis_cardConfirmRow" onClick={(e) => e.stopPropagation()}>
             <span className="analysis_cardConfirmText">Delete?</span>
@@ -339,6 +378,9 @@ export default function Analysis() {
 
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Interactors popup
+  const [interactorsModalSession, setInteractorsModalSession] = useState<AnalysisSession | null>(null);
 
   // Left panel collapse
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -530,13 +572,46 @@ export default function Analysis() {
         }
       }
 
-      // Fetch last user message for each session + author names
-      const authUserIds = [...new Set(sessions.map((s: any) => s.auth_user_id))];
+      // Fetch all team members — used to populate the "team" visibility case
+      const { data: teamMemberships } = await supabase
+        .from("team_memberships")
+        .select("auth_user_id")
+        .eq("team_id", teamId);
+      const allTeamMemberIds = (teamMemberships ?? [])
+        .map((m: any) => m.auth_user_id as string)
+        .filter(Boolean);
+
+      // Per session, compute who has access (= interactors): creator + (visibility-dependent set)
+      const interactorsBySession: Record<string, string[]> = {};
+      for (const s of sessions) {
+        const vis = (s as any).visibility ?? "private";
+        const partIds: string[] = Array.isArray((s as any).participant_ids)
+          ? (s as any).participant_ids
+          : [];
+        const ordered = [s.auth_user_id];
+        if (vis === "team") {
+          for (const id of allTeamMemberIds) {
+            if (id !== s.auth_user_id) ordered.push(id);
+          }
+        } else if (vis === "shared") {
+          for (const id of partIds) {
+            if (id && id !== s.auth_user_id) ordered.push(id);
+          }
+        }
+        interactorsBySession[s.id] = ordered;
+      }
+
+      // Collect every user id referenced (creators + access lists) for the name lookup
+      const allUserIds = new Set<string>();
+      for (const s of sessions) allUserIds.add(s.auth_user_id);
+      for (const arr of Object.values(interactorsBySession)) {
+        for (const id of arr) allUserIds.add(id);
+      }
 
       const { data: profiles } = await supabase
         .from("profiles")
         .select("auth_user_id, full_name")
-        .in("auth_user_id", authUserIds);
+        .in("auth_user_id", [...allUserIds]);
 
       const nameMap: Record<string, string> = {};
       for (const p of profiles || []) {
@@ -559,6 +634,10 @@ export default function Analysis() {
 
         const tid = (s as any).template_id ?? null;
         const tpl = tid ? tplMap[tid] ?? null : null;
+        const interactors: SessionInteractor[] = (interactorsBySession[s.id] ?? [s.auth_user_id]).map((id) => ({
+          id,
+          name: nameMap[id] || "Unknown",
+        }));
         mapped.push({
           id: s.id,
           title: s.title || "Untitled Analysis",
@@ -572,6 +651,7 @@ export default function Analysis() {
           templateType: tpl?.template_type ?? null,
           templateId: tid,
           templateConfig: tpl?.config ?? null,
+          interactors,
         });
       }
 
@@ -733,6 +813,7 @@ export default function Analysis() {
       templateType: null,
       templateId: null,
       templateConfig: null,
+      interactors: [{ id: userId ?? "", name: userName || "User" }],
     };
 
     setAnalysisSessions((prev) => [newSession, ...prev]);
@@ -790,6 +871,23 @@ export default function Analysis() {
 
     // 3. Add card to left panel
     const chosenTemplate = templates.find((t) => t.id === createTemplateId) ?? null;
+    const creatorInteractor: SessionInteractor = { id: userId ?? "", name: userName || "User" };
+    const firstName = (full: string) => (full || "").trim().split(/\s+/)[0] || "Unknown";
+    let extraInteractors: SessionInteractor[] = [];
+    if (createVisibility === "team") {
+      // teamMembers state excludes the current user; everyone else on the team has access
+      extraInteractors = teamMembers.map((m) => ({
+        id: m.auth_user_id,
+        name: firstName(m.full_name),
+      }));
+    } else if (createVisibility === "shared") {
+      extraInteractors = createParticipantIds
+        .filter((id) => id !== userId)
+        .map((id) => {
+          const m = teamMembers.find((x) => x.auth_user_id === id);
+          return { id, name: firstName(m?.full_name || "") };
+        });
+    }
     const newSession: AnalysisSession = {
       id: newId,
       title,
@@ -803,6 +901,7 @@ export default function Analysis() {
       templateType: chosenTemplate?.template_type ?? null,
       templateId: createTemplateId ?? null,
       templateConfig: chosenTemplate?.config ?? null,
+      interactors: [creatorInteractor, ...extraInteractors],
     };
 
     setAnalysisSessions((prev) => [newSession, ...prev]);
@@ -909,11 +1008,32 @@ export default function Analysis() {
       if (msgErr) console.error("[EditAnalysis] Failed to insert first message:", msgErr);
     }
 
+    // Recompute interactors from the updated visibility
+    const firstName = (full: string) => (full || "").trim().split(/\s+/)[0] || "Unknown";
+    const creatorInteractor: SessionInteractor = { id: userId ?? "", name: userName || "User" };
+    let newInteractors: SessionInteractor[] = [creatorInteractor];
+    if (editVisibility === "team") {
+      newInteractors = [
+        creatorInteractor,
+        ...teamMembers.map((m) => ({ id: m.auth_user_id, name: firstName(m.full_name) })),
+      ];
+    } else if (editVisibility === "shared") {
+      newInteractors = [
+        creatorInteractor,
+        ...editParticipantIds
+          .filter((id) => id !== userId)
+          .map((id) => {
+            const m = teamMembers.find((x) => x.auth_user_id === id);
+            return { id, name: firstName(m?.full_name || "") };
+          }),
+      ];
+    }
+
     // Update local state
     setAnalysisSessions((prev) =>
       prev.map((s) =>
         s.id === editSessionId
-          ? { ...s, title, lastUserMessage: description || s.lastUserMessage }
+          ? { ...s, title, lastUserMessage: description || s.lastUserMessage, interactors: newInteractors }
           : s
       )
     );
@@ -1071,6 +1191,7 @@ export default function Analysis() {
                     onDelete={() => handleDeleteSession(session.id)}
                     onConfirmDelete={() => handleConfirmDelete(session.id)}
                     onCancelDelete={handleCancelDelete}
+                    onShowInteractors={() => setInteractorsModalSession(session)}
                   />
                 ))
               )}
@@ -1471,6 +1592,64 @@ export default function Analysis() {
           )}
         </div>
       </main>
+
+      {/* Interactors popup — teammates who have interacted with this analysis */}
+      {interactorsModalSession && (
+        <div className="ll_modalOverlay" onClick={() => setInteractorsModalSession(null)}>
+          <div
+            className="ll_modal"
+            style={{ maxHeight: "70vh", display: "flex", flexDirection: "column" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ll_modalHeader">
+              <h2 className="ll_modalTitle">
+                Teammates in this analysis ({interactorsModalSession.interactors.length})
+              </h2>
+              <button
+                type="button"
+                className="ll_modalClose"
+                onClick={() => setInteractorsModalSession(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div
+              className="ll_modalContent"
+              style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}
+            >
+              {interactorsModalSession.interactors.length === 0 ? (
+                <div style={{ padding: "16px 0", color: "rgba(16,17,19,0.6)", fontSize: 13 }}>
+                  Nobody has interacted with this analysis yet.
+                </div>
+              ) : (
+                interactorsModalSession.interactors.map((u) => {
+                  const isAuthor = u.id === interactorsModalSession.auth_user_id;
+                  return (
+                    <div
+                      key={u.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "8px 0",
+                        borderBottom: "1px solid rgba(13,13,13,0.08)",
+                      }}
+                    >
+                      <div className="ll_memberAvatar">
+                        <span>{u.name.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="ll_memberInfo">
+                        <span className="ll_memberName">{u.name}</span>
+                        <span className="ll_memberRole">{isAuthor ? "creator" : "collaborator"}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* One-time feature notification */}
       {showQueueNotif && (

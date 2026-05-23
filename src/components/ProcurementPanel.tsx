@@ -6,10 +6,11 @@ import "../styles/procurement.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type RFQStatus = "pending" | "in_review" | "approved" | "rejected";
-type Priority  = "high" | "medium" | "low";
-type Currency  = "MXN" | "USD";
-type TabView   = "quotes" | "approvals" | "bom";
+type RFQStatus     = "pending" | "in_review" | "approved" | "rejected";
+type Priority      = "high" | "medium" | "low";
+type Currency      = "MXN" | "USD";
+type DeliveryStatus = "pending_shipment" | "shipped" | "delivered";
+type TabView       = "quotes" | "approvals" | "deliveries" | "bom";
 
 interface Quote {
   id: string;
@@ -23,6 +24,7 @@ interface Quote {
   date: string;
   priority: Priority;
   link: string;
+  deliveryStatus: DeliveryStatus;
 }
 
 interface BomItem {
@@ -61,8 +63,22 @@ const PRIORITY_CFG: Record<Priority, { label: string; cls: string }> = {
   low:    { label: "Baja",  cls: "prc_badge--low"     },
 };
 
+const DELIVERY_CFG: Record<DeliveryStatus, { label: string; dot: string; cls: string }> = {
+  pending_shipment: { label: "Pendiente de envío", dot: "rgba(217,119,6,0.55)",  cls: "prc_badge--pending"   },
+  shipped:          { label: "Enviado",            dot: "rgba(124,58,237,0.55)", cls: "prc_badge--in_review" },
+  delivered:        { label: "Entregado",          dot: "rgba(5,150,105,0.65)",  cls: "prc_badge--approved"  },
+};
+
+const STATUS_DOT_COLORFUL: Record<RFQStatus, string> = {
+  pending:   "#d97706",
+  in_review: "#7C3AED",
+  approved:  "#059669",
+  rejected:  "#dc2626",
+};
+
 const UNITS = ["pza", "kg", "kit", "lic", "m", "l"];
 const STATUS_ORDER: RFQStatus[] = ["pending", "in_review", "approved", "rejected"];
+const DELIVERY_ORDER: DeliveryStatus[] = ["pending_shipment", "shipped", "delivered"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -74,17 +90,18 @@ function fmt(n: number, c: Currency) {
 
 function rowToQuote(r: Record<string, unknown>): Quote {
   return {
-    id:          r.id as string,
-    rfqNumber:   r.rfq_number as string,
-    supplier:    r.supplier as string,
-    description: r.description as string,
-    items:       r.items as number,
-    total:       Number(r.total),
-    currency:    r.currency as Currency,
-    status:      r.status as RFQStatus,
-    date:        r.date as string,
-    priority:    r.priority as Priority,
-    link:        (r.link as string) ?? "",
+    id:             r.id as string,
+    rfqNumber:      r.rfq_number as string,
+    supplier:       r.supplier as string,
+    description:    r.description as string,
+    items:          r.items as number,
+    total:          Number(r.total),
+    currency:       r.currency as Currency,
+    status:         r.status as RFQStatus,
+    date:           r.date as string,
+    priority:       r.priority as Priority,
+    link:           (r.link as string) ?? "",
+    deliveryStatus: (r.delivery_status as DeliveryStatus) ?? "pending_shipment",
   };
 }
 
@@ -117,13 +134,14 @@ const blankBom = () => ({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ProcurementPanel({ sessionId, onExpandSidebar }: ProcurementPanelProps) {
+export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSidebar }: ProcurementPanelProps) {
   const [loading, setLoading]            = useState(true);
   const [tab, setTab]                    = useState<TabView>("quotes");
   const [search, setSearch]              = useState("");
   const [statusFilter, setStatusFilter]  = useState<RFQStatus | "all">("all");
   const [quotes, setQuotes]              = useState<Quote[]>([]);
   const [bom, setBom]                    = useState<BomItem[]>([]);
+  const [isAdmin, setIsAdmin]            = useState(false);
 
   // Quote modal
   const [showQuoteModal, setShowQuoteModal] = useState(false);
@@ -194,6 +212,24 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
     return () => { cancelled = true; };
   }, [sessionId]);
 
+  // ── Role: is current user admin/owner of this team ───────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    if (!teamId || !userId) { setIsAdmin(false); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("team_memberships")
+        .select("role")
+        .eq("team_id", teamId)
+        .eq("auth_user_id", userId)
+        .maybeSingle();
+      if (cancelled) return;
+      const role = data?.role as string | undefined;
+      setIsAdmin(role === "admin" || role === "owner");
+    })();
+    return () => { cancelled = true; };
+  }, [teamId, userId]);
+
   // ── Quote handlers ────────────────────────────────────────────────────────
 
   const handleAddQuote = async () => {
@@ -258,6 +294,12 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
         setBom((prev) => [...prev, rowToBom(newRow)]);
       }
     }
+  };
+
+  const handleUpdateDelivery = async (id: string, delivery_status: DeliveryStatus) => {
+    const { error } = await supabase.schema("chat").from("prc_quotes").update({ delivery_status }).eq("id", id);
+    if (error) { console.error("[PRC] Update delivery status:", error); return; }
+    setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, deliveryStatus: delivery_status } : q)));
   };
 
   // ── BOM handlers ──────────────────────────────────────────────────────────
@@ -353,9 +395,10 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
           <nav className="prc_tabs">
             {(
               [
-                ["quotes",    "Cotizaciones"],
-                ["approvals", "Aprobaciones"],
-                ["bom",       "Bill of Materials"],
+                ["quotes",     "Cotizaciones"],
+                ["approvals",  "Aprobaciones"],
+                ["deliveries", "Entregas"],
+                ["bom",        "Bill of Materials"],
               ] as [TabView, string][]
             ).map(([key, label]) => (
               <button
@@ -519,7 +562,7 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
                               <td><span className={`prc_badge ${pc.cls}`}>{pc.label}</span></td>
                               <td>
                                 <span className={`prc_badge ${sc.cls}`}>
-                                  <span className="prc_badgeDot" style={{ background: sc.dot }} />
+                                  <span className="prc_badgeDot" style={{ background: prcTheme === "colorful" ? STATUS_DOT_COLORFUL[q.status] : sc.dot }} />
                                   {sc.label}
                                 </span>
                               </td>
@@ -531,15 +574,23 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
                               <td>
                                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                                   {q.status === "pending" && (
-                                    <button type="button" className="prc_btn prc_btn--ghost prc_btn--sm" onClick={() => handleUpdateStatus(q.id, "in_review")}>
-                                      Revisar
-                                    </button>
+                                    isAdmin ? (
+                                      <button type="button" className="prc_btn prc_btn--ghost prc_btn--sm" onClick={() => handleUpdateStatus(q.id, "in_review")}>
+                                        Revisar
+                                      </button>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: "rgba(16,17,19,0.35)", fontStyle: "italic" }}>Solo admin</span>
+                                    )
                                   )}
                                   {q.status === "in_review" && (
-                                    <>
-                                      <button type="button" className="prc_btn prc_btn--success prc_btn--sm" onClick={() => handleUpdateStatus(q.id, "approved")}>Aprobar</button>
-                                      <button type="button" className="prc_btn prc_btn--danger  prc_btn--sm" onClick={() => handleUpdateStatus(q.id, "rejected")}>Rechazar</button>
-                                    </>
+                                    isAdmin ? (
+                                      <>
+                                        <button type="button" className="prc_btn prc_btn--success prc_btn--sm" onClick={() => handleUpdateStatus(q.id, "approved")}>Aprobar</button>
+                                        <button type="button" className="prc_btn prc_btn--danger  prc_btn--sm" onClick={() => handleUpdateStatus(q.id, "rejected")}>Rechazar</button>
+                                      </>
+                                    ) : (
+                                      <span style={{ fontSize: 11, color: "rgba(16,17,19,0.35)", fontStyle: "italic" }}>Solo admin</span>
+                                    )
                                   )}
                                   {(q.status === "approved" || q.status === "rejected") && (
                                     <span style={{ fontSize: 11, color: "rgba(16,17,19,0.35)", fontStyle: "italic" }}>Finalizado</span>
@@ -560,12 +611,13 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
             {tab === "approvals" && (
               <div className="prc_kanban">
                 {STATUS_ORDER.map((status) => {
-                  const cfg   = STATUS_CFG[status];
-                  const cards = quotes.filter((q) => q.status === status);
+                  const cfg      = STATUS_CFG[status];
+                  const dotColor = prcTheme === "colorful" ? STATUS_DOT_COLORFUL[status] : cfg.dot;
+                  const cards    = quotes.filter((q) => q.status === status);
                   return (
                     <div key={status} className="prc_kanbanCol">
                       <div className="prc_kanbanHeader">
-                        <span className="prc_kanbanDot" style={{ background: cfg.dot }} />
+                        <span className="prc_kanbanDot" style={{ background: dotColor }} />
                         <span className="prc_kanbanTitle">{cfg.label}</span>
                         <span className="prc_kanbanCount">{cards.length}</span>
                       </div>
@@ -574,7 +626,7 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
                         <div className="prc_kanbanEmpty">Sin elementos</div>
                       ) : (
                         cards.map((q) => (
-                          <div key={q.id} className="prc_kanbanCard" style={{ borderLeft: `3px solid ${cfg.dot}` }}>
+                          <div key={q.id} className="prc_kanbanCard" style={{ borderLeft: `3px solid ${dotColor}` }}>
                             <div className="prc_kanbanCardTop">
                               <span className="prc_kanbanId">{q.rfqNumber}</span>
                               <span className={`prc_badge ${PRIORITY_CFG[q.priority].cls}`}>{PRIORITY_CFG[q.priority].label}</span>
@@ -586,26 +638,34 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
                               <span className="prc_kanbanDate">{q.date}</span>
                             </div>
                             {(status === "pending" || status === "in_review") && (
-                              <div className="prc_kanbanActions">
-                                {status === "pending" && (
-                                  <button type="button" className="prc_btn prc_btn--ghost prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
-                                    onClick={() => handleUpdateStatus(q.id, "in_review")}>
-                                    Enviar a Revisión
-                                  </button>
-                                )}
-                                {status === "in_review" && (
-                                  <>
-                                    <button type="button" className="prc_btn prc_btn--success prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
-                                      onClick={() => handleUpdateStatus(q.id, "approved")}>
-                                      ✓ Aprobar
+                              isAdmin ? (
+                                <div className="prc_kanbanActions">
+                                  {status === "pending" && (
+                                    <button type="button" className="prc_btn prc_btn--ghost prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
+                                      onClick={() => handleUpdateStatus(q.id, "in_review")}>
+                                      Enviar a Revisión
                                     </button>
-                                    <button type="button" className="prc_btn prc_btn--danger prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
-                                      onClick={() => handleUpdateStatus(q.id, "rejected")}>
-                                      ✗ Rechazar
-                                    </button>
-                                  </>
-                                )}
-                              </div>
+                                  )}
+                                  {status === "in_review" && (
+                                    <>
+                                      <button type="button" className="prc_btn prc_btn--success prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
+                                        onClick={() => handleUpdateStatus(q.id, "approved")}>
+                                        ✓ Aprobar
+                                      </button>
+                                      <button type="button" className="prc_btn prc_btn--danger prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
+                                        onClick={() => handleUpdateStatus(q.id, "rejected")}>
+                                        ✗ Rechazar
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="prc_kanbanActions" style={{ justifyContent: "center" }}>
+                                  <span style={{ fontSize: 11, color: "rgba(16,17,19,0.4)", fontStyle: "italic" }}>
+                                    Solo administradores
+                                  </span>
+                                </div>
+                              )
                             )}
                           </div>
                         ))
@@ -614,6 +674,78 @@ export default function ProcurementPanel({ sessionId, onExpandSidebar }: Procure
                   );
                 })}
               </div>
+            )}
+
+            {/* ════ Entregas — Kanban ════ */}
+            {tab === "deliveries" && (
+              <>
+                <div className="prc_stats">
+                  {(DELIVERY_ORDER.map((ds) => ({
+                    label: DELIVERY_CFG[ds].label,
+                    value: quotes.filter((q) => q.status === "approved" && q.deliveryStatus === ds).length,
+                  })) as { label: string; value: number }[]).map((c) => (
+                    <div key={c.label} className="prc_statCard">
+                      <div className="prc_statLabel">{c.label}</div>
+                      <div className="prc_statValue">{c.value}</div>
+                    </div>
+                  ))}
+                  <div className="prc_statCard">
+                    <div className="prc_statLabel">Total aprobadas</div>
+                    <div className="prc_statValue">{quotes.filter((q) => q.status === "approved").length}</div>
+                  </div>
+                </div>
+
+                <div className="prc_kanban">
+                  {DELIVERY_ORDER.map((ds) => {
+                    const cfg   = DELIVERY_CFG[ds];
+                    const cards = quotes.filter((q) => q.status === "approved" && q.deliveryStatus === ds);
+                    const prev  = DELIVERY_ORDER[DELIVERY_ORDER.indexOf(ds) - 1];
+                    const next  = DELIVERY_ORDER[DELIVERY_ORDER.indexOf(ds) + 1];
+                    return (
+                      <div key={ds} className="prc_kanbanCol">
+                        <div className="prc_kanbanHeader">
+                          <span className="prc_kanbanDot" style={{ background: cfg.dot }} />
+                          <span className="prc_kanbanTitle">{cfg.label}</span>
+                          <span className="prc_kanbanCount">{cards.length}</span>
+                        </div>
+
+                        {cards.length === 0 ? (
+                          <div className="prc_kanbanEmpty">Sin elementos</div>
+                        ) : (
+                          cards.map((q) => (
+                            <div key={q.id} className="prc_kanbanCard" style={{ borderLeft: `3px solid ${cfg.dot}` }}>
+                              <div className="prc_kanbanCardTop">
+                                <span className="prc_kanbanId">{q.rfqNumber}</span>
+                                <span className={`prc_badge ${PRIORITY_CFG[q.priority].cls}`}>{PRIORITY_CFG[q.priority].label}</span>
+                              </div>
+                              <div className="prc_kanbanSupplier">{q.supplier}</div>
+                              <div className="prc_kanbanDesc">{q.description}</div>
+                              <div className="prc_kanbanFooter">
+                                <span className="prc_kanbanAmount">{fmt(q.total, q.currency)}</span>
+                                <span className="prc_kanbanDate">{q.date}</span>
+                              </div>
+                              <div className="prc_kanbanActions">
+                                {prev && (
+                                  <button type="button" className="prc_btn prc_btn--ghost prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
+                                    onClick={() => handleUpdateDelivery(q.id, prev)}>
+                                    ← {DELIVERY_CFG[prev].label}
+                                  </button>
+                                )}
+                                {next && (
+                                  <button type="button" className="prc_btn prc_btn--success prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
+                                    onClick={() => handleUpdateDelivery(q.id, next)}>
+                                    {DELIVERY_CFG[next].label} →
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
 
             {/* ════ Bill of Materials ════ */}

@@ -554,6 +554,54 @@
   gap: 4px;
 }
 
+.analysis_cardInteractors {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.analysis_cardInteractors:hover {
+  background: rgba(16, 17, 19, 0.05);
+}
+
+.analysis_cardInteractors:focus-visible {
+  outline: 2px solid rgba(16, 17, 19, 0.3);
+  outline-offset: 1px;
+}
+
+.analysis_cardInteractors + .analysis_cardActions {
+  margin-left: 4px;
+}
+
+.analysis_cardInteractorAvatar {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 17, 19, 0.08);
+  border: 1.5px solid #ffffff;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 600;
+  color: #101113;
+  margin-left: -6px;
+}
+
+.analysis_cardInteractorAvatar:first-child {
+  margin-left: 0;
+}
+
+.analysis_cardInteractorAvatar--more {
+  background: rgba(16, 17, 19, 0.15);
+  color: rgba(16, 17, 19, 0.7);
+  font-size: 8px;
+}
+
 .analysis_cardActionBtn {
   display: flex;
   align-items: center;
