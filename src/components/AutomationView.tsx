@@ -10,6 +10,8 @@ import {
   FollowUpSuggestions,
   type Message,
   type FollowUpSuggestion,
+  type ImageAttachment,
+  type PastedContent,
 } from "./ChatComponents";
 import type { Automation } from "./StudioHelpers";
 
@@ -317,11 +319,31 @@ export default function AutomationView({
     }).catch(console.error);
   };
 
-  const handleSend = async () => {
+  const handleSend = async (pastedContents?: string[]) => {
     const text = chatMessage.trim();
-    if (!text && pendingFiles.length === 0 || isLoading) return;
+    const hasPasted = pastedContents && pastedContents.length > 0;
+    if ((!text && pendingFiles.length === 0 && !hasPasted) || isLoading) return;
+
+    // Build display-ready image attachments (blob URLs valid for this session)
+    const imageAttachments: ImageAttachment[] = pendingFiles
+      .filter(f => f.type.startsWith("image/"))
+      .map(f => ({ name: f.name, mediaType: f.type, dataUrl: URL.createObjectURL(f) }));
+
+    // Build display-ready pasted content items
+    const pastedItems: PastedContent[] = (pastedContents || []).map(c => ({
+      id: crypto.randomUUID(),
+      content: c,
+    }));
+
     const messageId = crypto.randomUUID();
-    setMessages(prev => [...prev, { id: messageId, text: text || "📎 imagen", sender: "user", createdAt: new Date().toISOString() }]);
+    setMessages(prev => [...prev, {
+      id: messageId,
+      text,
+      sender: "user" as const,
+      createdAt: new Date().toISOString(),
+      images: imageAttachments.length > 0 ? imageAttachments : undefined,
+      pastedContents: pastedItems.length > 0 ? pastedItems : undefined,
+    }]);
     setChatMessage("");
     const filesToSend = pendingFiles;
     setPendingFiles([]);
@@ -329,7 +351,7 @@ export default function AutomationView({
     setSuggestions([]);
     setApprovalRequest(null);
     lastResponseRef.current = "";
-    await insertMessage({ id: messageId, session_id: sessionId, auth_user_id: userId, sender: "user", content: text || "imagen", pasted_contents: [] });
+    await insertMessage({ id: messageId, session_id: sessionId, auth_user_id: userId, sender: "user", content: text || "imagen", pasted_contents: pastedItems });
     setToolExecuting(null);
 
     if (filesToSend.length > 0) {
