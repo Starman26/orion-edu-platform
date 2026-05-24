@@ -3,7 +3,7 @@ import { Check, Loader2, ChevronLeft, ChevronDown, Info, Phone, PhoneOff, Mic, A
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import { useAgentChat } from "./useAgentChat";
-import type { AgentEvent } from "./useAgentChat";
+import type { AgentEvent, ChatImage } from "./useAgentChat";
 import {
   MessageBubble,
   ChatInput,
@@ -98,6 +98,9 @@ export default function AutomationView({
     total_joints?: number;
     content?: string;
   } | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [llmModel, setLlmModel] = useState("gemini-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastResponseRef = useRef<string>("");
 
@@ -260,6 +263,7 @@ export default function AutomationView({
     interactionMode: "automation",
     automationId: automation.id,
     robotIds: selectedRobotIds,
+    llmModel,
     onAudioChunk: (chunk: string) => {
       if (!isCallActiveRef.current) return;
       if (recognitionRef.current instanceof WebSocket) {
@@ -315,17 +319,35 @@ export default function AutomationView({
 
   const handleSend = async () => {
     const text = chatMessage.trim();
-    if (!text || isLoading) return;
+    if (!text && pendingFiles.length === 0 || isLoading) return;
     const messageId = crypto.randomUUID();
-    setMessages(prev => [...prev, { id: messageId, text, sender: "user", createdAt: new Date().toISOString() }]);
+    setMessages(prev => [...prev, { id: messageId, text: text || "📎 imagen", sender: "user", createdAt: new Date().toISOString() }]);
     setChatMessage("");
+    const filesToSend = pendingFiles;
+    setPendingFiles([]);
     setIsLoading(true);
     setSuggestions([]);
     setApprovalRequest(null);
     lastResponseRef.current = "";
-    await insertMessage({ id: messageId, session_id: sessionId, auth_user_id: userId, sender: "user", content: text, pasted_contents: [] });
+    await insertMessage({ id: messageId, session_id: sessionId, auth_user_id: userId, sender: "user", content: text || "imagen", pasted_contents: [] });
     setToolExecuting(null);
-    agentSend(text);
+
+    if (filesToSend.length > 0) {
+      const images: ChatImage[] = await Promise.all(
+        filesToSend.map(file => new Promise<ChatImage>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            resolve({ mediaType: file.type, base64: dataUrl.split(',')[1] });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        }))
+      );
+      agentSend(text, { images });
+    } else {
+      agentSend(text);
+    }
   };
 
   // ── Deepgram ──
@@ -636,6 +658,39 @@ export default function AutomationView({
       )}
 
       <div className="studio__practiceChatInput">
+        <div className="studio__llmBar">
+          <span className="studio__llmBarLabel">Model</span>
+          <select
+            className="studio__llmSelect"
+            value={llmModel}
+            onChange={e => setLlmModel(e.target.value)}
+          >
+            <optgroup label="Google">
+              <option value="gemini-flash">Gemini 2.0 Flash</option>
+            </optgroup>
+            <optgroup label="OpenAI">
+              <option value="gpt-4o-mini">GPT-4o mini</option>
+              <option value="gpt-4o">GPT-4o</option>
+            </optgroup>
+            <optgroup label="Anthropic">
+              <option value="claude-haiku">Claude Haiku</option>
+              <option value="claude-sonnet">Claude Sonnet</option>
+              <option value="claude-opus">Claude Opus</option>
+            </optgroup>
+          </select>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: "none" }}
+          onChange={e => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length) setPendingFiles(prev => [...prev, ...files]);
+            e.target.value = "";
+          }}
+        />
         <ChatInput
           value={chatMessage}
           onChange={setChatMessage}
@@ -644,9 +699,10 @@ export default function AutomationView({
           disabled={isLoading}
           isLoading={isLoading}
           onStop={() => setIsLoading(false)}
-          pendingFiles={[]}
-          onAttachClick={() => {}}
-          onRemoveFile={() => {}}
+          pendingFiles={pendingFiles}
+          onAttachClick={() => fileInputRef.current?.click()}
+          onRemoveFile={i => setPendingFiles(prev => prev.filter((_, idx) => idx !== i))}
+          onImageDrop={files => setPendingFiles(prev => [...prev, ...files])}
         />
         <p className="studio__practiceDisclaimer">
           ORION operates real equipment — verify all movements before execution.

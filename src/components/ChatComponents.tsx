@@ -431,6 +431,7 @@ interface ChatInputProps {
   pendingFiles?: File[];
   onAttachClick?: () => void;
   onRemoveFile?: (index: number) => void;
+  onImageDrop?: (files: File[]) => void;
   equipmentList?: { id: string; name: string }[];
   onFocus?: () => void;
   onBlur?: () => void;
@@ -460,6 +461,7 @@ export function ChatInput({
   pendingFiles = [],
   onAttachClick,
   onRemoveFile,
+  onImageDrop,
   equipmentList,
   onFocus,
   onBlur,
@@ -636,11 +638,46 @@ export function ChatInput({
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
+    const imageFiles = Array.from(e.clipboardData.items)
+      .filter(item => item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter((f): f is File => f !== null);
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      onImageDrop?.(imageFiles);
+      return;
+    }
+
     const pastedText = e.clipboardData.getData('text');
     if (pastedText.length > PASTE_THRESHOLD) {
       e.preventDefault();
       setPastedContents(prev => [...prev, pastedText]);
     }
+  };
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const imageFiles = Array.from(e.dataTransfer.files).filter(f =>
+      f.type.startsWith('image/')
+    );
+    if (imageFiles.length > 0) onImageDrop?.(imageFiles);
   };
 
   const removePasted = (index: number) => {
@@ -666,7 +703,12 @@ export function ChatInput({
   };
 
   return (
-    <div className="dash_chatInputWrapper">
+    <div
+      className={`dash_chatInputWrapper${isDragging ? " dash_chatInputWrapper--dragging" : ""}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {showPastedModal !== null && pastedContents[showPastedModal] && (
         <div className="dash_pastedModalOverlay" onClick={() => setShowPastedModal(null)}>
           <div className="dash_pastedModal" onClick={(e) => e.stopPropagation()}>

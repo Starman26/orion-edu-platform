@@ -1724,6 +1724,13 @@
   position: relative;
 }
 
+.dash_chatInputWrapper--dragging {
+  outline: 2px dashed var(--accent, #6366f1);
+  outline-offset: 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent, #6366f1) 6%, transparent);
+}
+
 .dash_pendingFiles {
   display: flex;
   flex-wrap: wrap;
