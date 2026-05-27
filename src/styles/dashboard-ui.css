@@ -120,7 +120,8 @@
   pointer-events: none;
 }
 
-.dash_header--minimal .dash_headerLeft {
+.dash_header--minimal .dash_headerLeft,
+.dash_header--minimal .dash_headerRight {
   pointer-events: auto;
 }
 
