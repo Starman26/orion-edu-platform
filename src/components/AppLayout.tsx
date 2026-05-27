@@ -51,7 +51,7 @@ export function AppLayout() {
         current={current}
         onNavigate={(k) => {
           if (k === "inicio") navigate("/agent");
-          else if (k === "proyectos") navigate("/studio");
+          else if (k === "proyectos") navigate("/studio", path.startsWith("studio") ? { state: { resetSubView: true } } : {});
           else if (k === "living") navigate("/living-lab");
           else if (k === "chat") navigate("/history");
           else if (k === "widget") navigate("/analysis");

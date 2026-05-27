@@ -42,9 +42,12 @@ import {
   Trash2,
   User,
   X,
+  LayoutGrid,
+  Network,
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { equipmentTypeIcon } from "./EquipmentTab";
+import SphereGraph from "./SphereGraph";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -215,7 +218,41 @@ function KGNodeComponent({ data, selected }: NodeProps<RFNode>) {
   );
 }
 
-const nodeTypes = { kg: KGNodeComponent };
+const KIND_COLOR: Record<NodeKind, string> = {
+  equipment: "#3b82f6",
+  space:     "#10b981",
+  concept:   "#f59e0b",
+  process:   "#8b5cf6",
+  material:  "#f97316",
+  person:    "#6366f1",
+};
+
+function KGBrainNodeComponent({ data, selected }: NodeProps<RFNode>) {
+  const color = KIND_COLOR[data.kind] ?? "#64748b";
+  const depth = typeof data._depth === "number" ? (data._depth as number) : 0.5;
+  const dotSize = Math.round(5 + depth * 11); // 5 px (back) → 16 px (front)
+  const dotOpacity = 0.2 + depth * 0.8;       // 0.2 → 1.0
+
+  return (
+    <div
+      className={`ll_kg_brainNode ${selected ? "ll_kg_brainNode--selected" : ""}`}
+      style={{ "--node-color": color, "--dot-size": `${dotSize}px`, "--dot-opacity": String(dotOpacity) } as React.CSSProperties}
+    >
+      {HANDLE_SLOTS.map((slot) => (
+        <Handle key={`l-${slot.id}`} type="source" position={Position.Left} id={`l-${slot.id}`}
+          className={`ll_kg_handle ${slot.id === "mid" ? "ll_kg_handle--primary" : ""}`} style={{ top: slot.top }} />
+      ))}
+      {HANDLE_SLOTS.map((slot) => (
+        <Handle key={`r-${slot.id}`} type="source" position={Position.Right} id={`r-${slot.id}`}
+          className={`ll_kg_handle ${slot.id === "mid" ? "ll_kg_handle--primary" : ""}`} style={{ top: slot.top }} />
+      ))}
+      <div className="ll_kg_brainDot" />
+      <span className="ll_kg_brainLabel">{data.label}</span>
+    </div>
+  );
+}
+
+const nodeTypes = { kg: KGNodeComponent, brain: KGBrainNodeComponent };
 
 // ============================================================================
 // EDITABLE EDGE — waypoints the user can drag/add/remove
@@ -306,7 +343,7 @@ function EditableEdge({
     try {
       target.setPointerCapture(e.pointerId);
     } catch {
-      /* ignore */
+
     }
     const onMove = (ev: PointerEvent) => {
       const pos = screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
@@ -421,19 +458,45 @@ const edgeTypes = { editable: EditableEdge };
 // ============================================================================
 
 export default function KnowledgeGraphSection(props: KnowledgeGraphSectionProps) {
+  const [viewMode, setViewMode] = useState<"card" | "network">("card");
+
   return (
     <section className="ll_section ll_kg_section">
-      <p className="ll_kg_subtitle">
-        Conecta equipos, conceptos y procesos del laboratorio, para crear el cerebro de ORION, que puede ver, controlar, entender.
-      </p>
+      <div className="ll_kg_topBar">
+        <p className="ll_kg_subtitle">
+          Conecta equipos, conceptos y procesos del laboratorio, para crear el cerebro de ORION.
+        </p>
+        <div className="ll_kg_viewToggle">
+          <button
+            type="button"
+            className={`ll_kg_viewToggleBtn ${viewMode === "card" ? "ll_kg_viewToggleBtn--active" : ""}`}
+            onClick={() => setViewMode("card")}
+          >
+            <LayoutGrid size={12} strokeWidth={2} />
+            Tarjetas
+          </button>
+          <button
+            type="button"
+            className={`ll_kg_viewToggleBtn ${viewMode === "network" ? "ll_kg_viewToggleBtn--active" : ""}`}
+            onClick={() => setViewMode("network")}
+          >
+            <Network size={12} strokeWidth={2} />
+            Red
+          </button>
+        </div>
+      </div>
       <ReactFlowProvider>
-        <KnowledgeGraphCanvas {...props} />
+        <KnowledgeGraphCanvas {...props} viewMode={viewMode} />
       </ReactFlowProvider>
     </section>
   );
 }
 
-function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGraphSectionProps) {
+interface KnowledgeGraphCanvasProps extends KnowledgeGraphSectionProps {
+  viewMode: "card" | "network";
+}
+
+function KnowledgeGraphCanvas({ teamId, userId, canEdit = false, viewMode }: KnowledgeGraphCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
 
@@ -469,7 +532,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     noticeTimer.current = window.setTimeout(() => setNotice(null), 3000);
   }, []);
 
-  // ── Load graph ──
+  // Load graph 
   const loadGraph = useCallback(async () => {
     if (!teamId) {
       setNodes([]);
@@ -520,7 +583,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     loadGraph();
   }, [loadGraph]);
 
-  // ── Load equipment, spaces & people for toolbar dropdowns ──
+  // Load equipment, spaces & people for toolbar dropdowns 
   useEffect(() => {
     if (!teamId) {
       setEquipmentList([]);
@@ -662,7 +725,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
           try {
             localStorage.setItem(`kg.edgeHandles.${teamId}`, JSON.stringify(next));
           } catch {
-            /* ignore */
+
           }
         }
         return next;
@@ -679,7 +742,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
           try {
             localStorage.setItem(`kg.edgeWaypoints.${teamId}`, JSON.stringify(next));
           } catch {
-            /* ignore */
+
           }
         }
         return next;
@@ -809,7 +872,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     return { x: cx, y: cy };
   }, []);
 
-  // ── Insert node helpers ──
+  // Insert node helpers
   const insertEquipmentNode = useCallback(
     async (eq: { id: string; name: string; type: string }) => {
       if (!teamId || !canEdit) return;
@@ -1067,7 +1130,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     [canEdit]
   );
 
-  // ── Save node field changes (label, notes) ──
+  // Save node field changes (label, notes) 
   const updateNodeField = useCallback(
     async (id: string, patch: Partial<Pick<KGNodeRow, "label" | "notes">>) => {
       if (!canEdit) return;
@@ -1090,7 +1153,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     [canEdit, setNodes, showNotice]
   );
 
-  // ── Delete node ──
+  // Delete node 
   const deleteNode = useCallback(
     async (id: string) => {
       if (!canEdit) return;
@@ -1131,7 +1194,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     [canEdit, setNodes, setEdges, updateEdgeHandlesStore, updateEdgeWaypointsStore, showNotice]
   );
 
-  // ── Update edge ──
+  // Update edge 
   const updateEdgeField = useCallback(
     async (id: string, patch: Partial<Pick<KGEdgeRow, "relation" | "notes">>) => {
       if (!canEdit) return;
@@ -1158,7 +1221,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     [canEdit, setEdges, showNotice]
   );
 
-  // ── Delete edge ──
+  //  Delete edge 
   const deleteEdge = useCallback(
     async (id: string) => {
       if (!canEdit) return;
@@ -1207,6 +1270,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
     setSpaceMenuOpen(false);
     setPersonMenuOpen(false);
   }, []);
+
 
   const isEmpty = !loading && nodes.length === 0;
 
@@ -1361,8 +1425,18 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
 
       {notice && <div className="ll_kg_notice">{notice}</div>}
 
-      {/* React Flow */}
-      <EdgeEditContext.Provider value={editCtxValue}>
+      {/* Network / brain view — sphere graph */}
+      {viewMode === "network" && (
+        <SphereGraph
+          nodes={nodes.map(n => ({ id: n.id, label: n.data.label }))}
+          edges={edges.map(e => ({ source: e.source, target: e.target }))}
+          onNodeClick={(id) => { setSelectedNodeId(id); setSelectedEdgeId(null); }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 1 }}
+        />
+      )}
+
+      {/* Card view — React Flow */}
+      {viewMode === "card" && <EdgeEditContext.Provider value={editCtxValue}>
         <ReactFlow
           nodes={nodes}
           edges={displayEdges}
@@ -1394,7 +1468,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
           <Controls showInteractive={false} />
           <MiniMap pannable zoomable />
         </ReactFlow>
-      </EdgeEditContext.Provider>
+      </EdgeEditContext.Provider>}
 
       {/* Empty state overlay */}
       {isEmpty && teamId && (
@@ -1437,7 +1511,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
         />
       )}
 
-      {/* Free node modal — admins only */}
+      {/* Free node modal,  admins only */}
       {showFreeNodeModal && canEdit && (
         <FreeNodeModal
           onSave={insertFreeNode}
@@ -1445,7 +1519,7 @@ function KnowledgeGraphCanvas({ teamId, userId, canEdit = false }: KnowledgeGrap
         />
       )}
 
-      {/* Pending edge modal — admins only */}
+      {/* Pending edge modal, admins only */}
       {pendingConnection && canEdit && (
         <EdgeModal
           onConfirm={confirmEdge}

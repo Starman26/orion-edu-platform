@@ -508,6 +508,7 @@ interface DashboardHeaderProps {
   titleBarVisible?: boolean;
   headerMinimal?: boolean;
   onToggleTitleBar?: () => void;
+  statusSlot?: React.ReactNode;
 }
 
 function DashboardHeader({
@@ -520,7 +521,8 @@ function DashboardHeader({
   maxCredits,
   //titleBarVisible = true,
   headerMinimal = false,
-  onToggleTitleBar
+  onToggleTitleBar,
+  statusSlot,
 }: DashboardHeaderProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
@@ -668,10 +670,13 @@ function DashboardHeader({
           </button>
 
           {headerMinimal && (
-            <span className="dash_headerOrionLabel">
-              <span className="dash_headerOrionO">O</span>RION
-              <span className="dash_headerOrionEdu">Labs</span>
-            </span>
+            <>
+              <span className="dash_headerOrionLabel">
+                <span className="dash_headerOrionO">O</span>RION
+                <span className="dash_headerOrionEdu">Labs</span>
+              </span>
+              {statusSlot}
+            </>
           )}
 
           {!headerMinimal && (
@@ -921,6 +926,59 @@ function TypewriterPlaceholder() {
 }
 
 // ============================================================================
+// WELCOME CAROUSEL CARDS
+// ============================================================================
+
+const CAROUSEL_CARDS: { title: string; subtitle: string; route: string; icon: React.ReactNode }[] = [
+  {
+    title: "Customize ORION",
+    subtitle: "Let ORION know more about your lab setup.",
+    route: "/living-lab",
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        <path d="M16 3.5a4 4 0 0 1 0 9"/>
+        <path d="M20 20c0-3-1.8-5.5-4-6.5"/>
+      </svg>
+    ),
+  },
+  {
+    title: "Run a Diagnostic",
+    subtitle: "Quick equipment health check — no code needed.",
+    route: "/studio",
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    ),
+  },
+  {
+    title: "Browse Protocols",
+    subtitle: "Explore standard lab procedures and automation flows.",
+    route: "/studio",
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+    ),
+  },
+  {
+    title: "Connect Equipment",
+    subtitle: "Link your robot arms, sensors, and PLCs.",
+    route: "/living-lab",
+    icon: (
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+      </svg>
+    ),
+  },
+];
+
+// ============================================================================
 // DASHBOARD PAGE
 // ============================================================================
 
@@ -979,6 +1037,7 @@ export default function Dashboard() {
   // Chat started (first message sent)
   const [chatStarted, setChatStarted] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
   const [equipmentList, setEquipmentList] = useState<{ id: string; name: string }[]>([]);
   
   // Loading state (AI is thinking) - local state
@@ -1439,6 +1498,15 @@ export default function Dashboard() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Auto-advance carousel on welcome screen
+  useEffect(() => {
+    if (chatStarted) return;
+    const t = setInterval(() => {
+      setCarouselIndex(i => (i + 1) % CAROUSEL_CARDS.length);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [chatStarted, CAROUSEL_CARDS.length]);
 
   // Toggle expand/collapse for inline event runs
   const handleToggleEventRun = useCallback((runId: string) => {
@@ -2736,6 +2804,28 @@ export default function Dashboard() {
           try { localStorage.setItem("cora.headerMode", String(next)); } catch {}
           return next as 0 | 1 | 2;
         })}
+        statusSlot={!chatStarted ? (
+          <div className="dash_welcomeStatsCard dash_headerStatusCard">
+            <button
+              type="button"
+              className="dash_welcomeStatsToggle"
+              onClick={() => setStatsExpanded(prev => !prev)}
+            >
+              <span>Status</span>
+              <ChevronRight size={14} className={`dash_welcomeStatsChevron ${statsExpanded ? 'dash_welcomeStatsChevron--open' : ''}`} />
+            </button>
+            {statsExpanded && (
+              <div className="dash_welcomeStatsList">
+                {stats.map((stat, index) => (
+                  <div key={stat.label} className="dash_welcomeStatRow" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <span className="dash_welcomeStatValue">{stat.value}</span>
+                    <span className="dash_welcomeStatLabel">{stat.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : undefined}
       />
 
       <main className={`dash_content dash_content--${chatMode}`}>
@@ -2881,7 +2971,8 @@ export default function Dashboard() {
         )}
         
         <div className={`dash_right ${chatMode === "chat" ? "dash_right--expanded" : ""}`}>
-          
+
+          <div className="dash_welcomeGroup">
           {/* Welcome state - centered when no messages */}
           {!chatStarted && !activeRunId && !showHitlWizard && (
             <div className="dash_welcomeCenter">
@@ -2907,26 +2998,6 @@ export default function Dashboard() {
                       );
                     })()}
                   </h1>
-                  <div className="dash_welcomeStatsCard">
-                    <button
-                      type="button"
-                      className="dash_welcomeStatsToggle"
-                      onClick={() => setStatsExpanded(prev => !prev)}
-                    >
-                      <span>Status</span>
-                      <ChevronRight size={14} className={`dash_welcomeStatsChevron ${statsExpanded ? 'dash_welcomeStatsChevron--open' : ''}`} />
-                    </button>
-                    {statsExpanded && (
-                      <div className="dash_welcomeStatsList">
-                        {stats.map((stat, index) => (
-                          <div key={stat.label} className="dash_welcomeStatRow" style={{ animationDelay: `${index * 0.1}s` }}>
-                            <span className="dash_welcomeStatValue">{stat.value}</span>
-                            <span className="dash_welcomeStatLabel">{stat.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
@@ -3042,6 +3113,9 @@ export default function Dashboard() {
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 onPastedCountChange={setPastedCount}
+                selectedModel={selectedLlm}
+                modelOptions={llmOptions}
+                onModelChange={setSelectedLlm}
               />
             </div>
             <input
@@ -3055,6 +3129,36 @@ export default function Dashboard() {
             ORION Labs operates real equipment — verify all movements before execution. AI-generated responses may contain errors.
             </p>
           </div>
+
+          </div>{/* end dash_welcomeGroup */}
+
+          {/* Carousel — only on welcome screen */}
+          {!chatStarted && (
+            <div className="dash_carousel">
+              <div className="dash_carouselTrack" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
+                {CAROUSEL_CARDS.map((card, i) => (
+                  <div key={i} className="dash_carouselCard" onClick={() => navigate(card.route)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(card.route)}>
+                    <div className="dash_carouselCardBody">
+                      <span className="dash_carouselCardTitle">{card.title}</span>
+                      <span className="dash_carouselCardSub">{card.subtitle}</span>
+                    </div>
+                    <div className="dash_carouselCardIcon">{card.icon}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="dash_carouselDots">
+                {CAROUSEL_CARDS.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`dash_carouselDot ${i === carouselIndex ? 'dash_carouselDot--active' : ''}`}
+                    onClick={() => setCarouselIndex(i)}
+                    aria-label={`Slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Vertical Toolbar (right edge) ── */}
@@ -3072,21 +3176,6 @@ export default function Dashboard() {
             </button>
 
             <div className="dash_toolbarSep" />
-
-            {/* Settings / Config (LLM + Knowledge) */}
-            <button
-              ref={el => { toolbarBtnRefs.current["settings"] = el; }}
-              type="button"
-              className={`dash_toolbarBtn ${toolbarFlyout === "settings" ? "is-active" : ""}`}
-              onClick={() => toggleFlyout("settings")}
-              aria-label="Settings"
-              title="Settings"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
 
             {/* Sessions */}
             <button
@@ -3142,28 +3231,6 @@ export default function Dashboard() {
           {/* ── Flyout Popovers ── */}
 
           {/* Settings Flyout (LLM + Knowledge selectors) */}
-          {toolbarFlyout === "settings" && (
-            <div className="dash_flyout" style={{ top: flyoutTop("settings") }}>
-              <div className="dash_flyoutSection">
-                <span className="dash_flyoutLabel">LLM Model</span>
-                {llmOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`dash_flyoutItem ${opt.value === selectedLlm ? "is-selected" : ""}`}
-                    onClick={() => { setSelectedLlm(opt.value); }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    </svg>
-                    <span>{opt.label}</span>
-                    {opt.value === selectedLlm && <Check size={14} className="dash_flyoutCheck" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Sessions Flyout */}
           {toolbarFlyout === "sessions" && (
             <div className="dash_flyout" style={{ top: flyoutTop("sessions") }}>

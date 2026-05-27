@@ -1360,6 +1360,82 @@
   color: rgba(16, 17, 19, 0.35);
 }
 
+/* ReactMarkdown wraps loose list items in <p> — suppress the extra margin */
+.dash_mdLI > .dash_mdParagraph {
+  margin: 0;
+  white-space: normal;
+}
+
+/* Small breathing room between a list-item heading and its nested sub-list */
+.dash_mdLI > .dash_mdParagraph + .dash_mdUL,
+.dash_mdLI > .dash_mdParagraph + .dash_mdOL {
+  margin-top: 2px;
+}
+
+/* Keep nested lists tight */
+.dash_mdLI > .dash_mdUL,
+.dash_mdLI > .dash_mdOL {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
+/* ── Tables (GFM) ── */
+.dash_mdTableWrap {
+  overflow-x: auto;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+}
+
+.dash_mdTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  line-height: 1.55;
+}
+
+.dash_mdTh {
+  padding: 8px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85em;
+  letter-spacing: 0.01em;
+  background: rgba(16, 17, 19, 0.05);
+  border-bottom: 1px solid rgba(16, 17, 19, 0.12);
+  white-space: nowrap;
+}
+
+.dash_mdTd {
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.07);
+  vertical-align: top;
+}
+
+.dash_mdTr:last-child .dash_mdTd {
+  border-bottom: none;
+}
+
+.dash_mdTr:hover .dash_mdTd {
+  background: rgba(16, 17, 19, 0.025);
+}
+
+[data-theme="dark"] .dash_mdTableWrap {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .dash_mdTh {
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .dash_mdTd {
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .dash_mdTr:hover .dash_mdTd {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 /* ── Divider ── */
 .dash_mdDivider {
   border: 0;
@@ -1792,10 +1868,9 @@
 /* ── Textarea + send button row ── */
 .dash_chatInputRow {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   width: 100%;
-  position: relative;
-  min-height: 22px;
+  gap: 8px;
 }
 
 /* ── Attachments inside input box ── */
@@ -2152,7 +2227,7 @@
 }
 
 .dash_chatTextarea {
-  flex: 1;
+  width: 100%;
   border: none;
   outline: none;
   background: transparent;
@@ -2164,25 +2239,162 @@
   max-height: 120px;
   line-height: 1.5;
   padding: 0;
-  padding-right: 80px;
 }
 
 .dash_chatTextarea::placeholder {
   color: rgba(16, 17, 19, 0.4);
 }
 
-.dash_chatSendBtn {
+.dash_chatBottomBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dash_chatBottomSpacer {
+  flex: 1;
+}
+
+.dash_chatModelWrap {
+  position: relative;
+}
+
+.dash_chatModelChip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 20px;
+  background: rgba(16, 17, 19, 0.05);
+  border: 1px solid rgba(16, 17, 19, 0.07);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.55);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.dash_chatModelChip:hover,
+.dash_chatModelChip--open {
+  background: rgba(16, 17, 19, 0.09);
+  border-color: rgba(16, 17, 19, 0.13);
+  color: rgba(16, 17, 19, 0.8);
+}
+
+.dash_chatModelChevron {
+  transition: transform 0.2s ease;
+  opacity: 0.6;
+}
+
+.dash_chatModelChip--open .dash_chatModelChevron {
+  transform: rotate(180deg);
+}
+
+.dash_chatModelDropdown {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 36px;
-  height: 36px;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 180px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+}
+
+.dash_chatModelOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(16, 17, 19, 0.7);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+
+.dash_chatModelOption:hover {
+  background: rgba(16, 17, 19, 0.05);
+  color: #101113;
+}
+
+.dash_chatModelOption--active {
+  color: #101113;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .dash_chatModelChip {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+}
+[data-theme="dark"] .dash_chatModelChip:hover,
+[data-theme="dark"] .dash_chatModelChip--open {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.8);
+}
+[data-theme="dark"] .dash_chatModelDropdown {
+  background: #1a1b1e;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .dash_chatModelOption {
+  color: rgba(255, 255, 255, 0.6);
+}
+[data-theme="dark"] .dash_chatModelOption:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+}
+[data-theme="dark"] .dash_chatModelOption--active {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.dash_chatPersonaCustomWrap {
+  padding: 6px 8px 2px;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.08);
+}
+.dash_chatPersonaCustomInput {
+  width: 100%;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(16, 17, 19, 0.15);
+  background: rgba(16, 17, 19, 0.04);
+  color: inherit;
+  outline: none;
+}
+.dash_chatPersonaCustomInput::placeholder { color: #aaa; }
+.dash_chatPersonaCustomInput:focus { border-color: rgba(16, 17, 19, 0.3); }
+
+[data-theme="dark"] .dash_chatPersonaCustomWrap {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .dash_chatPersonaCustomInput {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .dash_chatPersonaCustomInput::placeholder { color: #555; }
+[data-theme="dark"] .dash_chatPersonaCustomInput:focus { border-color: rgba(255, 255, 255, 0.2); }
+
+.dash_chatSendBtn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(16, 17, 19, 0.06);
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
   color: #101113;
   transition: all 0.2s ease;
@@ -2202,9 +2414,6 @@
 }
 
 .dash_chatFooter {
-  position: absolute;
-  right: 42px;
-  bottom: 2px;
   display: flex;
   align-items: center;
   gap: 0;
@@ -2259,7 +2468,6 @@
 
 .dash_chatWrapper--welcome .dash_chatInputRow {
   min-height: 60px;
-  align-items: flex-start;
 }
 
 /* ── Typewriter placeholder ── */
@@ -3180,6 +3388,53 @@
   text-align: center;
 }
 
+/* Status card inside header — compact, inline with ORION Labs */
+.dash_headerStatusCard {
+  margin-top: 0 !important;
+  margin-left: 12px;
+  min-width: unset !important;
+  padding: 5px 12px !important;
+  border-radius: 8px !important;
+  position: relative;
+}
+
+.dash_headerStatusCard .dash_welcomeStatsList {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-width: 200px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+[data-theme="dark"] .dash_headerStatusCard .dash_welcomeStatsList {
+  background: #1a1b1e;
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+/* Welcome group: takes all space above carousel, centers greeting+input */
+.dash_welcomeGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* In welcome mode, restore natural positioning inside the group */
+.dash_welcomeGroup .dash_welcomeCenter {
+  flex: 0 0 auto;
+}
+.dash_welcomeGroup .dash_chatWrapper {
+  margin-top: 28px;
+}
+
 /* ── Truncate LLM dropdown text ── */
 .dash_dropdownTrigger {
   max-width: 130px;
@@ -3722,6 +3977,134 @@ html.cora-sidebar-collapsed .dash_content:has(.dash_welcomeCenter)::before {
 [data-theme="dark"] .dash_welcomeStatsToggle:hover { color: rgba(255, 255, 255, 0.7); }
 [data-theme="dark"] .dash_welcomeStatValue { color: rgba(255, 255, 255, 0.9); }
 [data-theme="dark"] .dash_welcomeStatLabel { color: rgba(255, 255, 255, 0.5); }
+
+/* ============================================================================
+   WELCOME CAROUSEL
+   ============================================================================ */
+
+.dash_carousel {
+  max-width: 460px;
+  width: 100%;
+  align-self: center;
+  margin-top: 0;
+  padding: 16px 0 20px;
+  flex-shrink: 0;
+  overflow: hidden;
+  animation: welcomeFadeIn 0.5s ease-out 0.15s both;
+}
+
+.dash_carouselTrack {
+  display: flex;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.dash_carouselCard {
+  min-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #f7f7f8;
+  border: 1px solid rgba(16, 17, 19, 0.06);
+  border-radius: 14px;
+  padding: 18px 22px;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+  user-select: none;
+}
+
+.dash_carouselCard:hover {
+  background: #f0f0f2;
+  border-color: rgba(16, 17, 19, 0.1);
+}
+
+.dash_carouselCard:active {
+  transform: scale(0.99);
+}
+
+.dash_carouselCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dash_carouselCardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #101113;
+  background: linear-gradient(90deg, #101113 0%, rgba(16,17,19,0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.dash_carouselCardSub {
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.5);
+  line-height: 1.4;
+  max-width: 340px;
+}
+
+.dash_carouselCardIcon {
+  flex-shrink: 0;
+  width: 72px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(16, 17, 19, 0.15);
+  background: rgba(16, 17, 19, 0.03);
+  border: 1px solid rgba(16, 17, 19, 0.06);
+  border-radius: 10px;
+}
+
+.dash_carouselDots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.dash_carouselDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(16, 17, 19, 0.15);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dash_carouselDot--active {
+  background: rgba(16, 17, 19, 0.5);
+  transform: scale(1.25);
+}
+
+/* Dark theme */
+[data-theme="dark"] .dash_carouselCard {
+  background: #0c0c0e;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .dash_carouselCard:hover {
+  background: #141416;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .dash_carouselCardTitle {
+  background: linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+[data-theme="dark"] .dash_carouselCardSub { color: rgba(255, 255, 255, 0.45); }
+[data-theme="dark"] .dash_carouselCardIcon {
+  color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .dash_carouselDot { background: rgba(255, 255, 255, 0.2); }
+[data-theme="dark"] .dash_carouselDot--active { background: rgba(255, 255, 255, 0.6); }
 
 /* ── ORION label in minimal header ── */
 .dash_headerOrionLabel {

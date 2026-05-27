@@ -1300,7 +1300,7 @@
    ============================================================================ */
 
 .ll_kg_section {
-  background: #ffffff;
+  background: transparent;
 }
 
 .ll_kg_subtitle {
@@ -1314,9 +1314,13 @@
   width: 100%;
   height: 620px;
   background: #fafafa;
-  border: 1px solid rgba(16, 17, 19, 0.1);
   border-radius: 12px;
   overflow: hidden;
+}
+
+[data-theme="dark"] .ll_kg_canvas {
+  background: #0f0f11;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* React Flow gets full-bleed inside the canvas */
@@ -1332,14 +1336,13 @@
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(140%) blur(8px);
-  -webkit-backdrop-filter: saturate(140%) blur(8px);
-  border: 1px solid rgba(16, 17, 19, 0.08);
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(16, 17, 19, 0.04);
+  gap: 4px;
+  padding: 4px;
+  background: rgba(250, 250, 250, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(16, 17, 19, 0.06);
+  border-radius: 8px;
 }
 
 .ll_kg_toolGroup {
@@ -1350,26 +1353,28 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 6px 12px;
-  font-size: 12px;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 11px;
   font-weight: 500;
   font-family: inherit;
-  letter-spacing: 0.015em;
-  color: #ffffff;
-  background: #0F0E0A;
-  border: 1px solid #0F0E0A;
+  letter-spacing: 0.01em;
+  color: rgba(16, 17, 19, 0.5);
+  background: transparent;
+  border: 1px solid rgba(16, 17, 19, 0.14);
   border-radius: 4px;
   cursor: pointer;
-  transition: opacity 0.18s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
 .ll_kg_btn:hover:not(:disabled) {
-  opacity: 0.85;
+  color: rgba(16, 17, 19, 0.85);
+  border-color: rgba(16, 17, 19, 0.3);
+  background: rgba(16, 17, 19, 0.04);
 }
 
 .ll_kg_btn:disabled {
-  opacity: 0.45;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -1476,19 +1481,35 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #ffffff;
-  border: 1px solid rgba(16, 17, 19, 0.16);
+  background: #fafafa;
+  border: 1px solid rgba(16, 17, 19, 0.14);
   border-radius: 10px;
   font-size: 12px;
   font-weight: 500;
   color: #101113;
-  box-shadow: 0 1px 2px rgba(16, 17, 19, 0.04);
+  box-shadow: 0 1px 3px rgba(16, 17, 19, 0.07);
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .ll_kg_node--selected {
   border-color: #101113;
   box-shadow: 0 0 0 1px #101113, 0 1px 2px rgba(16, 17, 19, 0.06);
+}
+
+[data-theme="dark"] .ll_kg_node {
+  background: #0f0f11;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .ll_kg_node--selected {
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .ll_kg_node_icon {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .ll_kg_node_icon {
@@ -1801,8 +1822,8 @@
 
 /* Editable edge — path, label, waypoints, add buttons */
 .react-flow__edge .ll_kg_edgePath {
-  stroke: #b1b1b7;
-  stroke-width: 1.4px;
+  stroke: rgba(16, 17, 19, 0.18);
+  stroke-width: 1px;
 }
 
 .react-flow__edge.selected .ll_kg_edgePath,
@@ -1875,4 +1896,200 @@
   color: #0F0E0A;
   border-color: #0F0E0A;
   border-style: solid;
+}
+
+/* ─── Top bar: subtitle + view toggle ─── */
+.ll_kg_topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.ll_kg_topBar .ll_kg_subtitle {
+  margin: 0;
+}
+
+/* ─── View toggle ─── */
+.ll_kg_viewToggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(16, 17, 19, 0.05);
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .ll_kg_viewToggle {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.ll_kg_viewToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: inherit;
+  color: rgba(16, 17, 19, 0.45);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ll_kg_viewToggleBtn--active {
+  background: #ffffff;
+  color: #101113;
+  box-shadow: 0 1px 3px rgba(16, 17, 19, 0.1);
+}
+
+.ll_kg_viewToggleBtn:hover:not(.ll_kg_viewToggleBtn--active) {
+  color: rgba(16, 17, 19, 0.7);
+}
+
+[data-theme="dark"] .ll_kg_viewToggleBtn {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .ll_kg_viewToggleBtn--active {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .ll_kg_viewToggleBtn:hover:not(.ll_kg_viewToggleBtn--active) {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ─── Brain / Network node — 3-D sphere dots ─── */
+.ll_kg_brainNode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.ll_kg_brainDot {
+  width: var(--dot-size, 13px);
+  height: var(--dot-size, 13px);
+  border-radius: 50%;
+  background: var(--node-color, #64748b);
+  opacity: var(--dot-opacity, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.ll_kg_brainNode:hover .ll_kg_brainDot {
+  transform: scale(1.45);
+  opacity: 1 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+.ll_kg_brainNode--selected .ll_kg_brainDot {
+  transform: scale(1.5);
+  opacity: 1 !important;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 0 0 4px var(--node-color, #64748b),
+    0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+[data-theme="dark"] .ll_kg_brainNode--selected .ll_kg_brainDot {
+  box-shadow:
+    0 0 0 2px #0f0f11,
+    0 0 0 4px var(--node-color, #64748b),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Label: tooltip on hover / selection */
+.ll_kg_brainLabel {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  color: #101113;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 5px;
+  padding: 2px 7px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 20;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.ll_kg_brainNode:hover .ll_kg_brainLabel,
+.ll_kg_brainNode--selected .ll_kg_brainLabel {
+  opacity: 1;
+}
+
+[data-theme="dark"] .ll_kg_brainLabel {
+  background: rgba(28, 28, 34, 0.96);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Brain node handles */
+.ll_kg_brainNode .react-flow__handle.ll_kg_handle {
+  width: 7px;
+  height: 7px;
+  background: var(--node-color, #64748b);
+  border: 1.5px solid #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.ll_kg_brainNode .react-flow__handle.ll_kg_handle.react-flow__handle-left {
+  left: -3px;
+}
+
+.ll_kg_brainNode .react-flow__handle.ll_kg_handle.react-flow__handle-right {
+  right: -3px;
+}
+
+.ll_kg_brainNode .react-flow__handle.ll_kg_handle.ll_kg_handle--primary {
+  opacity: 0.4;
+  pointer-events: all;
+}
+
+.ll_kg_brainNode:hover .react-flow__handle.ll_kg_handle.ll_kg_handle--primary,
+.ll_kg_brainNode--selected .react-flow__handle.ll_kg_handle.ll_kg_handle--primary {
+  opacity: 1;
+}
+
+[data-theme="dark"] .ll_kg_brainNode .react-flow__handle.ll_kg_handle {
+  border-color: #0f0f11;
+}
+
+/* Thinner, more transparent edges in sphere mode */
+.ll_kg_canvas--network .react-flow__edge .ll_kg_edgePath {
+  stroke: rgba(16, 17, 19, 0.13);
+  stroke-width: 0.8px;
+}
+
+.ll_kg_canvas--network .react-flow__edge.selected .ll_kg_edgePath,
+.ll_kg_canvas--network .ll_kg_edgePath--active {
+  stroke: rgba(16, 17, 19, 0.45);
+  stroke-width: 1.2px;
+}
+
+[data-theme="dark"] .ll_kg_canvas--network .react-flow__edge .ll_kg_edgePath {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .ll_kg_canvas--network .react-flow__edge.selected .ll_kg_edgePath {
+  stroke: rgba(255, 255, 255, 0.55);
 }

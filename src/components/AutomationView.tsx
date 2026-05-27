@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Check, Loader2, ChevronLeft, ChevronDown, Info, Phone, PhoneOff, Mic, AudioLines } from "lucide-react";
-import { SparklesIcon } from "@heroicons/react/24/outline";
+import { Check, Loader2, ChevronLeft, ChevronDown, Info, Phone, PhoneOff, Mic, AudioLines, SlidersHorizontal, X, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useAgentChat } from "./useAgentChat";
 import type { AgentEvent, ChatImage } from "./useAgentChat";
@@ -13,9 +12,31 @@ import {
   type ImageAttachment,
   type PastedContent,
 } from "./ChatComponents";
+import { SparklesIcon } from "@heroicons/react/24/outline";
 import type { Automation } from "./StudioHelpers";
 
 const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || 'https://sentinela-909652673285.us-central1.run.app';
+
+const MODEL_OPTIONS = [
+  { value: "gemini-flash",  label: "Gemini 2.0 Flash" },
+  { value: "gpt-4o-mini",   label: "GPT-4o mini" },
+  { value: "gpt-4o",        label: "GPT-4o" },
+  { value: "claude-haiku",  label: "Claude Haiku" },
+  { value: "claude-sonnet", label: "Claude Sonnet" },
+  { value: "claude-opus",   label: "Claude Opus" },
+];
+
+const PERSONA_OPTIONS = [
+  { value: "",         label: "Default" },
+  { value: "newton",   label: "Isaac Newton" },
+  { value: "turing",   label: "Alan Turing" },
+  { value: "tesla",    label: "Nikola Tesla" },
+  { value: "ada",      label: "Ada Lovelace" },
+  { value: "davinci",  label: "Leonardo da Vinci" },
+  { value: "asimov",   label: "Isaac Asimov" },
+  { value: "executor", label: "Executor" },
+  { value: "custom",   label: "Custom…" },
+];
 
 function isLabOpen(): boolean {
   const now = new Date();
@@ -29,6 +50,57 @@ function isLabOpen(): boolean {
 interface ConnectedRobot { robot_id: string; connected: boolean; }
 
 type AutomationMsg = Message & { tool?: string };
+
+// ── Virtual Tracker ──────────────────────────────────────────────────────────
+interface VirtualTracker {
+  shape: "box" | "cylinder" | "sphere";
+  width: number;
+  height: number;
+  depth: number;
+  radius: number;
+  unit: "mm" | "cm" | "m";
+}
+
+const TRACKER_DEFAULTS: VirtualTracker = {
+  shape: "box", width: 100, height: 100, depth: 100, radius: 50, unit: "mm",
+};
+
+function BoxWireframe({ size = 120 }: { size?: number }) {
+  return (
+    <svg width={size} height={size * 0.85} viewBox="0 0 110 94" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+      <rect x="5" y="27" width="68" height="62" />
+      <rect x="32" y="5" width="68" height="62" />
+      <line x1="5" y1="27" x2="32" y2="5" />
+      <line x1="73" y1="27" x2="100" y2="5" />
+      <line x1="73" y1="89" x2="100" y2="67" />
+      <line x1="5" y1="89" x2="32" y2="67" />
+    </svg>
+  );
+}
+
+function CylinderWireframe({ size = 110 }: { size?: number }) {
+  return (
+    <svg width={size * 0.82} height={size} viewBox="0 0 90 110" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <ellipse cx="45" cy="22" rx="38" ry="14" />
+      <ellipse cx="45" cy="88" rx="38" ry="14" />
+      <line x1="7" y1="22" x2="7" y2="88" />
+      <line x1="83" y1="22" x2="83" y2="88" />
+    </svg>
+  );
+}
+
+function SphereWireframe({ size = 110 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 110 110" fill="none"
+      stroke="currentColor" strokeWidth="1.5">
+      <circle cx="55" cy="55" r="48" />
+      <ellipse cx="55" cy="55" rx="48" ry="16" />
+      <ellipse cx="55" cy="55" rx="16" ry="48" />
+    </svg>
+  );
+}
 
 const THINKING_MESSAGES = [
   "Thinking...",
@@ -74,6 +146,7 @@ export interface AutomationViewProps {
   sessionId: string;
   userId: string;
   teamId: string;
+  userName?: string;
   onBack: () => void;
   onHeaderControls?: (controls: React.ReactNode) => void;
 }
@@ -83,6 +156,7 @@ export default function AutomationView({
   sessionId,
   userId,
   teamId,
+  userName = "",
   onBack,
   onHeaderControls,
 }: AutomationViewProps) {
@@ -102,7 +176,16 @@ export default function AutomationView({
   } | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showEnvPanel, setShowEnvPanel] = useState(false);
+  const [virtualTracker, setVirtualTracker] = useState<VirtualTracker | null>(null);
+  const [showTrackerModal, setShowTrackerModal] = useState(false);
+  const [trackerDraft, setTrackerDraft] = useState<VirtualTracker>(TRACKER_DEFAULTS);
+  const [isRecording, setIsRecording] = useState(false);
+  const recordStartIndexRef = useRef<number | null>(null);
+  const [hasRecording, setHasRecording] = useState(false);
   const [llmModel, setLlmModel] = useState("gemini-flash");
+  const [agentPersona, setAgentPersona] = useState("");
+  const [customPersona, setCustomPersona] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastResponseRef = useRef<string>("");
 
@@ -204,6 +287,17 @@ export default function AutomationView({
           sender: m.sender as "user" | "ai",
           createdAt: m.created_at,
         })));
+      } else {
+        const first = userName ? userName.split(" ")[0] : "";
+        const greeting = first
+          ? `Hola ${first} — ¿comenzamos el pick and place?`
+          : "Hola — ¿comenzamos el pick and place?";
+        setMessages([{
+          id: crypto.randomUUID(),
+          text: greeting,
+          sender: "ai" as const,
+          createdAt: new Date().toISOString(),
+        }]);
       }
     })();
   }, [sessionId]);
@@ -258,6 +352,8 @@ export default function AutomationView({
   }, []);
 
   // ── Agent hook ──
+  const effectivePersona = agentPersona === "custom" ? customPersona.trim() : agentPersona;
+
   const { sendMessage: agentSend, suggestions: agentSuggestions } = useAgentChat({
     apiUrl: AGENT_API_URL,
     userId,
@@ -266,6 +362,7 @@ export default function AutomationView({
     automationId: automation.id,
     robotIds: selectedRobotIds,
     llmModel,
+    agentPersona: effectivePersona,
     onAudioChunk: (chunk: string) => {
       if (!isCallActiveRef.current) return;
       if (recognitionRef.current instanceof WebSocket) {
@@ -317,6 +414,33 @@ export default function AutomationView({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId, approved }),
     }).catch(console.error);
+  };
+
+  const startRecording = () => {
+    recordStartIndexRef.current = messages.length;
+    setIsRecording(true);
+    setHasRecording(false);
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    setHasRecording((recordStartIndexRef.current ?? 0) < messages.length);
+  };
+
+  const downloadRecording = () => {
+    const start = recordStartIndexRef.current ?? 0;
+    const slice = messages.slice(start).map(m => ({
+      timestamp: m.createdAt,
+      role: m.sender,
+      content: m.text,
+    }));
+    const blob = new Blob([JSON.stringify(slice, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `robot-record-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleSend = async (pastedContents?: string[]) => {
@@ -555,6 +679,15 @@ export default function AutomationView({
 
         <button
           type="button"
+          className={`studio__robotPill studio__robotPill--mono ${showEnvPanel ? 'is-active' : ''}`}
+          onClick={() => setShowEnvPanel(p => !p)}
+        >
+          <SlidersHorizontal size={13} />
+          Set Env
+        </button>
+
+        <button
+          type="button"
           className={`studio__robotPill studio__robotPill--mono ${inCall ? 'is-active' : ''}`}
           onClick={isCallActive ? stopCall : startCall}
         >
@@ -564,11 +697,104 @@ export default function AutomationView({
       </>
     );
     return () => onHeaderControls?.(null);
-  }, [onHeaderControls, onBack, automation.title, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, startCall, stopCall, labOpen]);
+  }, [onHeaderControls, onBack, automation.title, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, startCall, stopCall, labOpen, showEnvPanel, setShowEnvPanel]);
 
   // ── Render ──
   return (
-    <div className="studio__automationView">
+    <div className={`studio__automationView${showEnvPanel ? " is-env-open" : ""}`}>
+      {showEnvPanel && (
+        <aside className="studio__envPanel">
+          {/* ── Equipment Status ── */}
+          <div className="studio__envSection">
+            <div className="studio__envSectionHeader">
+              <span className="studio__envSectionTitle">Equipment Status</span>
+              <span className={`studio__envStatusDot ${robots.some(r => r.connected) && labOpen ? "is-online" : "is-offline"}`} />
+            </div>
+            <div className="studio__envStatusBody">
+              <p className="studio__envStatusEmpty">Real-time metrics will appear here.</p>
+            </div>
+          </div>
+
+          {/* ── Recording ── */}
+          <div className="studio__envSection">
+            <div className="studio__envSectionHeader">
+              <span className="studio__envSectionTitle">Recording</span>
+              {isRecording && <span className="studio__envRecBadge">● REC</span>}
+            </div>
+            <button
+              type="button"
+              className={`studio__envBtn${isRecording ? " studio__envBtn--danger" : ""}`}
+              onClick={isRecording ? stopRecording : startRecording}
+            >
+              {isRecording ? "■ Stop Recording" : "● Start Recording"}
+            </button>
+            <button
+              type="button"
+              className="studio__envBtn"
+              disabled={!hasRecording}
+              onClick={downloadRecording}
+            >
+              ↓ Download Recording
+            </button>
+          </div>
+
+          {/* ── Virtual Tracker ── */}
+          <div className="studio__envSection studio__envSection--last">
+            {virtualTracker ? (
+              <>
+                <div className="studio__envSectionHeader">
+                  <span className="studio__envSectionTitle">Virtual Tracker</span>
+                  <div className="studio__envIconBtns">
+                    <button
+                      type="button"
+                      className="studio__envIconBtn"
+                      title="Edit tracker"
+                      onClick={() => { setTrackerDraft({ ...virtualTracker }); setShowTrackerModal(true); }}
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      className="studio__envIconBtn studio__envIconBtn--danger"
+                      title="Remove tracker"
+                      onClick={() => setVirtualTracker(null)}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+                <div className="studio__envTrackerPreview">
+                  {virtualTracker.shape === "box"      && <BoxWireframe size={120} />}
+                  {virtualTracker.shape === "cylinder" && <CylinderWireframe size={110} />}
+                  {virtualTracker.shape === "sphere"   && <SphereWireframe size={110} />}
+                </div>
+                <div className="studio__envTrackerMeta">
+                  <span className="studio__envTrackerShape">
+                    {virtualTracker.shape === "box" ? "Box" : virtualTracker.shape === "cylinder" ? "Cylinder" : "Sphere"}
+                  </span>
+                  <span className="studio__envTrackerDims">
+                    {virtualTracker.shape === "box" &&
+                      `${virtualTracker.width} × ${virtualTracker.height} × ${virtualTracker.depth} ${virtualTracker.unit}`}
+                    {virtualTracker.shape === "cylinder" &&
+                      `r=${virtualTracker.radius}, h=${virtualTracker.height} ${virtualTracker.unit}`}
+                    {virtualTracker.shape === "sphere" &&
+                      `r=${virtualTracker.radius} ${virtualTracker.unit}`}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="studio__envBtn studio__envBtn--add"
+                onClick={() => { setTrackerDraft(TRACKER_DEFAULTS); setShowTrackerModal(true); }}
+              >
+                + Add Virtual Tracker
+              </button>
+            )}
+          </div>
+        </aside>
+      )}
+      <div className="studio__automationChatArea">
       <div className={`studio__practiceMsgs ${inCall ? "is-in-call" : ""}`}>
         {messages.length === 0 && !isLoading && (
           <div className="studio__practiceChatEmpty">
@@ -680,27 +906,6 @@ export default function AutomationView({
       )}
 
       <div className="studio__practiceChatInput">
-        <div className="studio__llmBar">
-          <span className="studio__llmBarLabel">Model</span>
-          <select
-            className="studio__llmSelect"
-            value={llmModel}
-            onChange={e => setLlmModel(e.target.value)}
-          >
-            <optgroup label="Google">
-              <option value="gemini-flash">Gemini 2.0 Flash</option>
-            </optgroup>
-            <optgroup label="OpenAI">
-              <option value="gpt-4o-mini">GPT-4o mini</option>
-              <option value="gpt-4o">GPT-4o</option>
-            </optgroup>
-            <optgroup label="Anthropic">
-              <option value="claude-haiku">Claude Haiku</option>
-              <option value="claude-sonnet">Claude Sonnet</option>
-              <option value="claude-opus">Claude Opus</option>
-            </optgroup>
-          </select>
-        </div>
         <input
           ref={fileInputRef}
           type="file"
@@ -725,11 +930,117 @@ export default function AutomationView({
           onAttachClick={() => fileInputRef.current?.click()}
           onRemoveFile={i => setPendingFiles(prev => prev.filter((_, idx) => idx !== i))}
           onImageDrop={files => setPendingFiles(prev => [...prev, ...files])}
+          selectedModel={llmModel}
+          modelOptions={MODEL_OPTIONS}
+          onModelChange={setLlmModel}
+          selectedPersona={agentPersona}
+          personaOptions={PERSONA_OPTIONS}
+          onPersonaChange={setAgentPersona}
+          customPersonaValue={customPersona}
+          onCustomPersonaChange={setCustomPersona}
         />
         <p className="studio__practiceDisclaimer">
           ORION operates real equipment — verify all movements before execution.
         </p>
       </div>
+      </div>
+
+      {/* ── Virtual Tracker modal ── */}
+      {showTrackerModal && (
+        <div className="studio__trackerOverlay" onClick={() => setShowTrackerModal(false)}>
+          <div className="studio__trackerModal" onClick={e => e.stopPropagation()}>
+            <div className="studio__trackerModalHeader">
+              <span className="studio__trackerModalTitle">Configure Virtual Tracker</span>
+              <button type="button" className="studio__trackerModalClose" onClick={() => setShowTrackerModal(false)}>
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Shape selector */}
+            <div className="studio__trackerModalSection">
+              <p className="studio__trackerModalLabel">Shape</p>
+              <div className="studio__trackerShapeGrid">
+                {(["box", "cylinder", "sphere"] as const).map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`studio__trackerShapeOption${trackerDraft.shape === s ? " is-selected" : ""}`}
+                    onClick={() => setTrackerDraft(d => ({ ...d, shape: s }))}
+                  >
+                    <div className="studio__trackerShapeIcon">
+                      {s === "box"      && <BoxWireframe size={52} />}
+                      {s === "cylinder" && <CylinderWireframe size={48} />}
+                      {s === "sphere"   && <SphereWireframe size={48} />}
+                    </div>
+                    <span>{s === "box" ? "Box" : s === "cylinder" ? "Cylinder" : "Sphere"}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dimensions */}
+            <div className="studio__trackerModalSection">
+              <div className="studio__trackerModalLabelRow">
+                <p className="studio__trackerModalLabel">Dimensions</p>
+                <select
+                  className="studio__trackerUnitSelect"
+                  value={trackerDraft.unit}
+                  onChange={e => setTrackerDraft(d => ({ ...d, unit: e.target.value as VirtualTracker["unit"] }))}
+                >
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                </select>
+              </div>
+              <div className="studio__trackerDimGrid">
+                {trackerDraft.shape === "box" && (
+                  <>
+                    <label className="studio__trackerDimLabel">Width</label>
+                    <input className="studio__trackerInput" type="number" min="1" value={trackerDraft.width}
+                      onChange={e => setTrackerDraft(d => ({ ...d, width: +e.target.value }))} />
+                    <label className="studio__trackerDimLabel">Height</label>
+                    <input className="studio__trackerInput" type="number" min="1" value={trackerDraft.height}
+                      onChange={e => setTrackerDraft(d => ({ ...d, height: +e.target.value }))} />
+                    <label className="studio__trackerDimLabel">Depth</label>
+                    <input className="studio__trackerInput" type="number" min="1" value={trackerDraft.depth}
+                      onChange={e => setTrackerDraft(d => ({ ...d, depth: +e.target.value }))} />
+                  </>
+                )}
+                {trackerDraft.shape === "cylinder" && (
+                  <>
+                    <label className="studio__trackerDimLabel">Radius</label>
+                    <input className="studio__trackerInput" type="number" min="1" value={trackerDraft.radius}
+                      onChange={e => setTrackerDraft(d => ({ ...d, radius: +e.target.value }))} />
+                    <label className="studio__trackerDimLabel">Height</label>
+                    <input className="studio__trackerInput" type="number" min="1" value={trackerDraft.height}
+                      onChange={e => setTrackerDraft(d => ({ ...d, height: +e.target.value }))} />
+                  </>
+                )}
+                {trackerDraft.shape === "sphere" && (
+                  <>
+                    <label className="studio__trackerDimLabel">Radius</label>
+                    <input className="studio__trackerInput" type="number" min="1" value={trackerDraft.radius}
+                      onChange={e => setTrackerDraft(d => ({ ...d, radius: +e.target.value }))} />
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="studio__trackerModalFooter">
+              <button type="button" className="studio__trackerCancelBtn" onClick={() => setShowTrackerModal(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="studio__trackerSaveBtn"
+                onClick={() => { setVirtualTracker({ ...trackerDraft }); setShowTrackerModal(false); }}
+              >
+                Save Tracker
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

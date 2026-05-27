@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { Menu, Plus, Search, LayoutGrid, List, FileText, Sparkles, Info, MoreHorizontal, Loader2, X } from "lucide-react";
 import { MapIcon, SparklesIcon, BoltIcon, PlayCircleIcon, ChartBarIcon, PresentationChartLineIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
@@ -121,11 +122,11 @@ function DashboardHeader({
 function StudioModal({ type, onClose, onSubmit }: {
   type: "automation" | "equipment";
   onClose: () => void;
-  onSubmit: (data: { title: string; description: string; difficulty: string }) => void;
+  onSubmit: (data: { title: string; description: string; template: string }) => void;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [difficulty, setDifficulty] = useState("beginner");
+  const [template, setTemplate] = useState("general");
 
   return (
     <div className="studio__modalOverlay" onClick={onClose}>
@@ -161,16 +162,20 @@ function StudioModal({ type, onClose, onSubmit }: {
 
           {type === "automation" && (
             <div className="studio__modalField">
-              <label>Difficulty</label>
+              <label>Template</label>
               <div className="studio__modalDiffBtns">
-                {["beginner", "intermediate", "advanced"].map(d => (
+                {[
+                  { value: "general", label: "General" },
+                  { value: "pick_and_place", label: "Pick and Place" },
+                  { value: "paletizado", label: "Paletizado" },
+                ].map(t => (
                   <button
-                    key={d}
+                    key={t.value}
                     type="button"
-                    className={`studio__modalDiffBtn ${difficulty === d ? "is-active" : ""}`}
-                    onClick={() => setDifficulty(d)}
+                    className={`studio__modalDiffBtn ${template === t.value ? "is-active" : ""}`}
+                    onClick={() => setTemplate(t.value)}
                   >
-                    {d}
+                    {t.label}
                   </button>
                 ))}
               </div>
@@ -183,7 +188,7 @@ function StudioModal({ type, onClose, onSubmit }: {
           <button
             type="button"
             className="studio__modalSubmit"
-            onClick={() => onSubmit({ title, description, difficulty })}
+            onClick={() => onSubmit({ title, description, template })}
             disabled={!title.trim()}
           >
             {type === "automation" ? "Create" : "Add"}
@@ -199,12 +204,16 @@ function StudioModal({ type, onClose, onSubmit }: {
 // ============================================================================
 
 export default function Studio() {
+  const location = useLocation();
+
   const [userName, setUserName] = useState("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userLoadError, setUserLoadError] = useState<string | null>(null);
   const [headerMode, setHeaderMode] = useState<0 | 1 | 2>(0);
   const [practiceHeaderControls, setPracticeHeaderControls] = useState<React.ReactNode>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "columns" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "columns" | "list">(
+    () => (localStorage.getItem("studio.viewMode") as "grid" | "columns" | "list") ?? "grid"
+  );
   const [activeTab, setActiveTab] = useState<"modules" | "progress" | "analytics" | "equipment">("modules");
   // Dynamic data
   const [userId, setUserId] = useState("");
@@ -218,6 +227,15 @@ export default function Studio() {
   const [searchQuery, setSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState<"automation" | "equipment" | null>(null);
   const [activeTroubleshoot, setActiveTroubleshoot] = useState<EquipmentProfile | null>(null);
+
+  // Reset sub-views when sidebar re-navigates to /studio
+  useEffect(() => {
+    if ((location.state as { resetSubView?: boolean } | null)?.resetSubView) {
+      setActivePractice(null);
+      setActiveAutomation(null);
+      setActiveTroubleshoot(null);
+    }
+  }, [location.key]);
 
   // Carousel
   const [carouselOffset, setCarouselOffset] = useState(0);
@@ -439,7 +457,7 @@ export default function Studio() {
     setActivePractice({ automation, sessionId: newSessionId });
   };
 
-  const handleNewAutomation = async (data: { title: string; description: string; difficulty: string }) => {
+  const handleNewAutomation = async (data: { title: string; description: string; template: string }) => {
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
@@ -448,7 +466,7 @@ export default function Studio() {
       title: data.title,
       description: data.description || null,
       type: "automation",
-      difficulty: data.difficulty,
+      difficulty: "beginner",
       md_content: "",
       sort_order: automations.length,
       created_by: userId,
@@ -466,7 +484,7 @@ export default function Studio() {
       title: data.title,
       description: data.description || null,
       type: "automation",
-      difficulty: data.difficulty,
+      difficulty: "beginner",
       md_content: null,
       sort_order: automations.length,
       created_by: userId,
@@ -501,6 +519,7 @@ export default function Studio() {
             sessionId={activeAutomation.sessionId}
             userId={userId}
             teamId={teamId || ""}
+            userName={userName}
             onBack={() => setActiveAutomation(null)}
             onHeaderControls={setAutomationHeaderControls}
           />
@@ -695,10 +714,10 @@ export default function Studio() {
               New Automation
             </button>
             <div className="studio__viewToggles">
-              <button type="button" className={`studio__viewBtn ${viewMode === "grid" ? "is-active" : ""}`} title="Grid view" onClick={() => setViewMode("grid")}>
+              <button type="button" className={`studio__viewBtn ${viewMode === "grid" ? "is-active" : ""}`} title="Grid view" onClick={() => { setViewMode("grid"); localStorage.setItem("studio.viewMode", "grid"); }}>
                 <LayoutGrid size={18} />
               </button>
-              <button type="button" className={`studio__viewBtn ${viewMode === "list" ? "is-active" : ""}`} title="List view" onClick={() => setViewMode("list")}>
+              <button type="button" className={`studio__viewBtn ${viewMode === "list" ? "is-active" : ""}`} title="List view" onClick={() => { setViewMode("list"); localStorage.setItem("studio.viewMode", "list"); }}>
                 <List size={18} />
               </button>
             </div>

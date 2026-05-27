@@ -393,9 +393,24 @@ export default function Analysis() {
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const createPickerRef = useRef<HTMLDivElement>(null);
+  const editPickerRef = useRef<HTMLDivElement>(null);
 
   // Keep activeRunIdRef in sync
   useEffect(() => { activeRunIdRef.current = activeRunId; }, [activeRunId]);
+
+  // Auto-scroll teammate pickers into view when they open
+  useEffect(() => {
+    if (showTeammatePicker) {
+      setTimeout(() => createPickerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    }
+  }, [showTeammatePicker]);
+
+  useEffect(() => {
+    if (showEditTeammatePicker) {
+      setTimeout(() => editPickerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    }
+  }, [showEditTeammatePicker]);
 
   // ── useAgentChat ──
   const {
@@ -1313,7 +1328,7 @@ export default function Analysis() {
                         </button>
                       </div>
                       {showTeammatePicker && (
-                        <div className="analysis_teammatePicker">
+                        <div ref={createPickerRef} className="analysis_teammatePicker">
                           {teamMembers.length === 0 ? (
                             <div className="analysis_teammatePickerEmpty">No hay otros miembros en el equipo</div>
                           ) : (
@@ -1429,7 +1444,7 @@ export default function Analysis() {
                         </button>
                       </div>
                       {showEditTeammatePicker && (
-                        <div className="analysis_teammatePicker">
+                        <div ref={editPickerRef} className="analysis_teammatePicker">
                           {teamMembers.length === 0 ? (
                             <div className="analysis_teammatePickerEmpty">No hay otros miembros en el equipo</div>
                           ) : (

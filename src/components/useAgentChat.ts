@@ -107,6 +107,7 @@ interface UseAgentChatOptions {
   automationId?: string;
   equipmentId?: string;
   robotIds?: string[];
+  agentPersona?: string;
   voiceEnabled?: boolean;
   voiceId?: string;
   onEvent?: (event: AgentEvent) => void;
@@ -221,6 +222,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
     automationId = '',
     equipmentId = '',
     robotIds = [],
+    agentPersona = '',
     voiceEnabled = false,
     voiceId = '',
   } = options;
@@ -565,6 +567,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
       automation_md_content: mdContent || null,
       automation_id: automationId || null,
       equipment_id: equipmentId || null,
+      agent_persona: agentPersona || null,
       attachments,
     };
     if (robotIds.length > 0) {
@@ -594,7 +597,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
       })),
     });
     await processStream('/api/chat', payload);
-  }, [processStream, userId, userName, sessionId, interactionMode, llmModel, mdContent, automationId, equipmentId, robotIds, voiceEnabled, voiceId]);
+  }, [processStream, userId, userName, sessionId, interactionMode, llmModel, mdContent, automationId, equipmentId, robotIds, agentPersona, voiceEnabled, voiceId]);
 
   const confirmAnswers = useCallback(async (
     answers: { question: string; answer: string }[]

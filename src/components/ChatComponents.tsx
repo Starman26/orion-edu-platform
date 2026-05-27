@@ -1,7 +1,12 @@
 // src/components/ChatComponents.tsx
 // Shared chat components extracted from Dashboard.tsx for reuse in Analysis page.
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import {
   ArrowUp,
   Plus,
@@ -436,6 +441,14 @@ interface ChatInputProps {
   onFocus?: () => void;
   onBlur?: () => void;
   onPastedCountChange?: (count: number) => void;
+  selectedModel?: string;
+  modelOptions?: { value: string; label: string }[];
+  onModelChange?: (value: string) => void;
+  selectedPersona?: string;
+  personaOptions?: { value: string; label: string }[];
+  onPersonaChange?: (value: string) => void;
+  customPersonaValue?: string;
+  onCustomPersonaChange?: (value: string) => void;
 }
 
 const SLASH_COMMANDS = [
@@ -466,9 +479,43 @@ export function ChatInput({
   onFocus,
   onBlur,
   onPastedCountChange,
+  selectedModel,
+  modelOptions,
+  onModelChange,
+  selectedPersona,
+  personaOptions,
+  onPersonaChange,
+  customPersonaValue = "",
+  onCustomPersonaChange,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pastedContents, setPastedContents] = useState<string[]>([]);
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const [personaDropdownOpen, setPersonaDropdownOpen] = useState(false);
+  const personaDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!modelDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [modelDropdownOpen]);
+
+  useEffect(() => {
+    if (!personaDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (personaDropdownRef.current && !personaDropdownRef.current.contains(e.target as Node)) {
+        setPersonaDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [personaDropdownOpen]);
   const [showPastedModal, setShowPastedModal] = useState<number | null>(null);
   const PASTE_THRESHOLD = 100;
 
@@ -838,38 +885,136 @@ export function ChatInput({
             className="dash_chatTextarea"
           />
 
-          <div className="dash_chatFooter">
+          <div className="dash_chatBottomBar">
             <button
               type="button"
               onClick={onAttachClick}
               disabled={disabled}
               className="dash_chatFooterBtn"
+              aria-label="Attach files"
             >
               <Plus size={14} />
-              <span>Attach files</span>
             </button>
-          </div>
 
-          {isLoading ? (
-            <button
-              type="button"
-              className="dash_chatSendBtn dash_chatSendBtn--stop"
-              onClick={onStop}
-              aria-label="Stop generation"
-            >
-              <Square size={12} fill="currentColor" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="dash_chatSendBtn"
-              onClick={handleSubmit}
-              disabled={disabled || (!value.trim() && pendingFiles.length === 0 && pastedContents.length === 0)}
-              aria-label="Send message"
-            >
-              <ArrowUp size={18} />
-            </button>
-          )}
+            {selectedModel && modelOptions && onModelChange && (
+              <div className="dash_chatModelWrap" ref={modelDropdownRef}>
+                <button
+                  type="button"
+                  className={`dash_chatModelChip ${modelDropdownOpen ? 'dash_chatModelChip--open' : ''}`}
+                  onClick={() => setModelDropdownOpen(p => !p)}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                  <span>{modelOptions.find(o => o.value === selectedModel)?.label ?? selectedModel}</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="dash_chatModelChevron">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+
+                {modelDropdownOpen && (
+                  <div className="dash_chatModelDropdown">
+                    {modelOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={`dash_chatModelOption ${opt.value === selectedModel ? 'dash_chatModelOption--active' : ''}`}
+                        onClick={() => { onModelChange(opt.value); setModelDropdownOpen(false); }}
+                      >
+                        <span>{opt.label}</span>
+                        {opt.value === selectedModel && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {personaOptions && onPersonaChange && (
+              <div className="dash_chatModelWrap" ref={personaDropdownRef}>
+                <button
+                  type="button"
+                  className={`dash_chatModelChip ${personaDropdownOpen ? 'dash_chatModelChip--open' : ''}`}
+                  onClick={() => setPersonaDropdownOpen(p => !p)}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                  </svg>
+                  <span>
+                    {selectedPersona === "custom"
+                      ? (customPersonaValue.trim() ? `"${customPersonaValue.slice(0, 18)}${customPersonaValue.length > 18 ? '…' : ''}"` : "Custom…")
+                      : (personaOptions.find(o => o.value === selectedPersona)?.label ?? "Persona")}
+                  </span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="dash_chatModelChevron">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+
+                {personaDropdownOpen && (
+                  <div className="dash_chatModelDropdown">
+                    {selectedPersona === "custom" && (
+                      <div className="dash_chatPersonaCustomWrap">
+                        <input
+                          className="dash_chatPersonaCustomInput"
+                          type="text"
+                          placeholder="Describe the persona…"
+                          value={customPersonaValue}
+                          onChange={e => onCustomPersonaChange?.(e.target.value)}
+                          maxLength={200}
+                          autoFocus
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
+                    {personaOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={`dash_chatModelOption ${opt.value === selectedPersona ? 'dash_chatModelOption--active' : ''}`}
+                        onClick={() => { onPersonaChange(opt.value); if (opt.value !== "custom") setPersonaDropdownOpen(false); }}
+                      >
+                        <span>{opt.label}</span>
+                        {opt.value === selectedPersona && opt.value !== "custom" && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="dash_chatBottomSpacer" />
+
+            {isLoading ? (
+              <button
+                type="button"
+                className="dash_chatSendBtn dash_chatSendBtn--stop"
+                onClick={onStop}
+                aria-label="Stop generation"
+              >
+                <Square size={12} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="dash_chatSendBtn"
+                onClick={handleSubmit}
+                disabled={disabled || (!value.trim() && pendingFiles.length === 0 && pastedContents.length === 0)}
+                aria-label="Send message"
+              >
+                <ArrowUp size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1123,6 +1268,89 @@ export function renderMarkdown(text: string, hideCodeBlocks = false): JSX.Elemen
 }
 
 // ============================================================================
+// RICH MARKDOWN RENDERER (ReactMarkdown-based, supports tables + LaTeX)
+// ============================================================================
+
+interface MarkdownRendererProps {
+  text: string;
+  hideCodeBlocks?: boolean;
+}
+
+function MarkdownRenderer({ text, hideCodeBlocks = false }: MarkdownRendererProps) {
+  const components = useMemo(() => ({
+    p: ({ children }: any) => <p className="dash_mdParagraph">{children}</p>,
+    h1: ({ children }: any) => <h2 className="dash_mdH1">{children}</h2>,
+    h2: ({ children }: any) => <h3 className="dash_mdH2">{children}</h3>,
+    h3: ({ children }: any) => <h4 className="dash_mdH3">{children}</h4>,
+    h4: ({ children }: any) => <h5 className="dash_mdH4">{children}</h5>,
+    ul: ({ children }: any) => <ul className="dash_mdUL">{children}</ul>,
+    ol: ({ children }: any) => <ol className="dash_mdOL">{children}</ol>,
+    li: ({ children }: any) => <li className="dash_mdLI">{children}</li>,
+    a: ({ href, children }: any) => (
+      <a className="dash_mdLink" href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+    blockquote: ({ children }: any) => (
+      <blockquote className="dash_mdBlockquote">{children}</blockquote>
+    ),
+    hr: () => <hr className="dash_mdDivider" />,
+    table: ({ children }: any) => (
+      <div className="dash_mdTableWrap">
+        <table className="dash_mdTable">{children}</table>
+      </div>
+    ),
+    thead: ({ children }: any) => <thead>{children}</thead>,
+    tbody: ({ children }: any) => <tbody>{children}</tbody>,
+    tr: ({ children }: any) => <tr className="dash_mdTr">{children}</tr>,
+    th: ({ children }: any) => <th className="dash_mdTh">{children}</th>,
+    td: ({ children }: any) => <td className="dash_mdTd">{children}</td>,
+    pre: ({ children }: any) => {
+      if (hideCodeBlocks) return null;
+      return <>{children}</>;
+    },
+    code: ({ className, children }: any) => {
+      const match = /language-(\w+)/.exec(className || "");
+      if (match) {
+        if (hideCodeBlocks) return null;
+        const raw = String(children).replace(/\n$/, "");
+        const lang = match[1];
+        const highlighted = highlightCode(raw, lang);
+        return (
+          <div className="dash_mdCodeBlock">
+            <div className="dash_mdCodeHeader">
+              <span className="dash_mdCodeLang">{lang}</span>
+              <button
+                type="button"
+                className="dash_mdCodeCopy"
+                onClick={() => navigator.clipboard.writeText(raw)}
+              >
+                <Copy size={12} />
+                <span>Copy</span>
+              </button>
+            </div>
+            <pre className="dash_mdCodeContent">
+              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+            </pre>
+          </div>
+        );
+      }
+      return <code className="dash_mdInlineCode">{String(children)}</code>;
+    },
+  }), [hideCodeBlocks]);
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+      components={components}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+}
+
+// ============================================================================
 // MESSAGE BUBBLE with Markdown support
 // ============================================================================
 
@@ -1250,7 +1478,7 @@ export function MessageBubble({ message, hideCodeBlocks = false, isLatestAi = fa
         )}
 
         <div className="dash_messageText">
-          {isUser ? displayText : renderMarkdown(displayText, hideCodeBlocks)}
+          {isUser ? displayText : <MarkdownRenderer text={displayText} hideCodeBlocks={hideCodeBlocks} />}
           {isTyping && <span className="dash_typingCursor" />}
         </div>
 

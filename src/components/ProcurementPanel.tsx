@@ -376,7 +376,8 @@ export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSi
     items:      bom.length,
     suppliers:  new Set(bom.map((b) => b.supplier)).size,
     categories: new Set(bom.map((b) => b.category)).size,
-    total:      bom.reduce((acc, b) => acc + b.qty * b.unitCost, 0),
+    totalMXN:   bom.filter((b) => b.currency === "MXN").reduce((acc, b) => acc + b.qty * b.unitCost, 0),
+    totalUSD:   bom.filter((b) => b.currency === "USD").reduce((acc, b) => acc + b.qty * b.unitCost, 0),
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -463,6 +464,13 @@ export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSi
               onClick={() => { setQuoteForm(blankQuote()); setShowQuoteModal(true); }}>
               <Plus size={15} />
               Nueva Solicitud
+            </button>
+          )}
+          {tab === "bom" && (
+            <button type="button" className="prc_btn prc_btn--primary"
+              onClick={() => { setBomForm(blankBom()); setEditBomId(null); setShowBomModal(true); }}>
+              <Plus size={15} />
+              Agregar Item
             </button>
           )}
 
@@ -725,17 +733,25 @@ export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSi
                                 <span className="prc_kanbanDate">{q.date}</span>
                               </div>
                               <div className="prc_kanbanActions">
-                                {prev && (
-                                  <button type="button" className="prc_btn prc_btn--ghost prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
-                                    onClick={() => handleUpdateDelivery(q.id, prev)}>
-                                    ← {DELIVERY_CFG[prev].label}
-                                  </button>
-                                )}
-                                {next && (
-                                  <button type="button" className="prc_btn prc_btn--success prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
-                                    onClick={() => handleUpdateDelivery(q.id, next)}>
-                                    {DELIVERY_CFG[next].label} →
-                                  </button>
+                                {isAdmin ? (
+                                  <>
+                                    {prev && (
+                                      <button type="button" className="prc_btn prc_btn--ghost prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
+                                        onClick={() => handleUpdateDelivery(q.id, prev)}>
+                                        ← {DELIVERY_CFG[prev].label}
+                                      </button>
+                                    )}
+                                    {next && (
+                                      <button type="button" className="prc_btn prc_btn--success prc_btn--sm" style={{ flex: 1, justifyContent: "center" }}
+                                        onClick={() => handleUpdateDelivery(q.id, next)}>
+                                        {DELIVERY_CFG[next].label} →
+                                      </button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: "rgba(16,17,19,0.4)", fontStyle: "italic", width: "100%", textAlign: "center" }}>
+                                    Solo administradores
+                                  </span>
                                 )}
                               </div>
                             </div>
@@ -753,10 +769,11 @@ export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSi
               <>
                 <div className="prc_stats">
                   {([
-                    { label: "Total Items",       value: bomStats.items                         },
-                    { label: "Proveedores",       value: bomStats.suppliers                     },
-                    { label: "Categorías",        value: bomStats.categories                    },
-                    { label: "Costo total (MXN)", value: `$${bomStats.total.toLocaleString("en-US")}`, sub: "MXN Pesos mexicanos" },
+                    { label: "Total Items",   value: bomStats.items                                                   },
+                    { label: "Proveedores",   value: bomStats.suppliers                                               },
+                    { label: "Categorías",    value: bomStats.categories                                              },
+                    { label: "Total MXN",     value: `$${bomStats.totalMXN.toLocaleString("en-US")}`, sub: "Pesos"   },
+                    { label: "Total USD",     value: `$${bomStats.totalUSD.toLocaleString("en-US")}`, sub: "Dólares"  },
                   ] as const).map((c) => (
                     <div key={c.label} className="prc_statCard">
                       <div className="prc_statLabel">{c.label}</div>

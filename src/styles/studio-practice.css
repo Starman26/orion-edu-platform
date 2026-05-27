@@ -101,20 +101,47 @@
 /* ── Restricted state (outside lab hours) ── */
 
 .studio__robotPill--restricted {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #b45309;
+  background: #1A1A1A;
+  border: 1px solid #1A1A1A;
+  color: #FFFFFF;
   cursor: pointer;
 }
 
 .studio__robotPill--restricted:hover {
-  background: rgba(245, 158, 11, 0.14);
-  border-color: rgba(245, 158, 11, 0.45);
+  background: #333;
+  border-color: #333;
 }
 
 .studio__robotDot--restricted {
-  background: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .studio__robotPill--restricted {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #1A1A1A;
+}
+
+[data-theme="dark"] .studio__robotPill--restricted:hover {
+  background: #E5E5E5;
+  border-color: #E5E5E5;
+}
+
+[data-theme="dark"] .studio__robotDot--restricted {
+  background: rgba(26, 26, 26, 0.55);
+}
+
+/* Set Env button: active state inverts to white/black in dark mode */
+[data-theme="dark"] .studio__robotPill--mono.is-active {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #1A1A1A;
+}
+
+[data-theme="dark"] .studio__robotPill--mono.is-active:hover {
+  background: #E5E5E5;
+  border-color: #E5E5E5;
 }
 
 .studio__robotPill--mono {
@@ -361,6 +388,506 @@
   max-width: 780px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* ── Env panel layout ── */
+.studio__automationView.is-env-open {
+  flex-direction: row;
+}
+
+.studio__envPanel {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid #e5e7eb;
+  height: 100%;
+  overflow-y: auto;
+  background: #fafafa;
+}
+
+.studio__automationChatArea {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Env panel sections ── */
+.studio__envSection {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.studio__envSection--last {
+  border-bottom: none;
+}
+
+.studio__envSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.studio__envSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+/* Online / offline dot next to Equipment Status */
+.studio__envStatusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.studio__envStatusDot.is-online  { background: #22c55e; }
+.studio__envStatusDot.is-offline { background: #d1d5db; }
+
+.studio__envStatusBody {
+  min-height: 220px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.studio__envStatusEmpty {
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* REC badge */
+.studio__envRecBadge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #ef4444;
+  animation: studio__envRecPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes studio__envRecPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* Panel action buttons */
+.studio__envBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  text-align: left;
+}
+
+.studio__envBtn:last-child { margin-bottom: 0; }
+
+.studio__envBtn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.studio__envBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.studio__envBtn--danger {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fff5f5;
+}
+
+.studio__envBtn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.studio__envBtn--add {
+  color: #4b5563;
+  border-style: dashed;
+}
+
+/* ── Env panel: dark theme ── */
+[data-theme="dark"] .studio__envPanel {
+  background: #111;
+  border-right-color: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="dark"] .studio__envSection {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="dark"] .studio__envSectionTitle {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .studio__envStatusEmpty {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .studio__envBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="dark"] .studio__envBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .studio__envBtn:disabled {
+  color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .studio__envBtn--danger {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.25);
+  background: rgba(248, 113, 113, 0.07);
+}
+
+[data-theme="dark"] .studio__envBtn--danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.13);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+[data-theme="dark"] .studio__envBtn--add {
+  color: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .studio__envIconBtn {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .studio__envIconBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="dark"] .studio__envIconBtn--danger:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
+  color: #f87171;
+}
+
+[data-theme="dark"] .studio__envTrackerPreview {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+[data-theme="dark"] .studio__envTrackerShape {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="dark"] .studio__envTrackerDims {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Panel icon buttons (edit / delete) ── */
+.studio__envIconBtns {
+  display: flex;
+  gap: 2px;
+}
+
+.studio__envIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.studio__envIconBtn:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #e5e7eb;
+}
+
+.studio__envIconBtn--danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+/* ── Tracker preview in panel ── */
+.studio__envTrackerPreview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px 0 12px;
+  color: #374151;
+}
+
+.studio__envTrackerMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 4px;
+}
+
+.studio__envTrackerShape {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.studio__envTrackerDims {
+  font-size: 11px;
+  color: #6b7280;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.01em;
+}
+
+/* ── Virtual Tracker modal ── */
+.studio__trackerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.studio__trackerModal {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14);
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  animation: trackerModalIn 0.18s ease;
+}
+
+@keyframes trackerModalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.studio__trackerModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.studio__trackerModalTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+}
+
+.studio__trackerModalClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.studio__trackerModalClose:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.studio__trackerModalSection {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.studio__trackerModalLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 0 0 10px;
+}
+
+.studio__trackerModalLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.studio__trackerModalLabelRow .studio__trackerModalLabel {
+  margin: 0;
+}
+
+/* Shape selector grid */
+.studio__trackerShapeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.studio__trackerShapeOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  font-family: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.studio__trackerShapeOption:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.studio__trackerShapeOption.is-selected {
+  border-color: #1a1a1a;
+  background: #f9fafb;
+  color: #111;
+}
+
+.studio__trackerShapeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+}
+
+.studio__trackerShapeOption.is-selected .studio__trackerShapeIcon {
+  color: #111;
+}
+
+/* Dimension inputs */
+.studio__trackerDimGrid {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px 10px;
+  align-items: center;
+}
+
+.studio__trackerDimLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.studio__trackerInput {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #111;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.12s ease;
+  width: 100%;
+}
+
+.studio__trackerInput:focus {
+  border-color: #9ca3af;
+}
+
+.studio__trackerUnitSelect {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+}
+
+/* Modal footer */
+.studio__trackerModalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 18px;
+}
+
+.studio__trackerCancelBtn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.studio__trackerCancelBtn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.studio__trackerSaveBtn {
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid #1a1a1a;
+  background: #1a1a1a;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease;
+}
+
+.studio__trackerSaveBtn:hover {
+  background: #333;
+  border-color: #333;
 }
 
 .studio__automationBackBtn {
