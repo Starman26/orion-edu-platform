@@ -1,7 +1,7 @@
 // src/pages/Dashboard.tsx
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, ArrowUp, Plus, X, ChevronRight, Check, Loader2 } from "lucide-react";
+import { Menu, ArrowUp, Plus, X, ChevronRight, Check, Loader2, Bell } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useThinking } from "../context/Thinkingcontext";
 import emailjs from "@emailjs/browser";
@@ -2811,8 +2811,7 @@ export default function Dashboard() {
               className="dash_welcomeStatsToggle"
               onClick={() => setStatsExpanded(prev => !prev)}
             >
-              <span>Status</span>
-              <ChevronRight size={14} className={`dash_welcomeStatsChevron ${statsExpanded ? 'dash_welcomeStatsChevron--open' : ''}`} />
+              <Bell size={16} />
             </button>
             {statsExpanded && (
               <div className="dash_welcomeStatsList">
