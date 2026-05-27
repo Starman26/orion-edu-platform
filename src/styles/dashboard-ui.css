@@ -4088,11 +4088,11 @@ html.cora-sidebar-collapsed .dash_content:has(.dash_welcomeCenter)::before {
 
 /* Dark theme */
 [data-theme="dark"] .dash_carouselCard {
-  background: #0c0c0e;
+  background: var(--bg-chrome, #141414);
   border-color: rgba(255, 255, 255, 0.06);
 }
 [data-theme="dark"] .dash_carouselCard:hover {
-  background: #141416;
+  background: var(--bg-elevated, #202020);
   border-color: rgba(255, 255, 255, 0.1);
 }
 [data-theme="dark"] .dash_carouselCardTitle {
