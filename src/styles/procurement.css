@@ -315,6 +315,7 @@
   border: 1px solid rgba(16, 17, 19, 0.08);
   border-radius: 6px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .prc_table { width: 100%; border-collapse: collapse; }
