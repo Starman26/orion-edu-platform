@@ -675,7 +675,6 @@ function DashboardHeader({
                 <span className="dash_headerOrionO">O</span>RION
                 <span className="dash_headerOrionEdu">Labs</span>
               </span>
-              {statusSlot}
             </>
           )}
 
@@ -719,6 +718,12 @@ function DashboardHeader({
             </>
           )}
         </div>
+
+        {headerMinimal && statusSlot && (
+          <div className="dash_headerRight">
+            {statusSlot}
+          </div>
+        )}
 
         {!headerMinimal && (
           <div className="dash_headerRight">

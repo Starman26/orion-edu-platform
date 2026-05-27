@@ -3388,20 +3388,23 @@
   text-align: center;
 }
 
-/* Status card inside header — compact, inline with ORION Labs */
+/* Status card inside header — compact, bell-only button */
 .dash_headerStatusCard {
   margin-top: 0 !important;
-  margin-left: 12px;
+  margin-left: 0 !important;
   min-width: unset !important;
-  padding: 5px 12px !important;
-  border-radius: 8px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
   position: relative;
 }
 
 .dash_headerStatusCard .dash_welcomeStatsList {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  right: 0;
+  left: auto;
   background: var(--bg-primary, #ffffff);
   border: 1px solid rgba(16, 17, 19, 0.1);
   border-radius: 8px;
