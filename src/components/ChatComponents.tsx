@@ -21,6 +21,9 @@ import {
   FileText,
   Settings,
   MessageSquare,
+  Loader2,
+  Sparkles,
+  Activity,
 } from "lucide-react";
 
 // ============================================================================
@@ -336,56 +339,188 @@ function getEventIcon(message: string): JSX.Element {
   );
 }
 
-export function InlineEventRun({ run, onToggleExpand }: InlineEventRunProps) {
-  const latestEvent = run.events[run.events.length - 1];
-  const isStreaming = run.status === "streaming";
-  const isDone = run.status === "done";
+// ── Phase grouping ───────────────────────────────────────────────────────
+// Raw backend events are collapsed into a handful of friendly, human-readable
+// "phases" so the chat shows a clean step-by-step timeline instead of a long
+// flat log. Each phase has a title and an italic "doing it now" label.
 
-  if (run.events.length === 0 && !isStreaming) return null;
+type PhaseKey = "setup" | "intent" | "plan" | "work" | "review" | "answer";
+
+interface PhaseMeta {
+  title: string;
+  activeLabel: string;
+  icon: (size: number) => JSX.Element;
+}
+
+const PHASE_META: Record<PhaseKey, PhaseMeta> = {
+  setup:  { title: "Setup",         activeLabel: "getting things ready",      icon: (s) => <Database size={s} /> },
+  intent: { title: "Intent",        activeLabel: "im understanding this",     icon: (s) => <Search size={s} /> },
+  plan:   { title: "Planning",      activeLabel: "mapping out the steps",     icon: (s) => <BrainCircuit size={s} /> },
+  work:   { title: "Working",       activeLabel: "processing your request",   icon: (s) => <Settings size={s} /> },
+  review: { title: "Reviewing",     activeLabel: "double-checking the result", icon: (s) => <Activity size={s} /> },
+  answer: { title: "Basic Answers", activeLabel: "putting it together",       icon: (s) => <Sparkles size={s} /> },
+};
+
+function classifyPhase(node: string, message: string): PhaseKey {
+  const m = `${node} ${message}`.toLowerCase();
+  if (/conect|database|base de datos|embedding|vector|estado|inicializ|\bstate\b|\binit\b/.test(m)) return "setup";
+  if (/detect|classif|\bintent\b|analy|anali/.test(m)) return "intent";
+  if (/\bplan\b|planning|execution|routing/.test(m)) return "plan";
+  if (/eval|confidence|scoring|evaluat|review|worker output/.test(m)) return "review";
+  if (/process|request|working/.test(m)) return "work";
+  return "answer"; // chat, reply, response, llm, synthesize, combine, ready, done…
+}
+
+interface Phase {
+  key: PhaseKey;
+  events: TimelineEvent[];
+}
+
+function buildPhases(events: TimelineEvent[]): Phase[] {
+  const order: PhaseKey[] = [];
+  const grouped = new Map<PhaseKey, TimelineEvent[]>();
+  for (const evt of events) {
+    const key = classifyPhase(evt.node, evt.message);
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+      order.push(key);
+    }
+    grouped.get(key)!.push(evt);
+  }
+  return order.map((key) => ({ key, events: grouped.get(key)! }));
+}
+
+// Italic "doing it now" line that types itself out for a live, real-time feel.
+function PhaseActiveLabel({ text }: { text: string }) {
+  const { displayed, isTyping } = useTypewriterLog(text, 28);
+  return (
+    <div className="dash_phaseActive">
+      <span className="dash_phaseActiveLine" />
+      <span className="dash_phaseActiveLabel">
+        {displayed}
+        {isTyping && <span className="dash_logCursor">|</span>}
+      </span>
+    </div>
+  );
+}
+
+export function InlineEventRun({ run, onToggleExpand }: InlineEventRunProps) {
+  const isStreaming = run.status === "streaming";
+
+  const phases = useMemo(() => buildPhases(run.events), [run.events]);
+
+  if (phases.length === 0 && !isStreaming) return null;
+
+  // Done + collapsed → just the last message on top, click to re-expand the full list.
+  const lastEvent = run.events[run.events.length - 1];
+  if (!isStreaming && !run.isExpanded && lastEvent) {
+    return (
+      <div className="dash_phaseRun">
+        <button
+          type="button"
+          className="dash_phaseSummary"
+          onClick={() => onToggleExpand(run.id)}
+        >
+          <span className="dash_phaseEventIcon">{getEventIcon(lastEvent.message)}</span>
+          <span className="dash_phaseEventText">{lastEvent.message}</span>
+        </button>
+      </div>
+    );
+  }
+
+  // Streaming but no events yet — show a placeholder so the run never flashes empty.
+  if (phases.length === 0 && isStreaming) {
+    return (
+      <div className="dash_phaseRun">
+        <div className="dash_phaseStep">
+          <div className="dash_phaseHeader">
+            <span className="dash_phaseIcon dash_phaseIcon--active">
+              <Loader2 size={16} className="dash_phaseSpinner" />
+            </span>
+            <span className="dash_phaseTitle">Thinking</span>
+          </div>
+          <PhaseActiveLabel text="warming up…" />
+        </div>
+      </div>
+    );
+  }
+
+  // While streaming, the most recent phase is the one currently in progress.
+  const activeIndex = phases.length - 1;
+  const activePhase = phases[activeIndex];
+
+  // Minimal mode while streaming: show ONLY the current phase + its latest
+  // internal message, replacing as the run advances. Click to expand the list.
+  if (isStreaming && !run.isExpanded && activePhase) {
+    const meta = PHASE_META[activePhase.key];
+    return (
+      <div className="dash_phaseRun">
+        <div className="dash_phaseStep">
+          <button
+            type="button"
+            className="dash_phaseHeader"
+            onClick={() => onToggleExpand(run.id)}
+          >
+            <span className="dash_phaseIcon dash_phaseIcon--active">
+              <Loader2 size={16} className="dash_phaseSpinner" />
+            </span>
+            <span className="dash_phaseTitle">{meta.title}</span>
+          </button>
+          <PhaseActiveLabel
+            text={activePhase.events[activePhase.events.length - 1]?.message || meta.activeLabel}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="dash_eventCard">
-      {/* Header row — always visible */}
-      <button
-        type="button"
-        className="dash_eventCardHeader"
-        onClick={() => onToggleExpand(run.id)}
-      >
-        <span className="dash_eventCardIcon">
-          {isStreaming ? (
-            <span className="dash_logPulse" />
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          )}
-        </span>
-        <span className="dash_eventCardText">
-          {isDone ? "Done" : (latestEvent?.message || "Processing...")}
-          {isStreaming && <span className="dash_logCursor">|</span>}
-        </span>
-        <span className={`dash_eventCardChevron ${run.isExpanded ? 'dash_eventCardChevron--open' : ''}`}>
-          <ChevronRight size={14} />
-        </span>
-      </button>
-
-      {/* Expanded event list */}
-      {run.isExpanded && run.events.length > 0 && (
-        <div className="dash_eventCardBody">
-          {run.events.map((evt, idx) => (
-            <div
-              key={evt.id}
-              className="dash_eventCardItem"
-              style={{ animationDelay: `${idx * 0.03}s` }}
+    <div className="dash_phaseRun">
+      {phases.map((phase, idx) => {
+        const meta = PHASE_META[phase.key];
+        const isActive = isStreaming && idx === activeIndex;
+        return (
+          <div
+            key={phase.key}
+            className="dash_phaseStep"
+            style={{ animationDelay: `${idx * 0.05}s` }}
+          >
+            <button
+              type="button"
+              className="dash_phaseHeader"
+              onClick={() => onToggleExpand(run.id)}
             >
-              <span className="dash_eventCardItemIcon">
-                {getEventIcon(evt.message)}
+              <span className={`dash_phaseIcon ${isActive ? "dash_phaseIcon--active" : ""}`}>
+                {isActive ? <Loader2 size={16} className="dash_phaseSpinner" /> : meta.icon(16)}
               </span>
-              <span className="dash_eventCardItemText">{evt.message}</span>
-            </div>
-          ))}
-        </div>
-      )}
+              <span className="dash_phaseTitle">{meta.title}</span>
+            </button>
+
+            {/* Italic "doing it now" line shown under the active phase */}
+            {isActive && (
+              <PhaseActiveLabel
+                text={phase.events[phase.events.length - 1]?.message || meta.activeLabel}
+              />
+            )}
+
+            {/* Raw backend events, revealed on click */}
+            {run.isExpanded && phase.events.length > 0 && (
+              <div className="dash_phaseEvents">
+                {phase.events.map((evt, evtIdx) => (
+                  <div
+                    key={evt.id}
+                    className="dash_phaseEventItem"
+                    style={{ animationDelay: `${evtIdx * 0.03}s` }}
+                  >
+                    <span className="dash_phaseEventIcon">{getEventIcon(evt.message)}</span>
+                    <span className="dash_phaseEventText">{evt.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

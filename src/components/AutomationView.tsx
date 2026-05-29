@@ -15,6 +15,7 @@ import {
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import type { Automation } from "./StudioHelpers";
 import { OrionSelect } from "./OrionSelect";
+import HealthStreamPanel from "./HealthStreamPanel";
 
 const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || 'https://sentinela-909652673285.us-central1.run.app';
 
@@ -1068,6 +1069,8 @@ export default function AutomationView({
           </div>
         </div>
       )}
+
+      <HealthStreamPanel robots={robots} selectedRobotIds={selectedRobotIds} />
     </div>
   );
 }

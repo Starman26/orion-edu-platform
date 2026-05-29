@@ -510,6 +510,8 @@ interface DashboardHeaderProps {
   onToggleTitleBar?: () => void;
   onToggleLeftPanel?: () => void;
   leftExpanded?: boolean;
+  selectedView?: string;
+  onViewChange?: (v: string) => void;
   statusSlot?: React.ReactNode;
   onNewChat?: () => void;
   onViewHistory?: () => void;
@@ -531,6 +533,8 @@ function DashboardHeader({
   onToggleTitleBar,
   onToggleLeftPanel,
   leftExpanded = false,
+  selectedView = "Overview",
+  onViewChange,
   statusSlot,
   onNewChat,
   onViewHistory,
@@ -540,6 +544,19 @@ function DashboardHeader({
 }: DashboardHeaderProps) {
   const [showSessionsDrop, setShowSessionsDrop] = useState(false);
   const sessionDropRef = useRef<HTMLDivElement>(null);
+  // View selector (extended header)
+  const VIEW_OPTIONS = ["Overview", "Equipment", "None"];
+  const [showViewDrop, setShowViewDrop] = useState(false);
+  const viewDropRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (viewDropRef.current && !viewDropRef.current.contains(e.target as Node)) {
+        setShowViewDrop(false);
+      }
+    };
+    if (showViewDrop) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showViewDrop]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(LS_KEY) === "1";
@@ -701,6 +718,35 @@ function DashboardHeader({
                 <span className="dash_headerOrionO">O</span>RION
                 <span className="dash_headerOrionEdu">Labs</span>
               </span>
+
+              {leftExpanded && (
+              <div className="dash_viewSelector" ref={viewDropRef}>
+                <button
+                  type="button"
+                  className="dash_viewSelectorBtn"
+                  onClick={() => setShowViewDrop(p => !p)}
+                >
+                  <span className="dash_viewSelectorChevron">‹</span>
+                  <span className="dash_viewSelectorLabel">{selectedView}</span>
+                  <span className="dash_viewSelectorChevron">›</span>
+                </button>
+                {showViewDrop && (
+                  <div className="dash_viewSelectorDrop">
+                    {VIEW_OPTIONS.map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`dash_viewSelectorItem ${v === selectedView ? "is-active" : ""}`}
+                        onClick={() => { onViewChange?.(v); setShowViewDrop(false); }}
+                      >
+                        {v}
+                        {v === selectedView && <Check size={13} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              )}
             </>
           )}
 
@@ -1131,6 +1177,11 @@ export default function Dashboard() {
   const [leftExpanded, setLeftExpanded] = useState(() => {
     try { return localStorage.getItem("orion.leftExpanded") !== "0"; } catch { return true; }
   });
+  // Left panel view ("Overview" | "Equipment" | "None") — persisted
+  const [leftView, setLeftView] = useState(() => {
+    try { return localStorage.getItem("orion.leftView") ?? "None"; } catch { return "None"; }
+  });
+  useEffect(() => { try { localStorage.setItem("orion.leftView", leftView); } catch {} }, [leftView]);
 
   // Settings dropdowns
   const [focusedOn] = useState("research");
@@ -2779,7 +2830,7 @@ export default function Dashboard() {
         userMessageId: messageId,
         events: [],
         status: "streaming",
-        isExpanded: true,
+        isExpanded: false,
       }
     });
     setActiveRunId(messageId);
@@ -2916,6 +2967,8 @@ export default function Dashboard() {
           return next;
         })}
         leftExpanded={leftExpanded}
+        selectedView={leftView}
+        onViewChange={setLeftView}
         onNewChat={handleNewChat}
         onViewHistory={() => navigate("/history")}
         sessions={sessions}
@@ -2959,6 +3012,16 @@ export default function Dashboard() {
         {(chatMode !== "chat" || leftExpanded) && (
           <div className={`dash_left dash_left--${chatMode}`} ref={leftPanelRef}>
             <ParticleGrid containerRef={leftPanelRef} />
+
+            {/* Widget placeholders — only in chat mode when expanded and view != None */}
+            {chatMode === "chat" && leftExpanded && leftView !== "None" && (
+              <div className="dash_leftWidgets">
+                <div className="dash_leftWidget dash_leftWidget--a" />
+                <div className="dash_leftWidget dash_leftWidget--b" />
+                <div className="dash_leftWidget dash_leftWidget--tall" />
+                <div className="dash_leftWidget dash_leftWidget--wide" />
+              </div>
+            )}
 
             {/* Messages in left panel (Agent mode only) */}
             {chatMode === "agent" && (leftPanelMessages.length > 0 || currentTypingText || isLoading) && (

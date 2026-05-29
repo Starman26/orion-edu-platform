@@ -228,7 +228,7 @@
   
   /* ─── Content / Panels ─── */
   [data-theme="dark"] .dash_content { background: var(--bg-base); }
-  [data-theme="dark"] .dash_left    { background: var(--bg-base); }
+  [data-theme="dark"] .dash_left    { background: #242424; }
   
   [data-theme="dark"] .dash_rightLabel    { color: var(--text-muted); }
   [data-theme="dark"] .dash_rightGreeting { color: var(--text-primary); }
