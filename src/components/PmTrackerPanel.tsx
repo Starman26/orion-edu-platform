@@ -12,6 +12,7 @@ import { supabase } from "../lib/supabaseClient";
 import { ANALYSIS_ICON_NAMES, getAnalysisIcon, type AnalysisIconName } from "../lib/analysisIcons";
 import { useAgentChat } from "./useAgentChat";
 import type { AgentEvent } from "./useAgentChat";
+import { OrionSelect } from "./OrionSelect";
 import "../styles/pm-tracker.css";
 
 const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || "https://sentinela-909652673285.us-central1.run.app";
@@ -1259,11 +1260,11 @@ function TeamDrawer({
                       <span style={{ fontSize: 10, color: "var(--pmt-text-subtle)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                         Área
                       </span>
-                      <select value={commitDraft.element}
-                        onChange={(e) => setCommitDraft((d) => ({ ...d, element: e.target.value }))}
-                        style={{ fontSize: 13, padding: "8px 10px", border: "1px solid var(--pmt-border)", borderRadius: 6, background: "var(--pmt-surface)", color: "var(--pmt-text)", fontFamily: "inherit" }}>
-                        {areas.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
-                      </select>
+                      <OrionSelect
+                        value={commitDraft.element}
+                        options={areas.map((a) => ({ value: a.key, label: a.label }))}
+                        onChange={(v) => setCommitDraft((d) => ({ ...d, element: v }))}
+                      />
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -3268,14 +3269,12 @@ export default function PmTrackerPanel({
           <input type="text" className="pmt_addEntryInput" placeholder="Nombre del PM..."
             value={newPmName} onChange={(e) => setNewPmName(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleAddEntry(); }} />
-          <select
-            className="pmt_addEntryTrack"
+          <OrionSelect
             value={newEntryTrack}
-            onChange={(e) => { setNewEntryTrack(e.target.value); setNewTrackInput(""); }}>
-            <option value="">Sin track</option>
-            {configTracks.map((t) => <option key={t} value={t}>{t}</option>)}
-            <option value="__new__">+ Nuevo track</option>
-          </select>
+            options={[{ value: "", label: "Sin track" }, ...configTracks.map((t) => ({ value: t, label: t })), { value: "__new__", label: "+ Nuevo track" }]}
+            onChange={(v) => { setNewEntryTrack(v); setNewTrackInput(""); }}
+            variant="chip"
+          />
           {newEntryTrack === "__new__" && (
             <input
               className="pmt_addEntryInput"

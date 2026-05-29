@@ -132,15 +132,21 @@ export function Sidebar({
       return false;
     }
   });
+  const [hoverExpanded, setHoverExpanded] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // When hovering over a collapsed sidebar, treat it as expanded visually
+  const effectiveCollapsed = collapsed && !hoverExpanded;
 
   useEffect(() => {
     try {
       window.localStorage.setItem(LS_KEY, collapsed ? "1" : "0");
     } catch {}
-
-    if (collapsed) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
-    else document.documentElement.classList.remove(ROOT_COLLAPSED_CLASS);
   }, [collapsed]);
+
+  useEffect(() => {
+    if (effectiveCollapsed) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
+    else document.documentElement.classList.remove(ROOT_COLLAPSED_CLASS);
+  }, [effectiveCollapsed]);
 
   useEffect(() => {
     const onToggle = (e: Event) => {
@@ -518,8 +524,8 @@ export function Sidebar({
   const renderNavItem = (item: NavItem) => {
     const active = current === item.key;
     const Icon = item.icon;
-    const showBadge = !collapsed && !!item.badge;
-    const showDot = collapsed && !!item.badge && !!item.attention;
+    const showBadge = !effectiveCollapsed && !!item.badge;
+    const showDot = effectiveCollapsed && !!item.badge && !!item.attention;
 
     return (
       <button
@@ -527,7 +533,7 @@ export function Sidebar({
         type="button"
         onClick={() => onNavigate(item.key)}
         className={`sidebar__item ${active ? "is-active" : ""}`}
-        title={collapsed ? item.label : undefined}
+        title={effectiveCollapsed ? item.label : undefined}
         aria-label={item.label}
         aria-current={active ? "page" : undefined}
       >
@@ -541,30 +547,22 @@ export function Sidebar({
 
   const renderMembers = () => {
     if (loadingMembers) {
-      return collapsed ? null : <div className="sidebar__hint">Loading...</div>;
+      return effectiveCollapsed ? null : <div className="sidebar__hint">Loading...</div>;
     }
     if (members.length === 0) {
-      return collapsed ? null : <div className="sidebar__hint">No members</div>;
+      return effectiveCollapsed ? null : <div className="sidebar__hint">No members</div>;
     }
 
-    if (collapsed) {
+    if (effectiveCollapsed) {
       const first = members[0];
       const extra = members.length - 1;
       return (
         <div className="sidebar__membersCollapsed">
-          <div
-            className="sidebar__avatar"
-            title={first.full_name || ""}
-            aria-label={first.full_name || "Team member"}
-          >
+          <div className="sidebar__avatar" title={first.full_name || ""}>
             {getInitials(first.full_name || first.auth_user_id || "?")}
           </div>
           {extra > 0 && (
-            <div
-              className="sidebar__memberMore"
-              title={`${extra} more member${extra === 1 ? "" : "s"}`}
-              aria-label={`${extra} more`}
-            >
+            <div className="sidebar__memberMore" title={`${extra} more`}>
               +{extra}
             </div>
           )}
@@ -637,10 +635,20 @@ export function Sidebar({
 
   return (
     <aside
-      className={`sidebar drag-region ${collapsed ? "is-collapsed" : ""}`}
-      onMouseEnter={() => setIsSidebarHovered(true)}
+      className={`sidebar drag-region ${effectiveCollapsed ? "is-collapsed" : ""}`}
+      onMouseEnter={() => {
+        setIsSidebarHovered(true);
+        if (collapsed) {
+          hoverTimerRef.current = setTimeout(() => setHoverExpanded(true), 250);
+        }
+      }}
       onMouseLeave={() => {
         setIsSidebarHovered(false);
+        if (hoverTimerRef.current) {
+          clearTimeout(hoverTimerRef.current);
+          hoverTimerRef.current = null;
+        }
+        setHoverExpanded(false);
         if (mouseTrackingActive.current) {
           mouseTrackingActive.current = false;
           setMousePos({ x: 0, y: 0 });
@@ -756,7 +764,7 @@ export function Sidebar({
             className={`sidebar__infoBtn ${isCardHovered ? "is-visible" : ""}`}
             onClick={() => setShowAgentInfo(true)}
             aria-label="About Sentinela"
-            tabIndex={collapsed ? -1 : 0}
+            tabIndex={effectiveCollapsed ? -1 : 0}
           >
             <Info className="sidebar__infoBtnIcon" />
           </button>
@@ -775,7 +783,7 @@ export function Sidebar({
           type="button"
           onClick={() => onNavigate("mgmt")}
           className={`sidebar__footerItem${current === "mgmt" ? " sidebar__footerItem--active" : ""}`}
-          title={collapsed ? "Console" : undefined}
+          title={effectiveCollapsed ? "Console" : undefined}
           aria-label="Management Console"
         >
           <Monitor className="sidebar__footerIcon" />
@@ -785,7 +793,7 @@ export function Sidebar({
           type="button"
           onClick={handleProfile}
           className="sidebar__footerItem"
-          title={collapsed ? "Settings" : undefined}
+          title={effectiveCollapsed ? "Settings" : undefined}
           aria-label="Settings"
         >
           <Settings className="sidebar__footerIcon" />
@@ -795,7 +803,7 @@ export function Sidebar({
           type="button"
           onClick={handleLogout}
           className="sidebar__footerItem"
-          title={collapsed ? "Log Out" : undefined}
+          title={effectiveCollapsed ? "Log Out" : undefined}
           aria-label="Log Out"
         >
           <LogOut className="sidebar__footerIcon" />

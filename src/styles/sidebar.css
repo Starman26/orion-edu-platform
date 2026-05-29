@@ -103,7 +103,7 @@
   position: relative;
   /* CRITICAL: visible — active indicator at left:-12px must not be clipped. */
   overflow: visible;
-  transition: width 250ms var(--sb-ease);
+  transition: width 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar.is-collapsed {
@@ -231,9 +231,36 @@
   gap: 0;
 }
 
-.sidebar.is-collapsed .sidebar__workspaceText,
+.sidebar.is-collapsed .sidebar__workspaceText {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 380ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms ease;
+}
+
 .sidebar.is-collapsed .sidebar__workspaceChev {
-  display: none;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 380ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms ease;
+}
+
+.sidebar__workspaceText {
+  transition: max-width 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 300ms ease 80ms;
+  max-width: 160px;
+  opacity: 1;
+}
+
+.sidebar__workspaceChev {
+  max-width: 20px;
+  opacity: 1;
+  transition: max-width 320ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms ease 60ms,
+              color var(--sb-fast),
+              transform var(--sb-fast);
 }
 
 /* Hide legacy nodes if they leak in from anywhere */
@@ -428,7 +455,9 @@
   color: var(--sidebar-ink-50);
   font: inherit;
   text-align: left;
-  transition: background var(--sb-fast), color var(--sb-fast);
+  transition: background var(--sb-fast), color var(--sb-fast),
+              padding 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              gap 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar__item:hover {
@@ -481,6 +510,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: inherit;
+  max-width: 160px;
+  opacity: 1;
+  transition: max-width 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 300ms ease 80ms;
 }
 
 /* Badge (expanded) */
@@ -496,6 +529,11 @@
   letter-spacing: 0;
   text-transform: lowercase;
   line-height: 1.4;
+  max-width: 60px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-width 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 300ms ease 80ms;
 }
 
 .sidebar__item.is-active .sidebar__badge {
@@ -515,22 +553,24 @@
   pointer-events: none;
 }
 
-/* ─── Collapsed: square 32×32 nav buttons ─── */
+/* ─── Collapsed: icon-only nav buttons (labels hidden via max-width) ─── */
 .sidebar.is-collapsed .sidebar__sectionItems {
-  align-items: center;
-  gap: 4px;
+  align-items: stretch;
+  gap: 2px;
 }
 
 .sidebar.is-collapsed .sidebar__item {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  justify-content: center;
+  padding: 7px 7px;
+  gap: 0;
+  justify-content: flex-start;
 }
 
 .sidebar.is-collapsed .sidebar__itemLabel,
 .sidebar.is-collapsed .sidebar__badge {
-  display: none;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 380ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms ease;
 }
 
 .sidebar.is-collapsed .sidebar__itemIcon {
@@ -839,7 +879,9 @@
   color: var(--sidebar-ink-30);
   font: inherit;
   text-align: left;
-  transition: background var(--sb-fast), color var(--sb-fast);
+  transition: background var(--sb-fast), color var(--sb-fast),
+              padding 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              gap 480ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar__footerItem:hover {
@@ -873,18 +915,24 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 160px;
+  opacity: 1;
+  transition: max-width 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 300ms ease 80ms;
 }
 
-/* Collapsed footer: 32×32 icon-only buttons */
+/* Collapsed footer: icon-only */
 .sidebar.is-collapsed .sidebar__footerItem {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  justify-content: center;
+  padding: 7px 8px;
+  gap: 0;
+  justify-content: flex-start;
 }
 
 .sidebar.is-collapsed .sidebar__footerLabel {
-  display: none;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 380ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms ease;
 }
 
 .sidebar.is-collapsed .sidebar__footerIcon {
@@ -1009,3 +1057,4 @@
   color: var(--sidebar-ink-50);
   margin: 4px 0 0;
 }
+

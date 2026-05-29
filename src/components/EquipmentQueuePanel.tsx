@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, X, User, Search, ChevronLeft, ChevronRight, Check, Filter, RefreshCw, Pencil, Settings, ChevronDown, ClipboardList, Clock, AlertTriangle, CheckCircle2, BookOpen, Shield, Wrench, Eye, Users, Lock, Bell, FileText, Zap, Info, Flag, Star, Trash2, Box, type LucideIcon } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { equipmentTypeIcon, EQUIPMENT_TYPES, type EquipmentProfile } from "./EquipmentTab";
+import { OrionSelect } from "./OrionSelect";
 import "../styles/equipment-queue.css";
 import "../styles/pm-tracker.css";
 
@@ -1322,12 +1323,11 @@ export default function EquipmentQueuePanel({
                                   {isPrinter(entry.equipment_id) && (
                                     <div className="equeue_editField">
                                       <label>Material</label>
-                                      <select value={eMaterial} onChange={(e) => setEMaterial(e.target.value)}>
-                                        <option value="">— Selecciona material —</option>
-                                        {["PLA","PETG","ABS","TPU","ASA","Nylon","Resina","Fibra de carbono"].map((m) => (
-                                          <option key={m} value={m}>{m}</option>
-                                        ))}
-                                      </select>
+                                      <OrionSelect
+                                        value={eMaterial}
+                                        options={[{ value: "", label: "— Selecciona material —" }, ...["PLA","PETG","ABS","TPU","ASA","Nylon","Resina","Fibra de carbono"].map((m) => ({ value: m, label: m }))]}
+                                        onChange={setEMaterial}
+                                      />
                                     </div>
                                   )}
                                   <div className="equeue_editField">
@@ -1524,14 +1524,11 @@ export default function EquipmentQueuePanel({
             <div className="equeue_formBody">
               <div className="equeue_formField">
                 <label>Equipo</label>
-                <select value={fEquipmentId} onChange={(e) => { setFEquipmentId(e.target.value); setConflictError(false); }}>
-                  <option value="">Selecciona un equipo...</option>
-                  {equipment.filter((eq) => pinnedIds.includes(eq.id)).map((eq) => (
-                    <option key={eq.id} value={eq.id}>
-                      {eq.name}{eq.brand ? ` · ${eq.brand}` : ""}
-                    </option>
-                  ))}
-                </select>
+                <OrionSelect
+                  value={fEquipmentId}
+                  options={[{ value: "", label: "Selecciona un equipo..." }, ...equipment.filter((eq) => pinnedIds.includes(eq.id)).map((eq) => ({ value: eq.id, label: eq.name + (eq.brand ? ` · ${eq.brand}` : "") }))]}
+                  onChange={(v) => { setFEquipmentId(v); setConflictError(false); }}
+                />
               </div>
               <div className="equeue_formRow">
                 <div className="equeue_formField">
@@ -1554,12 +1551,11 @@ export default function EquipmentQueuePanel({
               {isPrinter(fEquipmentId) && (
                 <div className="equeue_formField">
                   <label>Material</label>
-                  <select value={fMaterial} onChange={(e) => setFMaterial(e.target.value)}>
-                    <option value="">— Selecciona material —</option>
-                    {["PLA","PETG","ABS","TPU","ASA","Nylon","Resina","Fibra de carbono"].map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
+                  <OrionSelect
+                    value={fMaterial}
+                    options={[{ value: "", label: "— Selecciona material —" }, ...["PLA","PETG","ABS","TPU","ASA","Nylon","Resina","Fibra de carbono"].map((m) => ({ value: m, label: m }))]}
+                    onChange={setFMaterial}
+                  />
                 </div>
               )}
               <div className="equeue_formField">

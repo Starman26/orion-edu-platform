@@ -1,7 +1,7 @@
 // src/pages/Dashboard.tsx
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, ArrowUp, Plus, X, ChevronRight, Check, Loader2, Bell } from "lucide-react";
+import { Menu, ArrowUp, Plus, X, ChevronRight, Check, Loader2, Bell, Clock, SlidersHorizontal } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { useThinking } from "../context/Thinkingcontext";
 import emailjs from "@emailjs/browser";
@@ -508,7 +508,14 @@ interface DashboardHeaderProps {
   titleBarVisible?: boolean;
   headerMinimal?: boolean;
   onToggleTitleBar?: () => void;
+  onToggleLeftPanel?: () => void;
+  leftExpanded?: boolean;
   statusSlot?: React.ReactNode;
+  onNewChat?: () => void;
+  onViewHistory?: () => void;
+  sessions?: Session[];
+  currentSessionId?: string;
+  onSelectSession?: (id: string) => void;
 }
 
 function DashboardHeader({
@@ -522,8 +529,17 @@ function DashboardHeader({
   //titleBarVisible = true,
   headerMinimal = false,
   onToggleTitleBar,
+  onToggleLeftPanel,
+  leftExpanded = false,
   statusSlot,
+  onNewChat,
+  onViewHistory,
+  sessions = [],
+  currentSessionId = "",
+  onSelectSession,
 }: DashboardHeaderProps) {
+  const [showSessionsDrop, setShowSessionsDrop] = useState(false);
+  const sessionDropRef = useRef<HTMLDivElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(LS_KEY) === "1";
@@ -630,6 +646,16 @@ function DashboardHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showThemeMenu]);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sessionDropRef.current && !sessionDropRef.current.contains(e.target as Node)) {
+        setShowSessionsDrop(false);
+      }
+    };
+    if (showSessionsDrop) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSessionsDrop]);
+
   const isCustomTheme = theme !== "light" && theme !== "dark";
   const isDark = theme === "dark";
 
@@ -657,10 +683,10 @@ function DashboardHeader({
 
           <button
             type="button"
-            onClick={onToggleTitleBar}
-            className="dash_menuBtn"
-            aria-label="Toggle header mode"
-            title="Cambiar modo de header"
+            onClick={onToggleLeftPanel}
+            className={`dash_menuBtn ${leftExpanded ? "is-active" : ""}`}
+            aria-label="Expand left panel"
+            title="Expand panel"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="5" r="1" />
@@ -719,9 +745,52 @@ function DashboardHeader({
           )}
         </div>
 
-        {headerMinimal && statusSlot && (
+        {headerMinimal && (
           <div className="dash_headerRight">
+            <button type="button" className="dash_headerNewBtn" onClick={onNewChat}>New</button>
+            <span className="dash_headerSep">|</span>
+            <div className="dash_headerSessWrap" ref={sessionDropRef}>
+              <button
+                type="button"
+                className="dash_headerIconBtn"
+                onClick={() => setShowSessionsDrop(p => !p)}
+                aria-label="Sessions"
+                title="Recent sessions"
+              >
+                <Clock size={16} />
+              </button>
+              {showSessionsDrop && (
+                <div className="dash_headerSessDrop">
+                  <span className="dash_headerSessLabel">Recent Sessions</span>
+                  {sessions.slice(0, 3).map(session => (
+                    <button
+                      key={session.id}
+                      type="button"
+                      className={`dash_headerSessItem ${session.id === currentSessionId ? "is-active" : ""}`}
+                      onClick={() => { onSelectSession?.(session.id); setShowSessionsDrop(false); }}
+                    >
+                      <span>{session.title}</span>
+                      {session.id === currentSessionId && <Check size={12} />}
+                    </button>
+                  ))}
+                  {onViewHistory && (
+                    <button
+                      type="button"
+                      className="dash_headerSessViewAll"
+                      onClick={() => { setShowSessionsDrop(false); onViewHistory(); }}
+                    >
+                      View all
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            {statusSlot && <span className="dash_headerSep">|</span>}
             {statusSlot}
+            <span className="dash_headerSep">|</span>
+            <button type="button" className="dash_headerIconBtn" onClick={onToggleTitleBar} aria-label="Toggle header" title="Customize layout">
+              <SlidersHorizontal size={15} />
+            </button>
           </div>
         )}
 
@@ -730,7 +799,46 @@ function DashboardHeader({
           <button type="button" className="dash_headerBtn">
             Feedback
           </button>
-            
+
+          <button type="button" className="dash_headerNewBtn" onClick={onNewChat}>New</button>
+          <span className="dash_headerSep">|</span>
+          <div className="dash_headerSessWrap" ref={sessionDropRef}>
+            <button
+              type="button"
+              className="dash_headerIconBtn"
+              onClick={() => setShowSessionsDrop(p => !p)}
+              aria-label="Sessions"
+              title="Recent sessions"
+            >
+              <Clock size={16} />
+            </button>
+            {showSessionsDrop && (
+              <div className="dash_headerSessDrop">
+                <span className="dash_headerSessLabel">Recent Sessions</span>
+                {sessions.slice(0, 3).map(session => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    className={`dash_headerSessItem ${session.id === currentSessionId ? "is-active" : ""}`}
+                    onClick={() => { onSelectSession?.(session.id); setShowSessionsDrop(false); }}
+                  >
+                    <span>{session.title}</span>
+                    {session.id === currentSessionId && <Check size={12} />}
+                  </button>
+                ))}
+                {onViewHistory && (
+                  <button
+                    type="button"
+                    className="dash_headerSessViewAll"
+                    onClick={() => { setShowSessionsDrop(false); onViewHistory(); }}
+                  >
+                    View all
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Theme controls */}
           <div className="dash_themeControls" ref={themeMenuRef}>
             {/* Light/Dark toggle switch */}
@@ -802,6 +910,10 @@ function DashboardHeader({
             )}
           </div>
 
+          <span className="dash_headerSep">|</span>
+          <button type="button" className="dash_headerIconBtn" onClick={onToggleTitleBar} aria-label="Toggle header" title="Customize layout">
+            <SlidersHorizontal size={15} />
+          </button>
 
         </div>
         )}
@@ -888,6 +1000,7 @@ function DashboardHeader({
 // ============================================================================
 
 const TYPEWRITER_PHRASES = [
+  "Ask anything...",
   "Run a diagnostic...",
   "Query equipment status...",
   "Analyze last session data...",
@@ -1014,16 +1127,28 @@ export default function Dashboard() {
     activeTasks: 0,
   });
   
+  // Left panel expanded toggle (controlled by 3-dots button) — default ON, persisted
+  const [leftExpanded, setLeftExpanded] = useState(() => {
+    try { return localStorage.getItem("orion.leftExpanded") !== "0"; } catch { return true; }
+  });
+
   // Settings dropdowns
   const [focusedOn] = useState("research");
   const [chatMode, setChatMode] = useState("chat");
-  const [selectedLlm, setSelectedLlm] = useState("claude-sonnet-4-6");
+  const [selectedLlm, setSelectedLlm] = useState(
+    () => localStorage.getItem("orion.selectedLlm") ?? "claude-sonnet-4-6"
+  );
+  useEffect(() => { localStorage.setItem("orion.selectedLlm", selectedLlm); }, [selectedLlm]);
   const [knowledge, _setKnowledge] = useState("all");
+  const [agentPersona, setAgentPersona] = useState(
+    () => localStorage.getItem("orion.persona") ?? ""
+  );
+  useEffect(() => { localStorage.setItem("orion.persona", agentPersona); }, [agentPersona]);
+  const [customPersona, setCustomPersona] = useState(
+    () => localStorage.getItem("orion.personaCustom") ?? ""
+  );
+  useEffect(() => { localStorage.setItem("orion.personaCustom", customPersona); }, [customPersona]);
   
-  // Vertical toolbar flyout: which panel is open (null = all closed)
-  const [toolbarFlyout, setToolbarFlyout] = useState<"settings" | "sessions" | "mode" | null>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
-  const toolbarBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   
   // Header display mode: 0 = header visible + titlebar hidden,
   //                      1 = header minimal (transparent, only menu+dots),
@@ -1276,8 +1401,8 @@ export default function Dashboard() {
       lastResponseRef.current = responseContent;
 
       // ── Extract inline suggestions block (all delimiter variants) ──
-      const closedSugRegex = /\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n([\s\S]*?)(?:(?:--|__|\*\*)?\s*END_SUGGESTIONS\s*(?:--|__|\*\*)?)/gi;
-      const openSugRegex = /\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n([\s\S]+)$/gi;
+      const closedSugRegex = /\n*(?:[-_*]{2,})?\s*SUGGESTIONS\s*(?:[-_*]{2,})?:?\s*\n([\s\S]*?)(?:(?:[-_*]{2,})?\s*END_SUGGESTIONS\s*(?:[-_*]{2,})?)/gi;
+      const openSugRegex = /\n*(?:[-_*]{2,})?\s*SUGGESTIONS\s*(?:[-_*]{2,})?:?\s*\n([\s\S]+)$/gi;
       const sugMatch = closedSugRegex.exec(responseContent) || openSugRegex.exec(responseContent);
       if (sugMatch) {
         const lines = sugMatch[1]
@@ -1290,8 +1415,8 @@ export default function Dashboard() {
       }
       // Strip the suggestions block from displayed text
       const cleanedContent = responseContent
-        .replace(/\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n[\s\S]*?(?:(?:--|__|\*\*)?\s*END_SUGGESTIONS\s*(?:--|__|\*\*)?)/gi, '')
-        .replace(/\n*(?:--|__|\*\*)?\s*SUGGESTIONS\s*(?:--|__|\*\*)?:?\s*\n[\s\S]+$/gi, '')
+        .replace(/\n*(?:[-_*]{2,})?\s*SUGGESTIONS\s*(?:[-_*]{2,})?:?\s*\n[\s\S]*?(?:(?:[-_*]{2,})?\s*END_SUGGESTIONS\s*(?:[-_*]{2,})?)/gi, '')
+        .replace(/\n*(?:[-_*]{2,})?\s*SUGGESTIONS\s*(?:[-_*]{2,})?:?\s*\n[\s\S]+$/gi, '')
         .trim();
 
       const aiMsg: Message = {
@@ -1591,30 +1716,6 @@ export default function Dashboard() {
     setShowHitlWizard(false);
     setCurrentTypingText("");
   };
-
-  // Toggle a toolbar flyout (only one open at a time)
-  const toggleFlyout = (panel: "settings" | "sessions" | "mode") => {
-    setToolbarFlyout(prev => prev === panel ? null : panel);
-  };
-
-  const flyoutTop = (panel: string): number => {
-    const btn = toolbarBtnRefs.current[panel];
-    const container = toolbarRef.current;
-    if (!btn || !container) return 8;
-    return btn.offsetTop;
-  };
-
-  // Close flyout on click outside toolbar
-  useEffect(() => {
-    if (!toolbarFlyout) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        setToolbarFlyout(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [toolbarFlyout]);
 
   const handleNewChat = async () => {
     const newSessionId = crypto.randomUUID();
@@ -2809,6 +2910,17 @@ export default function Dashboard() {
           try { localStorage.setItem("cora.headerMode", String(next)); } catch {}
           return next as 0 | 1 | 2;
         })}
+        onToggleLeftPanel={() => setLeftExpanded(p => {
+          const next = !p;
+          try { localStorage.setItem("orion.leftExpanded", next ? "1" : "0"); } catch {}
+          return next;
+        })}
+        leftExpanded={leftExpanded}
+        onNewChat={handleNewChat}
+        onViewHistory={() => navigate("/history")}
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        onSelectSession={handleSelectSession}
         statusSlot={!chatStarted ? (
           <div className="dash_welcomeStatsCard dash_headerStatusCard">
             <button
@@ -2832,7 +2944,7 @@ export default function Dashboard() {
         ) : undefined}
       />
 
-      <main className={`dash_content dash_content--${chatMode}`}>
+      <main className={`dash_content dash_content--${chatMode}${leftExpanded ? " dash_content--leftExpanded" : ""}`}>
         {/* Full-page drop zone overlay */}
         {isDragging && (
           <div className="dash_dropOverlay">
@@ -2843,8 +2955,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Left black panel - hidden in chat mode */}
-        {chatMode !== "chat" && (
+        {/* Left panel — hidden in chat mode unless expanded */}
+        {(chatMode !== "chat" || leftExpanded) && (
           <div className={`dash_left dash_left--${chatMode}`} ref={leftPanelRef}>
             <ParticleGrid containerRef={leftPanelRef} />
 
@@ -3101,7 +3213,6 @@ export default function Dashboard() {
               />
             )}
             <div className="dash_chatInputWrap">
-              {!chatStarted && chatMessage === "" && !inputFocused && pendingFiles.length === 0 && pastedCount === 0 && <TypewriterPlaceholder />}
               <ChatInput
                 value={chatMessage}
                 onChange={setChatMessage}
@@ -3120,7 +3231,34 @@ export default function Dashboard() {
                 selectedModel={selectedLlm}
                 modelOptions={llmOptions}
                 onModelChange={setSelectedLlm}
+                selectedMode={chatMode}
+                modeOptions={[
+                  { value: "chat", label: "Chat" },
+                  { value: "voice", label: "Voice" },
+                  { value: "agent", label: "Agent" },
+                  { value: "code", label: "Code" },
+                ]}
+                onModeChange={setChatMode}
+                dropDirection={chatStarted ? "up" : "down"}
+                selectedPersona={agentPersona}
+                personaOptions={[
+                  { value: "",         label: "Default" },
+                  { value: "newton",   label: "Isaac Newton" },
+                  { value: "turing",   label: "Alan Turing" },
+                  { value: "tesla",    label: "Nikola Tesla" },
+                  { value: "ada",      label: "Ada Lovelace" },
+                  { value: "davinci",  label: "Leonardo da Vinci" },
+                  { value: "asimov",   label: "Isaac Asimov" },
+                  { value: "executor", label: "Executor" },
+                  { value: "custom",   label: "Custom…" },
+                ]}
+                onPersonaChange={setAgentPersona}
+                customPersonaValue={customPersona}
+                onCustomPersonaChange={setCustomPersona}
               />
+              {!chatStarted && chatMessage === "" && !inputFocused && pendingFiles.length === 0 && pastedCount === 0 && (
+                <TypewriterPlaceholder />
+              )}
             </div>
             <input
               ref={fileInputRef}
@@ -3165,136 +3303,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── Vertical Toolbar (right edge) ── */}
-        <div className="dash_toolbar" ref={toolbarRef}>
-          <div className="dash_toolbarIcons">
-            {/* New Chat */}
-            <button
-              type="button"
-              className="dash_toolbarBtn"
-              onClick={handleNewChat}
-              aria-label="New chat"
-              title="New chat"
-            >
-              <Plus size={20} />
-            </button>
 
-            <div className="dash_toolbarSep" />
-
-            {/* Sessions */}
-            <button
-              ref={el => { toolbarBtnRefs.current["sessions"] = el; }}
-              type="button"
-              className={`dash_toolbarBtn ${toolbarFlyout === "sessions" ? "is-active" : ""}`}
-              onClick={() => toggleFlyout("sessions")}
-              aria-label="Sessions"
-              title="Sessions"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-            </button>
-
-            {/* Interaction Mode — icon changes based on active mode */}
-            <button
-              ref={el => { toolbarBtnRefs.current["mode"] = el; }}
-              type="button"
-              className={`dash_toolbarBtn ${toolbarFlyout === "mode" ? "is-active" : ""}`}
-              onClick={() => !isLoading && toggleFlyout("mode")}
-              aria-label="Interaction mode"
-              title={`Mode: ${chatMode}`}
-              disabled={isLoading}
-            >
-              {chatMode === "chat" && (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
-                </svg>
-              )}
-              {chatMode === "voice" && (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" x2="12" y1="19" y2="22"/>
-                </svg>
-              )}
-              {chatMode === "agent" && (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-                </svg>
-              )}
-              {chatMode === "code" && (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="16 18 22 12 16 6"/>
-                  <polyline points="8 6 2 12 8 18"/>
-                </svg>
-              )}
-            </button>
-
-          </div>
-
-          {/* ── Flyout Popovers ── */}
-
-          {/* Settings Flyout (LLM + Knowledge selectors) */}
-          {/* Sessions Flyout */}
-          {toolbarFlyout === "sessions" && (
-            <div className="dash_flyout" style={{ top: flyoutTop("sessions") }}>
-              <div className="dash_flyoutSection">
-                <span className="dash_flyoutLabel">Sessions</span>
-                {sessions.slice(0, 3).map(session => (
-                  <button
-                    key={session.id}
-                    type="button"
-                    className={`dash_flyoutItem ${session.id === currentSessionId ? "is-selected" : ""}`}
-                    onClick={() => { handleSelectSession(session.id); setToolbarFlyout(null); }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                    </svg>
-                    <span>{session.title}</span>
-                    {session.id === currentSessionId && <Check size={14} className="dash_flyoutCheck" />}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="dash_flyoutItem dash_flyoutItem--action"
-                  onClick={() => { setToolbarFlyout(null); navigate("/history"); }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
-                  </svg>
-                  <span>View all</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Mode Flyout */}
-          {toolbarFlyout === "mode" && (
-            <div className="dash_flyout" style={{ top: flyoutTop("mode") }}>
-              <div className="dash_flyoutSection">
-                <span className="dash_flyoutLabel">Interaction Mode</span>
-                {[
-                  { value: "chat", label: "Chat", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> },
-                  { value: "voice", label: "Voice", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> },
-                  { value: "agent", label: "Agent", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg> },
-                  { value: "code", label: "Code", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> },
-                ].map(m => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    className={`dash_flyoutItem ${m.value === chatMode ? "is-selected" : ""}`}
-                    onClick={() => { setChatMode(m.value); }}
-                  >
-                    {m.icon}
-                    <span>{m.label}</span>
-                    {m.value === chatMode && <Check size={14} className="dash_flyoutCheck" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-        </div>
       </main>
     </div>
   );

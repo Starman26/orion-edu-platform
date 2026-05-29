@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, X, ExternalLink, Trash2, Pencil, Search, ChevronRight, Filter, Settings, Check } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { OrionSelect } from "./OrionSelect";
 import "../styles/procurement.css";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -865,20 +866,19 @@ export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSi
               <div className="prc_fieldRow">
                 <div className="prc_field">
                   <label className="prc_label">Moneda</label>
-                  <select className="prc_select" value={quoteForm.currency}
-                    onChange={(e) => setQuoteForm((f) => ({ ...f, currency: e.target.value as Currency }))}>
-                    <option value="MXN">MXN</option>
-                    <option value="USD">USD</option>
-                  </select>
+                  <OrionSelect
+                    value={quoteForm.currency}
+                    options={[{ value: "MXN", label: "MXN" }, { value: "USD", label: "USD" }]}
+                    onChange={(v) => setQuoteForm((f) => ({ ...f, currency: v as Currency }))}
+                  />
                 </div>
                 <div className="prc_field">
                   <label className="prc_label">Prioridad</label>
-                  <select className="prc_select" value={quoteForm.priority}
-                    onChange={(e) => setQuoteForm((f) => ({ ...f, priority: e.target.value as Priority }))}>
-                    <option value="high">Alta</option>
-                    <option value="medium">Media</option>
-                    <option value="low">Baja</option>
-                  </select>
+                  <OrionSelect
+                    value={quoteForm.priority}
+                    options={[{ value: "high", label: "Alta" }, { value: "medium", label: "Media" }, { value: "low", label: "Baja" }]}
+                    onChange={(v) => setQuoteForm((f) => ({ ...f, priority: v as Priority }))}
+                  />
                 </div>
               </div>
               <div className="prc_field">
@@ -929,10 +929,11 @@ export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSi
                 </div>
                 <div className="prc_field">
                   <label className="prc_label">Unidad</label>
-                  <select className="prc_select" value={bomForm.unit}
-                    onChange={(e) => setBomForm((f) => ({ ...f, unit: e.target.value }))}>
-                    {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  <OrionSelect
+                    value={bomForm.unit}
+                    options={UNITS.map((u) => ({ value: u, label: u }))}
+                    onChange={(v) => setBomForm((f) => ({ ...f, unit: v }))}
+                  />
                 </div>
               </div>
               <div className="prc_fieldRow">
@@ -943,11 +944,11 @@ export default function ProcurementPanel({ sessionId, teamId, userId, onExpandSi
                 </div>
                 <div className="prc_field">
                   <label className="prc_label">Moneda</label>
-                  <select className="prc_select" value={bomForm.currency}
-                    onChange={(e) => setBomForm((f) => ({ ...f, currency: e.target.value as Currency }))}>
-                    <option value="MXN">MXN</option>
-                    <option value="USD">USD</option>
-                  </select>
+                  <OrionSelect
+                    value={bomForm.currency}
+                    options={[{ value: "MXN", label: "MXN" }, { value: "USD", label: "USD" }]}
+                    onChange={(v) => setBomForm((f) => ({ ...f, currency: v as Currency }))}
+                  />
                 </div>
               </div>
               <div className="prc_field">

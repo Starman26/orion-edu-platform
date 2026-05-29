@@ -14,6 +14,7 @@ import {
 } from "./ChatComponents";
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import type { Automation } from "./StudioHelpers";
+import { OrionSelect } from "./OrionSelect";
 
 const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || 'https://sentinela-909652673285.us-central1.run.app';
 
@@ -183,9 +184,28 @@ export default function AutomationView({
   const [isRecording, setIsRecording] = useState(false);
   const recordStartIndexRef = useRef<number | null>(null);
   const [hasRecording, setHasRecording] = useState(false);
-  const [llmModel, setLlmModel] = useState("gemini-flash");
-  const [agentPersona, setAgentPersona] = useState("");
-  const [customPersona, setCustomPersona] = useState("");
+  const [headerCompact, setHeaderCompact] = useState(false);
+  const headerRoRef = useRef<ResizeObserver | null>(null);
+  const handleHeaderRef = useCallback((el: HTMLDivElement | null) => {
+    if (headerRoRef.current) { headerRoRef.current.disconnect(); headerRoRef.current = null; }
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setHeaderCompact(entry.contentRect.width < 300));
+    ro.observe(el);
+    headerRoRef.current = ro;
+  }, []);
+  useEffect(() => () => { headerRoRef.current?.disconnect(); }, []);
+  const [llmModel, setLlmModel] = useState(
+    () => localStorage.getItem("orion.automationLlm") ?? "gemini-flash"
+  );
+  useEffect(() => { localStorage.setItem("orion.automationLlm", llmModel); }, [llmModel]);
+  const [agentPersona, setAgentPersona] = useState(
+    () => localStorage.getItem("orion.automationPersona") ?? ""
+  );
+  useEffect(() => { localStorage.setItem("orion.automationPersona", agentPersona); }, [agentPersona]);
+  const [customPersona, setCustomPersona] = useState(
+    () => localStorage.getItem("orion.automationPersonaCustom") ?? ""
+  );
+  useEffect(() => { localStorage.setItem("orion.automationPersonaCustom", customPersona); }, [customPersona]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastResponseRef = useRef<string>("");
 
@@ -608,21 +628,21 @@ export default function AutomationView({
   useEffect(() => {
     if (!onHeaderControls) return;
     onHeaderControls(
-      <>
-        <button type="button" className="studio__automationBackBtn" onClick={onBack}>
+      <div ref={handleHeaderRef} className={`studio__autoHeaderControls${headerCompact ? " studio__autoHeaderControls--compact" : ""}`}>
+        <button type="button" className="studio__automationBackBtn" onClick={onBack} title={automation.title}>
           <ChevronLeft size={16} />
-          <span>{automation.title}</span>
+          <span className="studio__btnLabel">{automation.title}</span>
         </button>
 
         {robotsLoading ? (
           <span className="studio__robotPill studio__robotPill--disconnected">
             <span className="studio__robotDot studio__robotDot--disconnected" />
-            Loading...
+            <span className="studio__btnLabel">Loading...</span>
           </span>
         ) : robots.length === 0 ? (
-          <span className="studio__robotPill studio__robotPill--disconnected">
+          <span className="studio__robotPill studio__robotPill--disconnected" title="No robots">
             <span className="studio__robotDot studio__robotDot--disconnected" />
-            No robots
+            <span className="studio__btnLabel">No robots</span>
             <button type="button" className="studio__robotInfoBtn" onClick={() => setShowNoRobotsPopup(true)} aria-label="Troubleshooting info">
               <Info size={13} />
             </button>
@@ -637,16 +657,24 @@ export default function AutomationView({
                   : 'studio__robotPill--disconnected'
               }`}
               onClick={() => setShowRobotDropdown(prev => !prev)}
-              title={!labOpen && robots.some(r => r.connected) ? 'Lab hours: 9:00 AM – 9:00 PM (Monterrey time)' : undefined}
+              title={
+                !labOpen && robots.some(r => r.connected)
+                  ? 'Lab hours: 9:00 AM – 9:00 PM (Monterrey time)'
+                  : robots.some(r => r.connected)
+                    ? `${robots.filter(r => r.connected).length} connected`
+                    : 'No robots'
+              }
             >
               <span className={`studio__robotDot ${
                 robots.some(r => r.connected)
                   ? labOpen ? 'studio__robotDot--connected' : 'studio__robotDot--restricted'
                   : 'studio__robotDot--disconnected'
               }`} />
-              {robots.some(r => r.connected)
-                ? labOpen ? `${robots.filter(r => r.connected).length} connected` : 'Restricted'
-                : 'No robots'}
+              <span className="studio__btnLabel">
+                {robots.some(r => r.connected)
+                  ? labOpen ? `${robots.filter(r => r.connected).length} connected` : 'Restricted'
+                  : 'No robots'}
+              </span>
               {selectedRobotIds.length > 0 && (
                 <span className="studio__robotSelectedCount">{selectedRobotIds.length}</span>
               )}
@@ -681,23 +709,25 @@ export default function AutomationView({
           type="button"
           className={`studio__robotPill studio__robotPill--mono ${showEnvPanel ? 'is-active' : ''}`}
           onClick={() => setShowEnvPanel(p => !p)}
+          title="Set Env"
         >
           <SlidersHorizontal size={13} />
-          Set Env
+          <span className="studio__btnLabel">Set Env</span>
         </button>
 
         <button
           type="button"
           className={`studio__robotPill studio__robotPill--mono ${inCall ? 'is-active' : ''}`}
           onClick={isCallActive ? stopCall : startCall}
+          title={inCall ? 'Stop Call' : 'Take Call'}
         >
           {inCall ? <PhoneOff size={13} /> : <Phone size={13} />}
-          {inCall ? 'Stop Call' : 'Take Call'}
+          <span className="studio__btnLabel">{inCall ? 'Stop Call' : 'Take Call'}</span>
         </button>
-      </>
+      </div>
     );
     return () => onHeaderControls?.(null);
-  }, [onHeaderControls, onBack, automation.title, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, startCall, stopCall, labOpen, showEnvPanel, setShowEnvPanel]);
+  }, [onHeaderControls, onBack, automation.title, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, startCall, stopCall, labOpen, showEnvPanel, setShowEnvPanel, headerCompact, handleHeaderRef]);
 
   // ── Render ──
   return (
@@ -982,15 +1012,12 @@ export default function AutomationView({
             <div className="studio__trackerModalSection">
               <div className="studio__trackerModalLabelRow">
                 <p className="studio__trackerModalLabel">Dimensions</p>
-                <select
-                  className="studio__trackerUnitSelect"
+                <OrionSelect
                   value={trackerDraft.unit}
-                  onChange={e => setTrackerDraft(d => ({ ...d, unit: e.target.value as VirtualTracker["unit"] }))}
-                >
-                  <option value="mm">mm</option>
-                  <option value="cm">cm</option>
-                  <option value="m">m</option>
-                </select>
+                  options={[{ value: "mm", label: "mm" }, { value: "cm", label: "cm" }, { value: "m", label: "m" }]}
+                  onChange={(v) => setTrackerDraft((d) => ({ ...d, unit: v as VirtualTracker["unit"] }))}
+                  variant="chip"
+                />
               </div>
               <div className="studio__trackerDimGrid">
                 {trackerDraft.shape === "box" && (

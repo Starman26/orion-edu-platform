@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import rehypeRaw from "rehype-raw";
 import "katex/dist/katex.min.css";
 import {
   ArrowUp,
@@ -449,6 +450,10 @@ interface ChatInputProps {
   onPersonaChange?: (value: string) => void;
   customPersonaValue?: string;
   onCustomPersonaChange?: (value: string) => void;
+  selectedMode?: string;
+  modeOptions?: { value: string; label: string }[];
+  onModeChange?: (value: string) => void;
+  dropDirection?: "up" | "down";
 }
 
 const SLASH_COMMANDS = [
@@ -487,6 +492,10 @@ export function ChatInput({
   onPersonaChange,
   customPersonaValue = "",
   onCustomPersonaChange,
+  selectedMode,
+  modeOptions,
+  onModeChange,
+  dropDirection = "down",
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pastedContents, setPastedContents] = useState<string[]>([]);
@@ -494,6 +503,8 @@ export function ChatInput({
   const modelDropdownRef = useRef<HTMLDivElement>(null);
   const [personaDropdownOpen, setPersonaDropdownOpen] = useState(false);
   const personaDropdownRef = useRef<HTMLDivElement>(null);
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!modelDropdownOpen) return;
@@ -516,6 +527,17 @@ export function ChatInput({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [personaDropdownOpen]);
+
+  useEffect(() => {
+    if (!modeDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
+        setModeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [modeDropdownOpen]);
   const [showPastedModal, setShowPastedModal] = useState<number | null>(null);
   const PASTE_THRESHOLD = 100;
 
@@ -915,7 +937,7 @@ export function ChatInput({
                 </button>
 
                 {modelDropdownOpen && (
-                  <div className="dash_chatModelDropdown">
+                  <div className={`dash_chatModelDropdown${dropDirection === "up" ? " dash_chatModelDropdown--up" : ""}`}>
                     {modelOptions.map(opt => (
                       <button
                         key={opt.value}
@@ -936,28 +958,62 @@ export function ChatInput({
               </div>
             )}
 
-            {personaOptions && onPersonaChange && (
-              <div className="dash_chatModelWrap" ref={personaDropdownRef}>
+            {selectedMode && modeOptions && onModeChange && (
+              <div className="dash_chatModelWrap" ref={modeDropdownRef}>
                 <button
                   type="button"
-                  className={`dash_chatModelChip ${personaDropdownOpen ? 'dash_chatModelChip--open' : ''}`}
-                  onClick={() => setPersonaDropdownOpen(p => !p)}
+                  className={`dash_chatModelChip ${modeDropdownOpen ? 'dash_chatModelChip--open' : ''}`}
+                  onClick={() => !disabled && setModeDropdownOpen(p => !p)}
+                  disabled={disabled}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-                  </svg>
-                  <span>
-                    {selectedPersona === "custom"
-                      ? (customPersonaValue.trim() ? `"${customPersonaValue.slice(0, 18)}${customPersonaValue.length > 18 ? '…' : ''}"` : "Custom…")
-                      : (personaOptions.find(o => o.value === selectedPersona)?.label ?? "Persona")}
-                  </span>
+                  <span>{modeOptions.find(o => o.value === selectedMode)?.label ?? selectedMode}</span>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="dash_chatModelChevron">
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 </button>
 
+                {modeDropdownOpen && (
+                  <div className={`dash_chatModelDropdown${dropDirection === "up" ? " dash_chatModelDropdown--up" : ""}`}>
+                    {modeOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        className={`dash_chatModelOption ${opt.value === selectedMode ? 'dash_chatModelOption--active' : ''}`}
+                        onClick={() => { onModeChange(opt.value); setModeDropdownOpen(false); }}
+                      >
+                        <span>{opt.label}</span>
+                        {opt.value === selectedMode && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {personaOptions && onPersonaChange && (
+              <div className="dash_chatModelWrap" ref={personaDropdownRef}>
+                <button
+                  type="button"
+                  className={`dash_chatPersonaChip ${personaDropdownOpen ? 'is-open' : ''} ${selectedPersona ? 'is-active' : ''}`}
+                  onClick={() => setPersonaDropdownOpen(p => !p)}
+                  title={
+                    selectedPersona === "custom"
+                      ? (customPersonaValue.trim() || "Custom persona")
+                      : (personaOptions.find(o => o.value === selectedPersona)?.label ?? "Persona")
+                  }
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                  </svg>
+                  {selectedPersona && <span className="dash_chatPersonaDot" />}
+                </button>
+
                 {personaDropdownOpen && (
-                  <div className="dash_chatModelDropdown">
+                  <div className={`dash_chatModelDropdown${dropDirection === "up" ? " dash_chatModelDropdown--up" : ""}`}>
                     {selectedPersona === "custom" && (
                       <div className="dash_chatPersonaCustomWrap">
                         <input
@@ -1277,6 +1333,9 @@ interface MarkdownRendererProps {
 }
 
 function MarkdownRenderer({ text, hideCodeBlocks = false }: MarkdownRendererProps) {
+  // Convert ==text== (highlight syntax) to <mark> — requires rehype-raw to render
+  const processedText = useMemo(() => text.replace(/==(.+?)==/gs, '<mark class="dash_mdMark">$1</mark>'), [text]);
+
   const components = useMemo(() => ({
     p: ({ children }: any) => <p className="dash_mdParagraph">{children}</p>,
     h1: ({ children }: any) => <h2 className="dash_mdH1">{children}</h2>,
@@ -1342,10 +1401,10 @@ function MarkdownRenderer({ text, hideCodeBlocks = false }: MarkdownRendererProp
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeKatex]}
+      rehypePlugins={[rehypeRaw, rehypeKatex]}
       components={components}
     >
-      {text}
+      {processedText}
     </ReactMarkdown>
   );
 }

@@ -125,6 +125,18 @@
   pointer-events: auto;
 }
 
+.dash_header--minimal .dash_headerRight {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+[data-theme="dark"] .dash_header--minimal .dash_headerRight {
+  background: rgba(26, 26, 26, 0.82);
+}
+
 .dash_header--minimal .dash_menuBtn {
   pointer-events: auto;
 }
@@ -176,6 +188,120 @@
   width: 1px;
   height: 24px;
   background: rgba(16, 17, 19, 0.12);
+}
+
+.dash_headerSep {
+  color: rgba(16, 17, 19, 0.18);
+  font-size: 13px;
+  line-height: 1;
+  user-select: none;
+  pointer-events: none;
+}
+
+.dash_headerNewBtn {
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  font-style: italic;
+  color: rgba(16, 17, 19, 0.45);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.dash_headerNewBtn:hover {
+  color: rgba(16, 17, 19, 0.75);
+}
+
+.dash_headerIconBtn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(16, 17, 19, 0.45);
+  transition: color 0.15s ease;
+}
+
+.dash_headerIconBtn:hover {
+  color: rgba(16, 17, 19, 0.75);
+}
+
+.dash_headerSessWrap {
+  position: relative;
+}
+
+.dash_headerSessDrop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid rgba(16, 17, 19, 0.09);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(16, 17, 19, 0.08);
+  padding: 6px;
+  z-index: 200;
+}
+
+.dash_headerSessLabel {
+  display: block;
+  padding: 4px 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(16, 17, 19, 0.35);
+}
+
+.dash_headerSessItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: rgba(16, 17, 19, 0.75);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.dash_headerSessItem:hover {
+  background: rgba(16, 17, 19, 0.04);
+}
+
+.dash_headerSessItem.is-active {
+  color: #101113;
+  font-weight: 500;
+}
+
+.dash_headerSessViewAll {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(16, 17, 19, 0.4);
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(16, 17, 19, 0.06);
+  cursor: pointer;
+  text-align: left;
+  border-radius: 0 0 6px 6px;
+  transition: color 0.12s ease;
+}
+
+.dash_headerSessViewAll:hover {
+  color: rgba(16, 17, 19, 0.7);
 }
 
 /* ─── User Info / Breadcrumb ─── */
@@ -511,6 +637,42 @@
 .dash_left--agent,
 .dash_left--code {
   flex: 2;
+}
+
+/* 3-dots toggle: expand the left shadow to 60% / content stays in 40% */
+.dash_left,
+.dash_right {
+  transition: flex 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash_content--leftExpanded .dash_left {
+  flex: 3;
+  margin-top: -12px;
+  margin-left: -24px;
+  margin-bottom: -12px;
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+}
+
+.dash_content--leftExpanded .dash_right {
+  flex: 2 !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+/* Chat mode expanded: dash_left gets the same subtle gray as the ::before tint */
+.dash_content--chat.dash_content--leftExpanded .dash_left {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: transparent;
+}
+
+/* Hide the ::before tint when leftExpanded (dash_left replaces it) */
+.dash_content--leftExpanded:has(.dash_welcomeCenter)::before,
+html.cora-sidebar-collapsed .dash_content--leftExpanded:has(.dash_welcomeCenter)::before {
+  display: none;
 }
 
 .dash_left {
@@ -1321,6 +1483,19 @@
   border-bottom-color: currentColor;
 }
 
+/* ── Highlight ==text== ── */
+.dash_mdMark {
+  background: rgba(16, 17, 19, 0.68);
+  color: rgba(255, 255, 255, 0.88);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+[data-theme="dark"] .dash_mdMark {
+  background: rgba(180, 180, 180, 0.15);
+  color: var(--text-secondary);
+}
+
 /* ── Blockquotes ── */
 .dash_mdBlockquote {
   margin: 8px 0 12px 0;
@@ -1799,6 +1974,7 @@
   flex-direction: column;
   gap: 12px;
   position: relative;
+  z-index: 10;
 }
 
 .dash_chatInputWrapper--dragging {
@@ -2292,9 +2468,64 @@
   transform: rotate(180deg);
 }
 
+.dash_chatPersonaChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border-radius: 20px;
+  background: rgba(16, 17, 19, 0.05);
+  border: 1px solid rgba(16, 17, 19, 0.07);
+  color: rgba(16, 17, 19, 0.45);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.dash_chatPersonaChip:hover,
+.dash_chatPersonaChip.is-open {
+  background: rgba(16, 17, 19, 0.09);
+  border-color: rgba(16, 17, 19, 0.13);
+  color: rgba(16, 17, 19, 0.75);
+}
+
+.dash_chatPersonaChip.is-active {
+  color: rgba(16, 17, 19, 0.65);
+  border-color: rgba(16, 17, 19, 0.15);
+}
+
+.dash_chatPersonaDot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(16, 17, 19, 0.5);
+  pointer-events: none;
+}
+
+[data-theme="dark"] .dash_chatPersonaChip {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .dash_chatPersonaChip:hover,
+[data-theme="dark"] .dash_chatPersonaChip.is-open {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="dark"] .dash_chatPersonaDot {
+  background: rgba(255, 255, 255, 0.5);
+}
+
 .dash_chatModelDropdown {
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   left: 0;
   min-width: 180px;
   background: #ffffff;
@@ -2303,6 +2534,11 @@
   padding: 4px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   z-index: 200;
+}
+
+.dash_chatModelDropdown--up {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 .dash_chatModelOption {
@@ -2356,6 +2592,185 @@
   color: rgba(255, 255, 255, 0.9);
 }
 [data-theme="dark"] .dash_chatModelOption--active {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OrionSelect — universal dropdown (replaces all native <select> elements)
+   variant="chip"  → small pill, opens above (matches LLM selector style)
+   variant="field" → full-width form field, opens below
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.orionSel_wrap {
+  position: relative;
+}
+
+/* ── CHIP variant ────────────────────────────────────────────────────────── */
+
+.orionSel_wrap--chip .orionSel_trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 20px;
+  background: rgba(16, 17, 19, 0.05);
+  border: 1px solid rgba(16, 17, 19, 0.07);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.55);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.orionSel_wrap--chip .orionSel_trigger:hover,
+.orionSel_wrap--chip .orionSel_trigger.orionSel_trigger--open {
+  background: rgba(16, 17, 19, 0.09);
+  border-color: rgba(16, 17, 19, 0.13);
+  color: rgba(16, 17, 19, 0.8);
+}
+
+.orionSel_wrap--chip .orionSel_menu {
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 180px;
+}
+
+/* ── FIELD variant ───────────────────────────────────────────────────────── */
+
+.orionSel_wrap--field {
+  width: 100%;
+}
+
+.orionSel_wrap--field .orionSel_trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 11px;
+  border-radius: 5px;
+  background: #f8f8f8;
+  border: 1px solid rgba(16, 17, 19, 0.12);
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(16, 17, 19, 0.85);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+
+.orionSel_wrap--field .orionSel_trigger:hover,
+.orionSel_wrap--field .orionSel_trigger.orionSel_trigger--open {
+  border-color: rgba(16, 17, 19, 0.3);
+  background: #ffffff;
+}
+
+.orionSel_wrap--field .orionSel_menu {
+  top: calc(100% + 4px);
+  left: 0;
+}
+
+/* ── Shared ──────────────────────────────────────────────────────────────── */
+
+.orionSel_trigger {
+  outline: none;
+}
+
+.orionSel_trigger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.orionSel_chevron {
+  transition: transform 0.2s ease;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.orionSel_trigger--open .orionSel_chevron {
+  transform: rotate(180deg);
+}
+
+.orionSel_menu {
+  position: absolute;
+  min-width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 200;
+}
+
+.orionSel_option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(16, 17, 19, 0.7);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.orionSel_option:hover {
+  background: rgba(16, 17, 19, 0.05);
+  color: #101113;
+}
+
+.orionSel_option--active {
+  color: #101113;
+  font-weight: 500;
+}
+
+/* ── Dark mode ───────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] .orionSel_wrap--chip .orionSel_trigger {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+}
+[data-theme="dark"] .orionSel_wrap--chip .orionSel_trigger:hover,
+[data-theme="dark"] .orionSel_wrap--chip .orionSel_trigger.orionSel_trigger--open {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="dark"] .orionSel_wrap--field .orionSel_trigger {
+  background: var(--bg-surface);
+  border-color: var(--border-base);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .orionSel_wrap--field .orionSel_trigger:hover,
+[data-theme="dark"] .orionSel_wrap--field .orionSel_trigger.orionSel_trigger--open {
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+}
+
+[data-theme="dark"] .orionSel_menu {
+  background: #1a1b1e;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .orionSel_option {
+  color: rgba(255, 255, 255, 0.6);
+}
+[data-theme="dark"] .orionSel_option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+}
+[data-theme="dark"] .orionSel_option--active {
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -2483,9 +2898,9 @@
   left: 18px;
   font-size: 14px;
   line-height: 1.5;
-  color: rgba(16, 17, 19, 0.4);
+  color: rgba(16, 17, 19, 0.38);
   pointer-events: none;
-  z-index: 1;
+  z-index: 20;
   font-family: inherit;
 }
 
@@ -2994,6 +3409,37 @@
 }
 
 /* Scroll to bottom button */
+/* ── Plot / Analysis shortcut button ── */
+.dash_plotBtn {
+  position: absolute;
+  bottom: 20px;
+  left: 12px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(16, 17, 19, 0.3);
+  transition: color 0.15s ease;
+  z-index: 20;
+}
+
+.dash_plotBtn:hover {
+  color: rgba(16, 17, 19, 0.65);
+}
+
+[data-theme="dark"] .dash_plotBtn {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .dash_plotBtn:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .dash_scrollToBottom {
   position: sticky;
   bottom: 8px;
@@ -3428,7 +3874,6 @@
   flex-direction: column;
   justify-content: center;
   min-height: 0;
-  overflow: hidden;
 }
 
 /* In welcome mode, restore natural positioning inside the group */

@@ -910,6 +910,20 @@
   background: #f3f4f6;
 }
 
+/* ── Responsive header controls wrapper ── */
+
+.studio__autoHeaderControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Compact mode: hide text labels, show icons only.
+   Triggered via ResizeObserver when the wrapper is < 300 px wide. */
+.studio__autoHeaderControls--compact .studio__btnLabel {
+  display: none;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    STEPS SIDEBAR (left panel)
    ───────────────────────────────────────────────────────────────────────────── */

@@ -120,6 +120,50 @@
   [data-theme="dark"] .dash_userSeparator { color: var(--text-dim); }
   [data-theme="dark"] .dash_userRole      { color: var(--text-secondary); }
   [data-theme="dark"] .dash_userError     { color: var(--text-muted); }
+
+  /* ─── Header action buttons (New / Clock / Sep) ─── */
+  [data-theme="dark"] .dash_headerNewBtn {
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .dash_headerNewBtn:hover {
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .dash_headerIconBtn {
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .dash_headerIconBtn:hover {
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .dash_headerSep {
+    color: var(--text-dim);
+  }
+
+  /* ─── Header sessions dropdown ─── */
+  [data-theme="dark"] .dash_headerSessDrop {
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+  [data-theme="dark"] .dash_headerSessLabel {
+    color: var(--text-dim);
+  }
+  [data-theme="dark"] .dash_headerSessItem {
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .dash_headerSessItem:hover {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .dash_headerSessItem.is-active {
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .dash_headerSessViewAll {
+    color: var(--text-dim);
+    border-top-color: var(--border-soft);
+  }
+  [data-theme="dark"] .dash_headerSessViewAll:hover {
+    color: var(--text-secondary);
+  }
   
   /* ─── Change Agent ─── */
   [data-theme="dark"] .dash_changeAgentBtn {

@@ -48,6 +48,7 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import { equipmentTypeIcon } from "./EquipmentTab";
 import SphereGraph from "./SphereGraph";
+import { OrionSelect } from "./OrionSelect";
 
 // ============================================================================
 // TYPES & CONSTANTS
@@ -1711,18 +1712,12 @@ function EdgeSidePanel({ edge, nodes, canEdit, onClose, onUpdate, onDelete }: Ed
 
         <div className="ll_kg_field">
           <label className="ll_kg_fieldLabel">Relación</label>
-          <select
-            className="ll_kg_select"
+          <OrionSelect
             value={initialRel}
-            onChange={(e) => handleRelationChange(e.target.value as Relation)}
+            options={RELATIONS.map((r) => ({ value: r.value, label: r.label }))}
+            onChange={(v) => handleRelationChange(v as Relation)}
             disabled={!canEdit}
-          >
-            {RELATIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         <div className="ll_kg_field">
@@ -1815,15 +1810,15 @@ function FreeNodeModal({ onSave, onClose }: FreeNodeModalProps) {
         <div className="ll_modalContent">
           <div className="ll_formGroup">
             <label className="ll_label">Tipo</label>
-            <select
-              className="ll_select"
+            <OrionSelect
               value={kind}
-              onChange={(e) => setKind(e.target.value as NodeKind)}
-            >
-              <option value="concept">{KIND_LABEL("concept")}</option>
-              <option value="process">{KIND_LABEL("process")}</option>
-              <option value="material">{KIND_LABEL("material")}</option>
-            </select>
+              options={[
+                { value: "concept", label: KIND_LABEL("concept") },
+                { value: "process", label: KIND_LABEL("process") },
+                { value: "material", label: KIND_LABEL("material") },
+              ]}
+              onChange={(v) => setKind(v as NodeKind)}
+            />
           </div>
           <div className="ll_formGroup">
             <label className="ll_label">Etiqueta</label>
@@ -1896,18 +1891,11 @@ function EdgeModal({ onConfirm, onCancel }: EdgeModalProps) {
         <div className="ll_modalContent">
           <div className="ll_formGroup">
             <label className="ll_label">Relación</label>
-            <select
-              className="ll_select"
+            <OrionSelect
               value={relation}
-              onChange={(e) => setRelation(e.target.value as Relation)}
-              autoFocus
-            >
-              {RELATIONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
+              options={RELATIONS.map((r) => ({ value: r.value, label: r.label }))}
+              onChange={(v) => setRelation(v as Relation)}
+            />
           </div>
           <div className="ll_formGroup">
             <label className="ll_label">Notas</label>
