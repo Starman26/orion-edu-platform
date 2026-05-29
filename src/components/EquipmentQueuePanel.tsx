@@ -1011,17 +1011,17 @@ export default function EquipmentQueuePanel({
               <button type="button"
                 className={`equeue_midTab${midView === "list" ? " is-active" : ""}`}
                 onClick={() => setMidView("list")}>
-                Reservas <span className="equeue_midTabCount">{midEntries.length}</span>
+                <span className="equeue_midTabLabel">Reservas</span> <span className="equeue_midTabCount">{midEntries.length}</span>
               </button>
               <button type="button"
                 className={`equeue_midTab${midView === "rules" ? " is-active" : ""}`}
                 onClick={() => setMidView("rules")}>
-                Reglas <span className="equeue_midTabCount">{rules.length}</span>
+                <span className="equeue_midTabLabel">Reglas</span> <span className="equeue_midTabCount">{rules.length}</span>
               </button>
               <button type="button"
                 className={`equeue_midTab${midView === "kanban" ? " is-active" : ""}`}
                 onClick={() => setMidView("kanban")}>
-                Kanban
+                <span className="equeue_midTabLabel">Kanban</span>
               </button>
             </div>
             <div className="equeue_midBarActions">

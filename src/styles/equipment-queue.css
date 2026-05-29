@@ -468,7 +468,8 @@
    ============================================================================ */
 
 .equeue_midPanel {
-  flex: 1; min-width: 0;
+  flex: 0 1 300px;
+  min-width: 0;
   display: flex; flex-direction: column;
   overflow: hidden;
   background: var(--pmt-surface);
@@ -507,10 +508,14 @@
 
 .equeue_midTabs {
   display: flex; gap: 0; align-items: flex-end;
+  min-width: 0; overflow: hidden;
 }
 .equeue_midTab {
+  display: inline-flex; align-items: baseline;
   padding: 0 2px 8px;
   margin-right: 16px;
+  min-width: 0;
+  white-space: nowrap;
   font-size: 13px; font-weight: 500;
   color: var(--pmt-text-muted);
   background: none; border: none; border-bottom: 2px solid transparent;
@@ -523,8 +528,15 @@
   border-bottom-color: var(--st-info);
   font-weight: 600;
 }
+.equeue_midTabLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 .equeue_midTabCount {
   margin-left: 4px;
+  flex-shrink: 0;
   font-size: 11px; font-weight: 500;
   color: var(--pmt-text-subtle);
 }
@@ -1190,8 +1202,8 @@
    ============================================================================ */
 
 .equeue_rightPanel {
-  width:600px;
-  flex-shrink: 0;
+  flex: 1 1 600px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--pmt-surface);
