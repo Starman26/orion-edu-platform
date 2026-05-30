@@ -5388,7 +5388,8 @@ html.cora-sidebar-collapsed .dash_content:has(.dash_welcomeCenter)::before {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.hstream__fab:hover { background: #25252b; border-color: rgba(255, 255, 255, 0.2); }
+.hstream__fab:hover:not(:disabled) { background: #25252b; border-color: rgba(255, 255, 255, 0.2); }
+.hstream__fab:disabled { opacity: 0.4; cursor: not-allowed; }
 .hstream__fabDot {
   width: 7px; height: 7px; border-radius: 50%;
   background: #34d399; box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25);

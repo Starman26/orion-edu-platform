@@ -17,6 +17,8 @@ interface ConnectedRobot {
 interface HealthStreamPanelProps {
   robots: ConnectedRobot[];
   selectedRobotIds: string[];
+  /** True only when the bridge reports a connected xArm. Gates the whole panel. */
+  hasXarm: boolean;
   bridgeId?: string;
   defaultIp?: string;
 }
@@ -24,6 +26,7 @@ interface HealthStreamPanelProps {
 export default function HealthStreamPanel({
   robots,
   selectedRobotIds,
+  hasXarm,
   bridgeId,
   defaultIp = "192.168.1.203",
 }: HealthStreamPanelProps) {
@@ -62,7 +65,8 @@ export default function HealthStreamPanel({
         type="button"
         className="hstream__fab"
         onClick={() => setOpen((o) => !o)}
-        title="xArm health stream"
+        disabled={!hasXarm && !hs.isActive}
+        title={hasXarm ? "xArm health stream" : "Connect the bridge to an xArm to enable"}
       >
         <Activity size={16} />
         <span>Health Stream</span>
@@ -186,7 +190,7 @@ export default function HealthStreamPanel({
                 type="button"
                 className="hstream__btn hstream__btn--start"
                 onClick={onStart}
-                disabled={!effectiveDevice}
+                disabled={!effectiveDevice || !hasXarm}
               >
                 <Play size={14} /> Start
               </button>

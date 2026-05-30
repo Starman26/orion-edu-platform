@@ -15,7 +15,6 @@ import {
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import type { Automation } from "./StudioHelpers";
 import { OrionSelect } from "./OrionSelect";
-import HealthStreamPanel from "./HealthStreamPanel";
 
 const AGENT_API_URL = import.meta.env.VITE_AGENT_API_URL || 'https://sentinela-909652673285.us-central1.run.app';
 
@@ -49,7 +48,7 @@ function isLabOpen(): boolean {
   return mtyHour >= 9 && mtyHour < 21;
 }
 
-interface ConnectedRobot { robot_id: string; connected: boolean; }
+interface ConnectedRobot { robot_id: string; connected: boolean; type?: string; model?: string; }
 
 type AutomationMsg = Message & { tool?: string };
 
@@ -969,6 +968,7 @@ export default function AutomationView({
           onPersonaChange={setAgentPersona}
           customPersonaValue={customPersona}
           onCustomPersonaChange={setCustomPersona}
+          dropDirection="up"
         />
         <p className="studio__practiceDisclaimer">
           ORION operates real equipment — verify all movements before execution.
@@ -1069,8 +1069,6 @@ export default function AutomationView({
           </div>
         </div>
       )}
-
-      <HealthStreamPanel robots={robots} selectedRobotIds={selectedRobotIds} />
     </div>
   );
 }
