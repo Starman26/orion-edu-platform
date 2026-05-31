@@ -451,6 +451,7 @@ export default function EquipmentQueuePanel({
   const [eSaving, setESaving]             = useState(false);
 
   const calScrollRef = useRef<HTMLDivElement>(null);
+  const [calPopup, setCalPopup] = useState<QueueEntry | null>(null);
 
   // ── Load equipment ──
   useEffect(() => {
@@ -620,7 +621,15 @@ export default function EquipmentQueuePanel({
     !selectedEqId || e.equipment_id === selectedEqId
   );
 
-  const calEntries = entries.filter((e) => isSameDay(new Date(e.scheduled_at), calDate));
+  const calEntries = (() => {
+    const dayStart = new Date(calDate); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd   = new Date(calDate); dayEnd.setHours(24, 0, 0, 0);
+    return entries.filter((e) => {
+      const s = new Date(e.scheduled_at).getTime();
+      const end = s + e.duration_hours * 3_600_000;
+      return s < dayEnd.getTime() && end > dayStart.getTime();
+    });
+  })();
 
   // ── Table not set up ──
   if (tableError) {
@@ -1479,20 +1488,34 @@ export default function EquipmentQueuePanel({
 
               {/* Events */}
               {computeCalLayout(calEntries).map((entry) => {
-                const d = new Date(entry.scheduled_at);
-                const startFrac = d.getHours() + d.getMinutes() / 60;
-                const topPx = (startFrac - CAL_START) * HOUR_PX;
-                const heightPx = Math.max(entry.duration_hours * HOUR_PX, 28);
-                const eq = getEq(entry.equipment_id);
-                const inRange = startFrac >= CAL_START && startFrac < CAL_END;
-                if (!inRange) return null;
-                const colW = `calc((100% - 8px) / ${entry.totalCols} - 2px)`;
-                const colL = `calc(4px + (100% - 8px) * ${entry.col} / ${entry.totalCols})`;
+                const dayStartMs = (() => { const d = new Date(calDate); d.setHours(0,0,0,0); return d.getTime(); })();
+                const entryStartMs = new Date(entry.scheduled_at).getTime();
+                const entryEndMs   = entryStartMs + entry.duration_hours * 3_600_000;
+
+                // Clamp to [CAL_START, CAL_END] within this day
+                const startFrac = Math.max(CAL_START, (entryStartMs - dayStartMs) / 3_600_000);
+                const endFrac   = Math.min(CAL_END,   (entryEndMs   - dayStartMs) / 3_600_000);
+                if (startFrac >= CAL_END || endFrac <= CAL_START) return null;
+
+                const topPx    = (startFrac - CAL_START) * HOUR_PX;
+                const heightPx = Math.max((endFrac - startFrac) * HOUR_PX, 28);
+
+                const continuesFromPrev = entryStartMs < dayStartMs;
+                const continuesToNext  = entryEndMs > dayStartMs + 24 * 3_600_000;
+
+                const eq    = getEq(entry.equipment_id);
+                const colW  = `calc((100% - 8px) / ${entry.totalCols} - 2px)`;
+                const colL  = `calc(4px + (100% - 8px) * ${entry.col} / ${entry.totalCols})`;
                 const color = getEqColor(entry.equipment_id);
                 return (
                   <div key={entry.id} className="equeue_calEvent"
-                    style={{ top: topPx, height: heightPx, left: colL, width: colW, right: "auto",
-                      background: color.bg, borderLeftColor: color.border }}>
+                    style={{
+                      top: topPx, height: heightPx, left: colL, width: colW, right: "auto",
+                      background: color.bg, borderLeftColor: color.border, cursor: "pointer",
+                      ...(continuesFromPrev ? { borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTop: `2px dashed ${color.border}` } : {}),
+                      ...(continuesToNext   ? { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottom: `2px dashed ${color.border}` } : {}),
+                    }}
+                    onClick={() => setCalPopup(entry)}>
                     <span className="equeue_calEventTitle" style={{ color: color.text }}>
                       {eq ? eq.name : "Equipment"}
                     </span>
@@ -1582,6 +1605,89 @@ export default function EquipmentQueuePanel({
           </div>
         </>
       )}
+
+      {/* ── Calendar event popup ── */}
+      {calPopup && (() => {
+        const eq = getEq(calPopup.equipment_id);
+        const color = getEqColor(calPopup.equipment_id);
+        const ac = avatarColor(calPopup.requested_by_name);
+        const st = effectiveStatus(calPopup);
+        const statusLabel: Record<string, string> = {
+          waiting: "En espera", in_use: "En uso", done: "Completado", cancelled: "Cancelado",
+        };
+        const statusColor: Record<string, string> = {
+          waiting: "var(--pmt-text-subtle)", in_use: "var(--st-warning)",
+          done: "var(--st-ok)", cancelled: "var(--st-critical)",
+        };
+        return (
+          <>
+            <div className="equeue_modalOverlay" onClick={() => setCalPopup(null)} />
+            <div className="equeue_calPopup">
+              <div className="equeue_calPopupBar" style={{ background: color.border }} />
+              <button type="button" className="equeue_formClose" style={{ position: "absolute", top: 10, right: 10 }}
+                onClick={() => setCalPopup(null)}>
+                <X size={14} />
+              </button>
+              <div className="equeue_calPopupHeader">
+                <span className="equeue_calPopupEq" style={{ color: color.text }}>
+                  {eq ? <>{equipmentTypeIcon(eq.type, 14)} {eq.name}</> : "Equipment"}
+                </span>
+                <span className="equeue_calPopupStatus" style={{ color: statusColor[st] }}>
+                  {statusLabel[st] ?? st}
+                </span>
+              </div>
+              <div className="equeue_calPopupUser">
+                <span className="equeue_calPopupAvatar" style={{ background: ac.bg, color: ac.text }}>
+                  {calPopup.requested_by_name.charAt(0).toUpperCase()}
+                </span>
+                <span className="equeue_calPopupUserName">{calPopup.requested_by_name}</span>
+              </div>
+              <div className="equeue_calPopupRows">
+                <div className="equeue_calPopupRow">
+                  <span className="equeue_calPopupLabel">Inicio</span>
+                  <span>{fmtTime(calPopup.scheduled_at)}</span>
+                </div>
+                <div className="equeue_calPopupRow">
+                  <span className="equeue_calPopupLabel">Fin est.</span>
+                  <span>{fmtTime(new Date(new Date(calPopup.scheduled_at).getTime() + calPopup.duration_hours * 3_600_000).toISOString())}</span>
+                </div>
+                <div className="equeue_calPopupRow">
+                  <span className="equeue_calPopupLabel">Duración</span>
+                  <span>{fmtDurCompact(calPopup.duration_hours)}</span>
+                </div>
+                <div className="equeue_calPopupRow">
+                  <span className="equeue_calPopupLabel">Restante</span>
+                  <span>{entryRemainingLabel(calPopup, st)}</span>
+                </div>
+                {calPopup.material && (
+                  <div className="equeue_calPopupRow">
+                    <span className="equeue_calPopupLabel">Material</span>
+                    <span>{calPopup.material}</span>
+                  </div>
+                )}
+                {calPopup.notes && (
+                  <div className="equeue_calPopupRow">
+                    <span className="equeue_calPopupLabel">Notas</span>
+                    <span>{calPopup.notes}</span>
+                  </div>
+                )}
+              </div>
+              {calPopup.requested_by_user_id === userId && (
+                <div className="equeue_calPopupActions">
+                  <button type="button" className="equeue_btnCancel"
+                    onClick={() => { setCalPopup(null); openEdit(calPopup); }}>
+                    <Pencil size={12} /> Editar
+                  </button>
+                  <button type="button" className="equeue_editDelete"
+                    onClick={() => { handleCancel(calPopup.id); setCalPopup(null); }}>
+                    Cancelar reserva
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
       {/* ── Settings drawer (same pattern as PM Tracker) ── */}
       {showSettings && (

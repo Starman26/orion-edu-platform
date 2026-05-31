@@ -468,7 +468,7 @@
    ============================================================================ */
 
 .equeue_midPanel {
-  flex: 0 1 300px;
+  flex: 2 1 300px;
   min-width: 0;
   display: flex; flex-direction: column;
   overflow: hidden;
@@ -544,6 +544,7 @@
 
 /* ── Kanban ── */
 .equeue_body--kanban .equeue_rightPanel { display: none; }
+.equeue_body--kanban .equeue_midPanel { flex: 1; max-width: none; }
 
 /* KPI bar — shown above kanban columns */
 .equeue_kpiBar {
@@ -854,21 +855,20 @@
 
 .equeue_midSectionHeader {
   display: flex; align-items: center; gap: 7px;
-  width: calc(100% - 16px);
-  margin: 0 8px 4px;
-  padding: 12px 12px;
-  background: var(--pmt-surface);
-  border: 1px solid var(--pmt-border-soft);
-  border-radius: var(--pmt-r-md);
+  width: 100%;
+  margin: 0;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--pmt-border-soft);
+  border-radius: 0;
   text-align: left; cursor: pointer;
   font-family: inherit;
   color: inherit;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.1s;
 }
 .equeue_midSectionHeader:hover {
   background: var(--pmt-surface-2);
-  border-color: var(--pmt-border);
 }
 
 .equeue_midSectionChevron {
@@ -1091,6 +1091,73 @@
   overflow: hidden;
 }
 
+/* Calendar event popup */
+.equeue_calPopup {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 201;
+  width: 320px; max-width: calc(100% - 32px);
+  background: var(--pmt-surface);
+  border: 1px solid var(--pmt-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.equeue_calPopupBar {
+  height: 4px; flex-shrink: 0;
+}
+.equeue_calPopupHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 36px 6px 14px;
+  gap: 8px;
+}
+.equeue_calPopupEq {
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px;
+}
+.equeue_calPopupStatus {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.equeue_calPopupUser {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 14px 10px;
+}
+.equeue_calPopupAvatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.equeue_calPopupUserName {
+  font-size: 13px; color: var(--pmt-text-muted);
+}
+.equeue_calPopupRows {
+  display: flex; flex-direction: column; gap: 0;
+  border-top: 1px solid var(--pmt-border-soft);
+  padding: 8px 14px;
+}
+.equeue_calPopupRow {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 4px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--pmt-border-soft);
+}
+.equeue_calPopupRow:last-child { border-bottom: none; }
+.equeue_calPopupLabel {
+  font-size: 11px; font-weight: 600;
+  color: var(--pmt-text-subtle);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  min-width: 72px;
+}
+.equeue_calPopupActions {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 10px 14px;
+  border-top: 1px solid var(--pmt-border-soft);
+}
+
 .equeue_formCard {
   background: var(--pmt-surface);
   border-bottom: 1px solid var(--pmt-border);
@@ -1202,7 +1269,7 @@
    ============================================================================ */
 
 .equeue_rightPanel {
-  flex: 1 1 600px;
+  flex: 1 1 300px;
   min-width: 0;
   display: flex;
   flex-direction: column;
